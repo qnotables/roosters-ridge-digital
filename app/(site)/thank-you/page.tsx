@@ -32,8 +32,8 @@ export default async function ThankYouPage({
         </h1>
         <p className="text-pretty leading-relaxed text-muted-foreground">
           {isCheckup
-            ? 'We&apos;ll review your digital presence and follow up with a personalized summary and the highest-impact next steps.'
-            : 'We&apos;ll review the details you shared and reply with a clear plan and a free estimate.'}
+            ? "We'll review your digital presence and follow up with a personalized summary and the highest-impact next steps."
+            : "We'll review the details you shared and reply with a clear plan and a free estimate."}
         </p>
       </div>
 
