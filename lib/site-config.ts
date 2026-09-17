@@ -338,6 +338,7 @@ export const promoItems: PromoItem[] = [
 export const workItems: WorkItem[] = []
 
 export const navLinks = [
+  { href: '/about', label: 'About' },
   { href: '/services', label: 'Services' },
   { href: '/work', label: 'Work' },
   { href: '/promotions', label: 'Promotions' },

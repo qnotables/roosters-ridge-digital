@@ -3,6 +3,7 @@ import { CheckupForm } from '@/components/forms/checkup-form'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionHeading } from '@/components/section-heading'
 import { digitalCheckup } from '@/lib/site-config'
+import { getBusinessProfile } from '@/lib/business-profile'
 
 export const metadata: Metadata = {
   title: 'Free Digital Presence Checkup',
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
     'Get a personalized review of your website, branding, search visibility, and social presence — measured against a 10-point checklist.',
 }
 
-export default function FreeCheckupPage() {
+export default async function FreeCheckupPage() {
+  const profile = await getBusinessProfile()
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
       <div className="grid gap-12 lg:grid-cols-[1.2fr_1fr]">
@@ -24,6 +26,12 @@ export default function FreeCheckupPage() {
               Request a free, personalized checkup and we&apos;ll review where your business stands today — then show
               you the highest-impact places to improve. No pressure, no obligation.
             </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">What you&apos;ll receive</h2>
+            <ul className="mt-4 space-y-2 text-sm leading-6 text-muted-foreground"><li>• A review of your submitted website or digital presence</li><li>• Practical observations based on the 10-point checklist</li><li>• A short list of recommended next steps</li><li>• No obligation to purchase services</li></ul>
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">{profile.response_time || 'After submitting the form, you’ll receive an email confirming your request. Rooster’s Ridge Digital will follow up after reviewing the information you provide.'}</p>
           </div>
 
           <div className="flex flex-col gap-4">

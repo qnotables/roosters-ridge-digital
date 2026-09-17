@@ -8,7 +8,7 @@ import { siteConfig } from '@/lib/site-config'
 import { trackEvent } from '@/lib/analytics'
 import { useCaptureUtm } from '@/lib/use-utm'
 
-const highlights = ['Websites that convert', 'Consistent branding', 'Content that ranks', 'Promo-ready creative']
+const highlights = ['Websites that convert', 'Consistent branding', 'Search-ready content', 'Promo-ready creative']
 
 export function Hero() {
   useCaptureUtm()
