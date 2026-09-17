@@ -17,7 +17,11 @@ export function Hero() {
     <section className="relative overflow-hidden border-b border-border bg-[#111a2b]">
       <div className="relative mx-auto flex min-h-0 max-w-6xl flex-col px-4 sm:px-6 lg:min-h-[680px] lg:justify-center">
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-[58%] bg-gradient-to-r from-[#111a2b]/95 via-[#111a2b]/65 to-transparent lg:block"
+          className="pointer-events-none absolute inset-0 z-[1] bg-[#111a2b]/35"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-[2] hidden w-[58%] bg-gradient-to-r from-[#111a2b]/95 via-[#111a2b]/65 to-transparent lg:block"
           aria-hidden="true"
         />
 
