@@ -1,12 +1,12 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { BrandMark } from '@/components/brand-mark'
 import { navLinks, siteConfig } from '@/lib/site-config'
 import { cn } from '@/lib/utils'
 
@@ -20,11 +20,14 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
-          <BrandMark />
-          <span className="flex flex-col leading-none">
-            <span className="text-sm font-semibold tracking-tight">{siteConfig.shortName}</span>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Digital</span>
-          </span>
+          <Image
+            src="/images/roosters-ridge-digital-logo.png"
+            alt="Rooster's Ridge Digital"
+            width={196}
+            height={64}
+            priority
+            className="h-11 w-auto rounded-sm bg-white px-2 py-1 object-contain"
+          />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
@@ -57,10 +60,13 @@ export function SiteHeader() {
           <SheetContent side="right" className="w-[min(20rem,85vw)] p-0">
             <SheetTitle className="sr-only">Menu</SheetTitle>
             <div className="flex items-center justify-between border-b border-border px-4 h-16">
-              <span className="flex items-center gap-2">
-                <BrandMark />
-                <span className="text-sm font-semibold">{siteConfig.shortName}</span>
-              </span>
+              <Image
+                src="/images/roosters-ridge-digital-logo.png"
+                alt="Rooster's Ridge Digital"
+                width={178}
+                height={56}
+                className="h-10 w-auto rounded-sm bg-white px-2 py-1 object-contain"
+              />
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close menu">
                 <X className="size-5" />
               </Button>

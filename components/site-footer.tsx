@@ -1,6 +1,6 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { Mail } from 'lucide-react'
-import { BrandMark } from '@/components/brand-mark'
 import { SocialLinks } from '@/components/social-links'
 import { navLinks, services, siteConfig } from '@/lib/site-config'
 
@@ -11,9 +11,14 @@ export function SiteFooter() {
     <footer className="border-t border-border bg-card/40">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="flex flex-col gap-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <BrandMark />
-            <span className="text-base font-semibold">{siteConfig.name}</span>
+          <Link href="/" className="inline-flex w-fit items-center">
+            <Image
+              src="/images/roosters-ridge-digital-logo.png"
+              alt="Rooster's Ridge Digital"
+              width={260}
+              height={82}
+              className="h-14 w-auto rounded-sm bg-white px-2 py-1 object-contain"
+            />
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{siteConfig.description}</p>
           {siteConfig.contact.email && (
