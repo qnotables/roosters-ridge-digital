@@ -14,19 +14,20 @@ export function Hero() {
   useCaptureUtm()
 
   return (
-    <section className="relative overflow-hidden border-b border-border">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_15%_0%,oklch(0.62_0.17_252/0.12),transparent),radial-gradient(50%_50%_at_100%_20%,oklch(0.74_0.15_58/0.14),transparent)]"
-      />
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
-        <div className="flex flex-col gap-6">
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
+    <section className="relative overflow-hidden border-b border-border bg-[#111a2b]">
+      <div className="relative mx-auto flex min-h-0 max-w-6xl flex-col px-4 sm:px-6 lg:min-h-[680px] lg:justify-center">
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-[58%] bg-gradient-to-r from-[#111a2b]/95 via-[#111a2b]/65 to-transparent lg:block"
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10 flex flex-col gap-6 py-14 sm:py-16 lg:w-[46%] lg:py-20">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border/70 bg-[#111a2b]/55 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
             Digital services for small businesses
           </span>
 
-          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-5xl">
             Look credible. Reach more people. <span className="text-primary">Turn attention into action.</span>
           </h1>
 
@@ -58,24 +59,15 @@ export function Hero() {
           </ul>
         </div>
 
-        <div className="relative">
-          <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-2xl shadow-black/40">
-            <Image
-              src="/images/hero-workspace.png"
-              alt="A polished creative workspace representing digital design services"
-              width={1200}
-              height={1200}
-              priority
-              className="h-auto w-full object-cover"
-            />
-          </div>
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-4 -left-4 hidden rounded-md border border-border bg-card px-4 py-3 shadow-lg sm:block"
-          >
-            <p className="text-xs text-muted-foreground">Free, no-pressure</p>
-            <p className="text-sm font-semibold">Project estimate</p>
-          </div>
+        <div className="relative order-2 -mx-4 aspect-[16/10] overflow-hidden border-y border-border sm:-mx-6 lg:absolute lg:inset-0 lg:order-none lg:aspect-auto lg:border-0">
+          <Image
+            src="/images/roosters-ridge-digital-homepage-hero.png"
+            alt="Founder of Rooster’s Ridge Digital working at a website design workstation."
+            fill
+            priority
+            sizes="(max-width: 1023px) 100vw, 100vw"
+            className="object-cover object-[68%_center]"
+          />
         </div>
       </div>
     </section>
