@@ -14,12 +14,18 @@ function expectedToken() {
   return createHmac('sha256', getDashboardKey()).update(COOKIE_PAYLOAD).digest('hex')
 }
 
+function safeEqual(left: string, right: string) {
+  const provided = Buffer.from(left)
+  const expected = Buffer.from(right)
+  return provided.length === expected.length && timingSafeEqual(provided, expected)
+}
+
 export function isValidDashboardKey(value: unknown) {
-  if (typeof value !== 'string' || !value.trim()) return false
-  const expected = expectedToken()
-  const provided = Buffer.from(value.trim())
-  const actual = Buffer.from(expected)
-  return provided.length === actual.length && timingSafeEqual(provided, actual)
+  return typeof value === 'string' && Boolean(value.trim()) && safeEqual(value.trim(), getDashboardKey())
+}
+
+export function isValidDashboardToken(value: unknown) {
+  return typeof value === 'string' && Boolean(value) && safeEqual(value, expectedToken())
 }
 
 export function dashboardCookieOptions() {
@@ -34,7 +40,7 @@ export function dashboardCookieOptions() {
 
 export async function hasDashboardAccess() {
   const token = (await cookies()).get(COOKIE_NAME)?.value
-  return Boolean(token && isValidDashboardKey(token))
+  return Boolean(token && isValidDashboardToken(token))
 }
 
 export function getDashboardCookieName() {
