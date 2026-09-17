@@ -3,13 +3,15 @@ import Link from 'next/link'
 import { ArrowRight, Check, Mail, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getBusinessProfile } from '@/lib/business-profile'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'About',
   description: 'Meet the person behind Rooster’s Ridge Digital and learn how practical digital help can support your next step.',
   alternates: { canonical: `${siteUrl}/about` },
-  openGraph: { title: `About — ${siteConfig.name}`, description: 'Practical digital help, without the agency runaround.', url: `${siteUrl}/about`, images: ['/images/hero-workspace.png'] },
+  openGraph: { title: `About — ${siteConfig.name}`, description: 'Practical digital help, without the agency runaround.', url: `${siteUrl}/about`, images: [ogMetadata('about')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('about')] },
 }
 
 const principles = ['Clear communication', 'Honest project scope', 'Useful work over unnecessary extras', 'Designs tailored to the client', 'Practical solutions that can grow with the business']

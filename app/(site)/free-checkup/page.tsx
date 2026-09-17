@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SectionHeading } from '@/components/section-heading'
 import { digitalCheckup } from '@/lib/site-config'
 import { getBusinessProfile } from '@/lib/business-profile'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
@@ -11,7 +12,8 @@ export const metadata: Metadata = {
   description:
     'Get a personalized review of your website, branding, search visibility, and social presence — measured against a 10-point checklist.',
   alternates: { canonical: `${siteUrl}/free-checkup` },
-  openGraph: { url: `${siteUrl}/free-checkup` },
+  openGraph: { url: `${siteUrl}/free-checkup`, images: [ogMetadata('free-checkup')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('free-checkup')] },
 }
 
 export default async function FreeCheckupPage() {

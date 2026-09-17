@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { SectionHeading } from '@/components/section-heading'
 import { PromotionsGallery } from '@/components/promotions-gallery'
 import { CtaBand } from '@/components/cta-band'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description:
     'Browse sample promotional materials — social posts, Facebook flyers, service sheets, event graphics, and more — sized for every platform.',
   alternates: { canonical: `${siteUrl}/promotions` },
-  openGraph: { url: `${siteUrl}/promotions` },
+  openGraph: { url: `${siteUrl}/promotions`, images: [ogMetadata('promotions')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('promotions')] },
 }
 
 export default function PromotionsPage() {

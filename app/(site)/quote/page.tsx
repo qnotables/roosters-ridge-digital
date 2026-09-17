@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { CheckCircle2 } from 'lucide-react'
 import { QuoteForm } from '@/components/forms/quote-form'
 import { Card, CardContent } from '@/components/ui/card'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description:
     'Tell us about your project and get a free, no-obligation estimate for websites, branding, content, and promotional materials.',
   alternates: { canonical: `${siteUrl}/quote` },
-  openGraph: { url: `${siteUrl}/quote` },
+  openGraph: { url: `${siteUrl}/quote`, images: [ogMetadata('quote')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('quote')] },
 }
 
 const reassurances = [

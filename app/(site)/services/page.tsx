@@ -6,6 +6,7 @@ import { ServiceIcon } from '@/components/service-icon'
 import { CtaBand } from '@/components/cta-band'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { packages, secondaryServices, services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
   description:
     'Websites, social media graphics, logos and branding, SEO and content, digital flyers, and photo editing — everything a small business needs to look professional.',
   alternates: { canonical: `${siteUrl}/services` },
-  openGraph: { url: `${siteUrl}/services` },
+  openGraph: { url: `${siteUrl}/services`, images: [ogMetadata('services')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('services')] },
 }
 
 export default function ServicesPage() {
