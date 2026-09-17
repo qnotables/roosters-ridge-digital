@@ -17,11 +17,11 @@ export function Hero() {
     <section className="relative overflow-hidden border-b border-border bg-[#111a2b]">
       <div className="relative mx-auto flex min-h-0 max-w-6xl flex-col px-4 sm:px-6 lg:min-h-[680px] lg:justify-center">
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-[58%] bg-gradient-to-r from-[#111a2b]/95 via-[#111a2b]/65 to-transparent lg:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-[78%] bg-gradient-to-r from-[#111a2b] via-[#111a2b]/95 via-35% to-transparent lg:block"
           aria-hidden="true"
         />
 
-        <div className="relative z-10 flex flex-col gap-6 py-14 sm:py-16 lg:w-[46%] lg:py-20">
+        <div className="relative z-20 flex flex-col gap-6 py-14 sm:py-16 lg:w-[46%] lg:py-20">
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border/70 bg-[#111a2b]/55 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
             Digital services for small businesses
@@ -59,14 +59,14 @@ export function Hero() {
           </ul>
         </div>
 
-        <div className="relative order-2 -mx-4 aspect-[16/10] overflow-hidden border-y border-border sm:-mx-6 lg:absolute lg:inset-0 lg:order-none lg:aspect-auto lg:border-0">
+        <div className="relative z-0 order-2 -mx-4 aspect-[16/10] overflow-hidden border-y border-border sm:-mx-6 lg:mx-0 lg:absolute lg:inset-0 lg:order-none lg:aspect-auto lg:border-0">
           <Image
             src="/images/roosters-ridge-digital-homepage-hero.png"
             alt="Founder of Rooster’s Ridge Digital working at a website design workstation."
             fill
             priority
             sizes="(max-width: 1023px) 100vw, 100vw"
-            className="object-cover object-[68%_center]"
+            className="scale-110 object-cover object-[72%_center] lg:origin-[72%_center]"
           />
         </div>
       </div>
