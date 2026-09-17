@@ -28,6 +28,7 @@ export default function AdminSignInPage() {
       router.refresh()
     } catch {
       setError('That dashboard key is not valid. Please try again.')
+    } finally {
       setBusy(false)
     }
   }
