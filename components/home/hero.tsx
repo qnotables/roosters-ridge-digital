@@ -21,7 +21,7 @@ export function Hero() {
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-[2] hidden w-full bg-gradient-to-r from-[#111a2b]/98 via-[#111a2b]/78 to-[#111a2b]/18 lg:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[2] hidden w-[58%] bg-gradient-to-r from-[#111a2b]/95 via-[#111a2b]/65 to-transparent lg:block"
           aria-hidden="true"
         />
 
