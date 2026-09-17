@@ -17,10 +17,15 @@ export default function AdminSignInPage() {
     setBusy(true)
     setError('')
     const data = new FormData(event.currentTarget)
-    const result = await authClient.signIn.email({ email: String(data.get('email')), password: String(data.get('password')) })
-    if (result.error) setError('Sign in could not be completed. Check your details and try again.')
-    else { router.push('/admin/profile'); router.refresh() }
-    setBusy(false)
+    try {
+      const result = await authClient.signIn.email({ email: String(data.get('email')), password: String(data.get('password')) })
+      if (result.error) setError('Sign in could not be completed. Check your details and try again.')
+      else { router.push('/admin/profile'); router.refresh() }
+    } catch {
+      setError('Sign in could not be completed. Check your details and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
