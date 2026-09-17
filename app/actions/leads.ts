@@ -223,6 +223,7 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
   const businessName = sanitize(formData.get('businessName'), 150)
   const websiteUrl = sanitizeUrl(formData.get('websiteUrl'))
   const primaryConcern = sanitize(formData.get('primaryConcern'), 80)
+  const consent = formData.get('consent') === 'on'
 
   const errors: Record<string, string> = {}
   if (!firstName) errors.firstName = 'Please enter your first name.'
@@ -231,6 +232,7 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
   if (!businessName) errors.businessName = 'Please enter your business name.'
   if (!primaryConcern) errors.primaryConcern = 'Please choose your primary area of concern.'
   else if (!concernOptions.includes(primaryConcern)) errors.primaryConcern = 'Please choose a valid option.'
+  if (!consent) errors.consent = 'Please confirm you agree to be contacted about your request.'
 
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors, message: 'Please fix the highlighted fields.' }

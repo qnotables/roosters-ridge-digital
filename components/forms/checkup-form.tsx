@@ -92,6 +92,12 @@ export function CheckupForm() {
         </Select>
       </Field>
 
+      <div className="flex items-start gap-3">
+        <input id="consent" name="consent" type="checkbox" required className="mt-1 size-4 accent-primary" aria-invalid={!!state.errors?.consent} />
+        <label htmlFor="consent" className="text-xs leading-5 text-muted-foreground">I agree that Rooster&apos;s Ridge Digital may contact me about this request. My information will be handled according to the <a href="/privacy" className="text-foreground underline underline-offset-2">Privacy Policy</a>.</label>
+      </div>
+      {state.errors?.consent && <p className="text-sm text-destructive">{state.errors.consent}</p>}
+
       <div className="flex items-center gap-4">
         <Button type="submit" size="lg" disabled={pending}>
           {pending ? (
