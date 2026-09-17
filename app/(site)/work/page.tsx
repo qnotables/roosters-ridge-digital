@@ -29,6 +29,7 @@ export default function WorkPage() {
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
             eyebrow="Our work"
+            as="h1"
             title="Work that helps businesses show up well"
             description="We are a newer studio building an intentional, honest portfolio. Below is real case-study work as it becomes available, plus a set of design samples that show the style and quality you can expect."
           />

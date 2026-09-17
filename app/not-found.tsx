@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { BrandMark } from '@/components/brand-mark'
 
 export const metadata: Metadata = {
-  robots: { index: false, follow: false },
+  alternates: { canonical: null },
+  openGraph: { url: null },
 }
-import { BrandMark } from '@/components/brand-mark'
 
 export default function NotFound() {
   return (

@@ -23,6 +23,7 @@ export default function ServicesPage() {
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
             eyebrow="Services"
+            as="h1"
             title="Creative and digital services, done right"
             description="Each service is designed to make a small business look credible and reach more of the right people. Combine several into a coordinated package, or start with just one."
           />

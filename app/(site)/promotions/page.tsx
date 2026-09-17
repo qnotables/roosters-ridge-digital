@@ -19,6 +19,7 @@ export default function PromotionsPage() {
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
             eyebrow="Promotional materials"
+            as="h1"
             title="Promo-ready designs for every platform"
             description="From square Facebook flyers to service sheets and event graphics, here is a growing library of sample materials. Filter by format to see what fits your next promotion."
           />
