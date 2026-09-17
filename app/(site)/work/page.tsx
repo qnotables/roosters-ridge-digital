@@ -6,12 +6,14 @@ import { SectionHeading } from '@/components/section-heading'
 import { CtaBand } from '@/components/cta-band'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { promoCategories, promoItems, siteConfig, workItems } from '@/lib/site-config'
+import { promoCategories, promoItems, siteConfig, siteUrl, workItems } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Our Work',
   description:
     'A look at the kind of websites, branding, and promotional materials we produce for small businesses.',
+  alternates: { canonical: `${siteUrl}/work` },
+  openGraph: { url: `${siteUrl}/work` },
 }
 
 function categoryLabel(id: string) {

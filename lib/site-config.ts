@@ -114,14 +114,8 @@ export const siteConfig = {
   },
 } as const
 
-/** Resolved site URL. Falls back sensibly when NEXT_PUBLIC_SITE_URL is unset. */
-export const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : `https://${siteConfig.domain}`)
+/** Canonical production origin. Never derive public metadata from request or preview hosts. */
+export const siteUrl = `https://${siteConfig.domain}`
 
 export const services: Service[] = [
   {

@@ -2,11 +2,14 @@ import type { Metadata } from 'next'
 import { SectionHeading } from '@/components/section-heading'
 import { PromotionsGallery } from '@/components/promotions-gallery'
 import { CtaBand } from '@/components/cta-band'
+import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Promotional Materials',
   description:
     'Browse sample promotional materials — social posts, Facebook flyers, service sheets, event graphics, and more — sized for every platform.',
+  alternates: { canonical: `${siteUrl}/promotions` },
+  openGraph: { url: `${siteUrl}/promotions` },
 }
 
 export default function PromotionsPage() {
