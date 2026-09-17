@@ -2,131 +2,24 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { SectionHeading } from '@/components/section-heading'
 import { CtaBand } from '@/components/cta-band'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { categoryLabel, designationLabel, getPublishedProjects, projectImage } from '@/lib/portfolio'
+import { siteConfig, siteUrl } from '@/lib/site-config'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
-import { promoCategories, promoItems, siteConfig, siteUrl, workItems } from '@/lib/site-config'
 
-export const metadata: Metadata = {
-  title: 'Our Work',
-  description:
-    'A look at the kind of websites, branding, and promotional materials we produce for small businesses.',
-  alternates: { canonical: `${siteUrl}/work` },
-  openGraph: { url: `${siteUrl}/work`, images: [ogMetadata('work')] },
-  twitter: { card: 'summary_large_image', images: [twitterImage('work')] },
+export const metadata: Metadata = { title: 'Our Work', description: 'A look at the thinking, deliverables, and practical value behind Rooster’s Ridge Digital projects.', alternates: { canonical: `${siteUrl}/work` }, openGraph: { url: `${siteUrl}/work`, images: [ogMetadata('work')] }, twitter: { card: 'summary_large_image', images: [twitterImage('work')] } }
+
+function ProjectCard({ project, featured = false }: { project: Awaited<ReturnType<typeof getPublishedProjects>>[number]; featured?: boolean }) {
+  return <article className={`group flex flex-col overflow-hidden border border-border bg-card ${featured ? 'lg:row-span-2' : ''}`}><Link href={`/work/${project.slug}`} className="relative block aspect-[16/10] overflow-hidden border-b border-border bg-muted"><Image src={projectImage(project)} alt={project.cover_image_alt || project.title} fill sizes={featured ? '(min-width: 1024px) 55vw, 100vw' : '(min-width: 768px) 33vw, 100vw'} className="object-cover transition-transform duration-300 group-hover:scale-[1.02]" /></Link><div className="flex flex-1 flex-col gap-3 p-5"><div className="flex flex-wrap gap-2"><Badge variant="outline">{designationLabel(project.designation)}</Badge><Badge variant="secondary">{categoryLabel(project.primary_category)}</Badge></div><h2 className={featured ? 'text-2xl font-semibold' : 'text-lg font-semibold'}><Link href={`/work/${project.slug}`} className="hover:text-primary">{project.title}</Link></h2><p className="text-sm leading-relaxed text-muted-foreground">{project.short_summary}</p><Link href={`/work/${project.slug}`} className="mt-auto flex items-center gap-2 pt-2 text-sm font-medium text-primary">View project <ArrowRight data-icon="inline-end" /></Link></div></article>
 }
 
-function categoryLabel(id: string) {
-  return promoCategories.find((c) => c.id === id)?.label ?? id
-}
-
-export default function WorkPage() {
-  const hasWork = workItems.length > 0
-
-  return (
-    <>
-      <section className="border-b border-border bg-card/40">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
-          <SectionHeading
-            eyebrow="Our work"
-            as="h1"
-            title="Work that helps businesses show up well"
-            description="We are a newer studio building an intentional, honest portfolio. Below is real case-study work as it becomes available, plus a set of design samples that show the style and quality you can expect."
-          />
-        </div>
-      </section>
-
-      {/* Case studies (real work) */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        {hasWork ? (
-          <div className="grid gap-6 md:grid-cols-2">
-            {workItems.map((item) => (
-              <article key={item.name} className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
-                {item.image && (
-                  <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-border">
-                    <Image src={item.image || '/placeholder.svg'} alt={`Work sample for ${item.name}`} fill className="object-cover" />
-                  </div>
-                )}
-                <div className="flex flex-col gap-3 p-6">
-                  <Badge variant="secondary" className="w-fit font-normal">
-                    {categoryLabel(item.category)}
-                  </Badge>
-                  <h2 className="text-lg font-semibold">{item.name}</h2>
-                  <div className="flex flex-col gap-2 text-sm">
-                    <p><span className="text-muted-foreground">Challenge: </span>{item.challenge}</p>
-                    <p><span className="text-muted-foreground">What we did: </span>{item.work}</p>
-                    <p><span className="text-muted-foreground">Result: </span>{item.result}</p>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-5 rounded-lg border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Sparkles className="size-6" aria-hidden="true" />
-            </span>
-            <div className="flex max-w-lg flex-col gap-2">
-              <h2 className="text-xl font-semibold">Case studies are on the way</h2>
-              <p className="text-pretty leading-relaxed text-muted-foreground">
-                We are just getting started and would rather show real, verifiable results than fill this page with
-                fabricated stats. In the meantime, the samples below reflect the quality and style of what we
-                produce — and we&apos;d love for your project to be one of the first case studies here.
-              </p>
-            </div>
-            <Button render={<Link href="/quote" />}>
-              Become an early client
-              <ArrowRight data-icon="inline-end" />
-            </Button>
-          </div>
-        )}
-      </section>
-
-      {/* Design samples */}
-      <section className="border-t border-border bg-card/40">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <SectionHeading
-            eyebrow="Design samples"
-            title="A taste of the style and quality"
-            description="These are illustrative design samples created to demonstrate our approach — not client work."
-          />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {promoItems.map((item) => (
-              <figure key={item.title} className="flex flex-col overflow-hidden rounded-lg border border-border bg-background">
-                <div className="relative aspect-square w-full overflow-hidden border-b border-border bg-card">
-                  {item.image ? (
-                    <Image src={item.image || '/placeholder.svg'} alt={`Design sample: ${item.title}`} fill className="object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sample</div>
-                  )}
-                  <Badge className="absolute left-3 top-3 bg-background/90 text-foreground">Sample</Badge>
-                </div>
-                <figcaption className="flex flex-col gap-1.5 p-5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-primary">
-                    {categoryLabel(item.category)}
-                  </span>
-                  <span className="font-semibold">{item.title}</span>
-                  <span className="text-sm text-muted-foreground">{item.description}</span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            Want to see more formats?{' '}
-            <Link href="/promotions" className="font-medium text-primary hover:underline">
-              Browse the promotional materials library
-            </Link>
-            .
-          </p>
-        </div>
-      </section>
-
-      <CtaBand
-        title="Let's make your business the next sample here"
-        primaryLabel={siteConfig.cta.start}
-      />
-    </>
-  )
+export default async function WorkPage() {
+  const projects = await getPublishedProjects('work')
+  const featured = projects.filter((project) => project.featured).slice(0, 3)
+  const featuredIds = new Set(featured.map((project) => project.id))
+  const remaining = projects.filter((project) => !featuredIds.has(project.id))
+  return <><section className="border-b border-border bg-card/40"><div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20"><SectionHeading eyebrow="Our work" as="h1" title="Work that helps businesses show up well" description="A growing collection of projects and design samples, presented with the thinking behind the work—not inflated claims or made-up results." /></div></section><section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">{featured.length > 0 && <div className="flex flex-col gap-6"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Selected work</p><h2 className="mt-2 text-2xl font-semibold">A few projects worth a closer look</h2></div><div className="grid gap-6 lg:grid-cols-2">{featured.slice(0, 1).map((project) => <ProjectCard key={project.id} project={project} featured />)}<div className="grid gap-6">{featured.slice(1).map((project) => <ProjectCard key={project.id} project={project} />)}</div></div></div>}{remaining.length > 0 && <div className="mt-16 flex flex-col gap-6"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">All work</p><h2 className="mt-2 text-2xl font-semibold">Published projects</h2></div><div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{remaining.map((project) => <ProjectCard key={project.id} project={project} />)}</div></div>}{projects.length === 0 && <div className="flex flex-col items-center gap-5 border border-dashed border-border bg-card/50 px-6 py-16 text-center"><Sparkles className="size-7 text-primary" aria-hidden="true" /><h2 className="text-xl font-semibold">Case studies are being prepared</h2><p className="max-w-lg text-muted-foreground">We would rather publish real, verifiable work than fill this page with fabricated stats. Your project could be one of the first case studies here.</p><Button render={<Link href="/quote" />}>Start a project<ArrowRight data-icon="inline-end" /></Button></div>}<div className="mt-16 grid gap-6 border-t border-border pt-10 md:grid-cols-2"><div><h2 className="text-xl font-semibold">Concept and client work</h2><p className="mt-3 leading-relaxed text-muted-foreground">Concept projects are original demonstrations created to show the design approach and level of finish available. Client projects identify the real work we are authorized to share.</p></div><div className="flex items-end md:justify-end"><Button variant="outline" render={<Link href="/quote" />}>{siteConfig.cta.estimate}<ArrowRight data-icon="inline-end" /></Button></div></div></section><CtaBand title="Let&apos;s make your business the next project here" primaryLabel={siteConfig.cta.start} /></>
 }
