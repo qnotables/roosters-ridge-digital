@@ -28,7 +28,9 @@ export function Hero() {
           </span>
 
           <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-5xl">
-            Look credible. Reach more people. <span className="text-primary">Turn attention into action.</span>
+            <span className="block whitespace-nowrap">Look credible.</span>
+            <span className="block whitespace-nowrap">Reach more people.</span>
+            <span className="block whitespace-nowrap text-primary">Turn attention into action.</span>
           </h1>
 
           <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
