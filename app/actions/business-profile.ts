@@ -1,6 +1,6 @@
 'use server'
 
-import { auth } from '@/lib/auth'
+import { hasDashboardAccess } from '@/lib/admin-auth'
 import { sql } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 
@@ -22,8 +22,7 @@ function optionalUrl(value: string) {
 }
 
 async function requireAdmin() {
-  const { data: session } = await auth.getSession()
-  if (!session?.user) throw new Error('Unauthorized')
+  if (!(await hasDashboardAccess())) throw new Error('Unauthorized')
 }
 
 export async function saveBusinessProfile(formData: FormData) {
