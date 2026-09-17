@@ -26,7 +26,7 @@ export function SiteHeader() {
             width={196}
             height={64}
             priority
-            className="h-11 w-auto rounded-sm bg-white px-2 py-1 object-contain"
+            className="h-16 w-auto rounded-sm px-2 py-1 object-contain"
           />
         </Link>
 
@@ -65,7 +65,7 @@ export function SiteHeader() {
                 alt="Rooster's Ridge Digital"
                 width={178}
                 height={56}
-                className="h-10 w-auto rounded-sm bg-white px-2 py-1 object-contain"
+                className="h-[3.75rem] w-auto rounded-sm px-2 py-1 object-contain"
               />
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close menu">
                 <X className="size-5" />

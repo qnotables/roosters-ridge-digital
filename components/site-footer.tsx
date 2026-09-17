@@ -17,7 +17,7 @@ export function SiteFooter() {
               alt="Rooster's Ridge Digital"
               width={260}
               height={82}
-              className="h-14 w-auto rounded-sm bg-white px-2 py-1 object-contain"
+              className="h-20 w-auto rounded-sm px-2 py-1 object-contain"
             />
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{siteConfig.description}</p>
