@@ -22,7 +22,7 @@ export function ProfileEditor({ profile, userEmail }: { profile: BusinessProfile
     const data = new FormData(); data.append('file', file)
     const response = await fetch('/api/admin/profile-image', { method: 'POST', body: data })
     const result = await response.json()
-    if (response.ok) { setImageUrl(result.url); setStatus('Image uploaded. Save the profile to publish it.') }
+    if (response.ok) { setImageUrl(result.url); setStatus('Image uploaded and saved.') }
     else setStatus(result.error ?? 'Image upload failed.')
   }
 
