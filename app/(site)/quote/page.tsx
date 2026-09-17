@@ -2,12 +2,14 @@ import type { Metadata } from 'next'
 import { CheckCircle2 } from 'lucide-react'
 import { QuoteForm } from '@/components/forms/quote-form'
 import { Card, CardContent } from '@/components/ui/card'
-import { services, siteConfig } from '@/lib/site-config'
+import { services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Get a Free Project Estimate',
   description:
     'Tell us about your project and get a free, no-obligation estimate for websites, branding, content, and promotional materials.',
+  alternates: { canonical: `${siteUrl}/quote` },
+  openGraph: { url: `${siteUrl}/quote` },
 }
 
 const reassurances = [

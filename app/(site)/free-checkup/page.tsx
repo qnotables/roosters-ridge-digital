@@ -4,11 +4,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SectionHeading } from '@/components/section-heading'
 import { digitalCheckup } from '@/lib/site-config'
 import { getBusinessProfile } from '@/lib/business-profile'
+import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Free Digital Presence Checkup',
   description:
     'Get a personalized review of your website, branding, search visibility, and social presence — measured against a 10-point checklist.',
+  alternates: { canonical: `${siteUrl}/free-checkup` },
+  openGraph: { url: `${siteUrl}/free-checkup` },
 }
 
 export default async function FreeCheckupPage() {

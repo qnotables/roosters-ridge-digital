@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
-import { siteConfig } from '@/lib/site-config'
+import { siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Privacy',
-  description: 'How Rooster&apos;s Ridge Digital handles the information you share.',
+  description: "How Rooster's Ridge Digital handles the information you share.",
+  alternates: { canonical: `${siteUrl}/privacy` },
+  openGraph: { url: `${siteUrl}/privacy` },
 }
 
 const sections = [
