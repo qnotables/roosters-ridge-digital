@@ -15,9 +15,9 @@ function expectedToken() {
 }
 
 export function isValidDashboardKey(value: unknown) {
-  if (typeof value !== 'string' || !value) return false
+  if (typeof value !== 'string' || !value.trim()) return false
   const expected = expectedToken()
-  const provided = Buffer.from(value)
+  const provided = Buffer.from(value.trim())
   const actual = Buffer.from(expected)
   return provided.length === actual.length && timingSafeEqual(provided, actual)
 }
@@ -25,8 +25,8 @@ export function isValidDashboardKey(value: unknown) {
 export function dashboardCookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production' || Boolean(process.env.V0_RUNTIME_URL),
+    sameSite: process.env.NODE_ENV === 'development' ? 'none' as const : 'lax' as const,
     path: '/admin',
     maxAge: 60 * 60 * 24 * 7,
   }
