@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { PrintButton } from '@/components/print-button'
 import { BrandMark } from '@/components/brand-mark'
-import { packages, services, siteConfig } from '@/lib/site-config'
+import { packages, services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Services Overview (Printable)',
   description: 'A printable one-page overview of services and packages.',
-  robots: { index: false },
+  alternates: { canonical: `${siteUrl}/services` },
+  openGraph: { url: `${siteUrl}/services` },
+  robots: { index: false, follow: true },
 }
 
 export default function PrintableServicesPage() {

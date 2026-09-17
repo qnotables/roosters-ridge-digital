@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   applicationName: siteConfig.name,
   generator: 'v0.app',
-  alternates: { canonical: '/' },
+  alternates: { canonical: siteUrl },
   openGraph: {
     type: 'website',
     siteName: siteConfig.name,
