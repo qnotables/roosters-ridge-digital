@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Toaster } from '@/components/ui/sonner'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteConfig, siteUrl } from '@/lib/site-config'
 import './globals.css'
 
@@ -22,13 +23,13 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} — ${siteConfig.tagline}`,
     description: siteConfig.description,
     url: siteUrl,
-    images: [{ url: '/images/hero-workspace.png', width: 1200, height: 1200, alt: siteConfig.name }],
+    images: [ogMetadata('home')],
   },
   twitter: {
     card: 'summary_large_image',
     title: `${siteConfig.name} — ${siteConfig.tagline}`,
     description: siteConfig.description,
-    images: ['/images/hero-workspace.png'],
+    images: [twitterImage('home')],
   },
 }
 

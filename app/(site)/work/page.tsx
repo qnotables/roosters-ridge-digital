@@ -6,6 +6,7 @@ import { SectionHeading } from '@/components/section-heading'
 import { CtaBand } from '@/components/cta-band'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { promoCategories, promoItems, siteConfig, siteUrl, workItems } from '@/lib/site-config'
 
 export const metadata: Metadata = {
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
   description:
     'A look at the kind of websites, branding, and promotional materials we produce for small businesses.',
   alternates: { canonical: `${siteUrl}/work` },
-  openGraph: { url: `${siteUrl}/work` },
+  openGraph: { url: `${siteUrl}/work`, images: [ogMetadata('work')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('work')] },
 }
 
 function categoryLabel(id: string) {

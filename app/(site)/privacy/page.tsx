@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   title: 'Privacy',
   description: "How Rooster's Ridge Digital handles the information you share.",
   alternates: { canonical: `${siteUrl}/privacy` },
-  openGraph: { url: `${siteUrl}/privacy` },
+  openGraph: { url: `${siteUrl}/privacy`, images: [ogMetadata('privacy')] },
+  twitter: { card: 'summary_large_image', images: [twitterImage('privacy')] },
 }
 
 const sections = [
