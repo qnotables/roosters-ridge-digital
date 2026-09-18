@@ -10,8 +10,8 @@ import { siteConfig } from './site-config'
 const apiKey = process.env.RESEND_API_KEY
 const resend = apiKey ? new Resend(apiKey) : null
 
-/** Internal recipient for lead notifications. */
-const leadsTo = process.env.LEADS_TO_EMAIL || ''
+/** Internal recipient for lead notifications. Prefer an explicit secret, then the public business inbox. */
+const leadsTo = process.env.LEADS_TO_EMAIL || siteConfig.contact.email
 
 /** From address. Prefer an explicit RESEND_FROM_EMAIL, else derive from the verified domain. */
 const fromEmail =
@@ -26,13 +26,20 @@ async function safeSend(args: {
   to: string
   subject: string
   html: string
+  replyTo?: string
   idempotencyKey: string
 }): Promise<SendResult> {
   if (!resend || !fromEmail) return { sent: false, skipped: 'Resend not configured' }
   if (!args.to) return { sent: false, skipped: 'Recipient not configured' }
 
   const { error } = await resend.emails.send(
-    { from: fromEmail, to: [args.to], subject: args.subject, html: args.html },
+    {
+      from: fromEmail,
+      to: [args.to],
+      subject: args.subject,
+      html: args.html,
+      ...(args.replyTo ? { replyTo: args.replyTo } : {}),
+    },
     { idempotencyKey: args.idempotencyKey },
   )
   if (error) {
@@ -56,9 +63,14 @@ export async function sendInternalLeadNotification(lead: {
   businessName?: string | null
   email: string
   phone?: string | null
+  preferredContactMethod?: string | null
+  websiteUrl?: string | null
   services?: string[]
   primaryConcern?: string | null
   projectDescription?: string | null
+  audience?: string | null
+  timeline?: string | null
+  budgetRange?: string | null
   sourcePage?: string | null
 }): Promise<SendResult> {
   const rows = [
@@ -68,8 +80,13 @@ export async function sendInternalLeadNotification(lead: {
     ['Business', lead.businessName ?? '—'],
     ['Email', lead.email],
     ['Phone', lead.phone ?? '—'],
+    ['Preferred contact', lead.preferredContactMethod ?? '—'],
+    ['Website', lead.websiteUrl ?? '—'],
     ['Services', (lead.services ?? []).join(', ') || '—'],
     ['Primary concern', lead.primaryConcern ?? '—'],
+    ['Audience', lead.audience ?? '—'],
+    ['Timeline', lead.timeline ?? '—'],
+    ['Budget', lead.budgetRange ?? '—'],
     ['Source', lead.sourcePage ?? '—'],
   ]
     .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#666">${esc(k)}</td><td>${esc(v)}</td></tr>`)
@@ -86,6 +103,7 @@ export async function sendInternalLeadNotification(lead: {
     to: leadsTo,
     subject: `New ${lead.leadType} lead — ${lead.referenceNumber}`,
     html,
+    replyTo: lead.email,
     idempotencyKey: `lead-internal/${lead.referenceNumber}`,
   })
 }

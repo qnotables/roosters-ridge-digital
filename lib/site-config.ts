@@ -92,7 +92,7 @@ export const siteConfig = {
 
   /* Public contact settings — edit freely. Leave blank to hide. */
   contact: {
-    email: 'hello@roostersridgedigital.com',
+    email: 'rooster@roostersridgedigital.com',
     phone: '', // e.g. '(555) 123-4567' — hidden until set
   },
 
