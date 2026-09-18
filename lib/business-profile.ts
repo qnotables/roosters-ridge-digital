@@ -36,7 +36,7 @@ const fallbackProfile: BusinessProfile = {
   founder_bio: 'Rooster’s Ridge Digital helps small businesses, independent professionals, organizations, and community projects build a credible digital presence without the complexity or overhead of a traditional agency. You work directly with the person creating your materials, from the first conversation through final delivery.',
   founder_image_url: null,
   location: 'Serving small businesses and organizations in your community and beyond.',
-  email: 'hello@roostersridgedigital.com',
+  email: 'rooster@roostersridgedigital.com',
   phone: null,
   show_phone: false,
   response_time: null,

@@ -36,7 +36,7 @@ export async function saveBusinessProfile(formData: FormData) {
     founder_bio: clean(formData.get('founder_bio')) || '',
     founder_image_url: clean(formData.get('founder_image_url')) || null,
     location: clean(formData.get('location')) || '',
-    email: clean(formData.get('email')) || 'hello@roostersridgedigital.com',
+    email: clean(formData.get('email')) || 'rooster@roostersridigital.com',
     phone: clean(formData.get('phone')) || null,
     show_phone: formData.get('show_phone') === 'on',
     response_time: clean(formData.get('response_time')) || null,
