@@ -1,9 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Search, Users, FileText, ClipboardCheck, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Search, Users, FileText, ClipboardCheck, ExternalLink, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { deleteLead } from '@/app/actions/leads-report'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,9 +28,27 @@ function valueOrDash(value: string | null) {
 }
 
 export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
+  const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState<string | number | null>(null)
+  const [isDeleting, startDelete] = useTransition()
+
+  function handleDelete(lead: LeadReportRow) {
+    const name = leadDisplayName(lead) || lead.reference_number
+    if (!window.confirm(`Delete the lead for ${name}? This cannot be undone.`)) return
+
+    startDelete(async () => {
+      try {
+        await deleteLead(String(lead.id))
+        setOpenId(null)
+        router.refresh()
+        toast.success('Lead deleted')
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Unable to delete lead')
+      }
+    })
+  }
 
   const quoteCount = leads.filter((lead) => lead.lead_type === 'quote').length
   const checkupCount = leads.filter((lead) => lead.lead_type === 'checkup').length
@@ -119,7 +140,7 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
                             <div className="px-5 py-4 text-sm text-muted-foreground">{formatLeadDate(lead.created_at)}</div>
                             <div className="px-5 py-4 text-right"><Button variant="ghost" size="sm" onClick={() => setOpenId(isOpen ? null : lead.id)} aria-expanded={isOpen}>{isOpen ? 'Hide' : 'View'}</Button></div>
                           </div>
-                          {isOpen && <LeadDetails lead={lead} />}
+                          {isOpen && <LeadDetails lead={lead} onDelete={handleDelete} isDeleting={isDeleting} />}
                         </td>
                       </tr>
                     )
@@ -140,6 +161,6 @@ function SummaryCard({ label, value, icon }: { label: string; value: number; ico
   return <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle><span className="text-primary">{icon}</span></CardHeader><CardContent><p className="text-3xl font-semibold tracking-tight">{value}</p></CardContent></Card>
 }
 
-function LeadDetails({ lead }: { lead: LeadReportRow }) {
-  return <div className="border-t border-border bg-muted/20 px-5 py-5"><div className="flex flex-col gap-5 lg:flex-row lg:justify-between"><div className="grid flex-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">{leadReportFields.map(({ label, key }) => <div key={key}><dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-sm">{key === 'website_url' && lead[key] ? <a href={String(lead[key])} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline">{String(lead[key])}<ExternalLink aria-hidden="true" /></a> : valueOrDash(lead[key] as string | null)}</dd></div>)}</div><div className="shrink-0 text-sm lg:w-56"><p className="text-xs uppercase tracking-wide text-muted-foreground">Reference</p><p className="mt-1 font-mono text-primary">{lead.reference_number}</p></div></div><div className="mt-6 grid gap-5 border-t border-border pt-5 md:grid-cols-2"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Services</p><p className="mt-1 text-sm">{lead.services.length ? lead.services.join(', ') : '—'}</p></div><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Project description / concern</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{lead.project_description || lead.primary_concern || '—'}</p></div></div><div className="mt-5 grid gap-4 border-t border-border pt-5 sm:grid-cols-2"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">UTM campaign</p><p className="mt-1 text-sm">{lead.utm_campaign || '—'}</p></div><div><p className="text-xs uppercase tracking-wide text-muted-foreground">UTM source / medium</p><p className="mt-1 text-sm">{[lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ') || '—'}</p></div></div></div>
+function LeadDetails({ lead, onDelete, isDeleting }: { lead: LeadReportRow; onDelete: (lead: LeadReportRow) => void; isDeleting: boolean }) {
+  return <div className="border-t border-border bg-muted/20 px-5 py-5"><div className="flex flex-col gap-5 lg:flex-row lg:justify-between"><div className="grid flex-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">{leadReportFields.map(({ label, key }) => <div key={key}><dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-sm">{key === 'website_url' && lead[key] ? <a href={String(lead[key])} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline">{String(lead[key])}<ExternalLink aria-hidden="true" /></a> : valueOrDash(lead[key] as string | null)}</dd></div>)}</div><div className="flex shrink-0 flex-col gap-4 text-sm lg:w-56"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Reference</p><p className="mt-1 font-mono text-primary">{lead.reference_number}</p></div><Button type="button" variant="destructive" size="sm" onClick={() => onDelete(lead)} disabled={isDeleting}><Trash2 data-icon="inline-start" />{isDeleting ? 'Deleting…' : 'Delete lead'}</Button></div></div><div className="mt-6 grid gap-5 border-t border-border pt-5 md:grid-cols-2"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Services</p><p className="mt-1 text-sm">{lead.services.length ? lead.services.join(', ') : '—'}</p></div><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Project description / concern</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{lead.project_description || lead.primary_concern || '—'}</p></div></div><div className="mt-5 grid gap-4 border-t border-border pt-5 sm:grid-cols-2"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">UTM campaign</p><p className="mt-1 text-sm">{lead.utm_campaign || '—'}</p></div><div><p className="text-xs uppercase tracking-wide text-muted-foreground">UTM source / medium</p><p className="mt-1 text-sm">{[lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ') || '—'}</p></div></div></div>
 }
