@@ -39,7 +39,7 @@ function readUtm(formData: FormData) {
 /** Anti-spam gate shared by both forms. Returns an error state or null if OK. */
 async function spamGate(formData: FormData): Promise<LeadActionState | null> {
   // 1. Honeypot — must be empty.
-  if (sanitize(formData.get('company_website'))) {
+  if (sanitize(formData.get('contact_address_check'))) {
     // Pretend success to the bot without storing anything is risky (false success).
     // Instead return a generic error so no lead is created and no success is shown.
     return { ok: false, message: 'Your submission could not be processed. Please try again.' }

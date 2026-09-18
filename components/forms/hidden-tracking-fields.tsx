@@ -5,7 +5,7 @@ import { getStoredUtm } from '@/lib/use-utm'
 
 /**
  * Hidden fields shared by both lead forms:
- * - company_website: honeypot (must stay empty; hidden from real users)
+ * - contact_address_check: honeypot (must stay empty; hidden from real users)
  * - formStartedAt: timestamp for bot-speed detection
  * - sourcePage: the path the form was submitted from
  * - UTM + referrer: first-touch attribution captured on landing
@@ -29,8 +29,15 @@ export function HiddenTrackingFields({ sourcePage }: { sourcePage: string }) {
     <>
       {/* Honeypot: visually hidden and off the tab order. Bots fill it; humans do not. */}
       <div aria-hidden="true" className="absolute left-[-9999px] top-[-9999px] h-0 w-0 overflow-hidden">
-        <label htmlFor="company_website">Company website (leave blank)</label>
-        <input id="company_website" name="company_website" type="text" tabIndex={-1} autoComplete="off" />
+        <label htmlFor="contact_address_check">Leave this field blank</label>
+        <input
+          id="contact_address_check"
+          name="contact_address_check"
+          type="text"
+          tabIndex={-1}
+          autoComplete="new-password"
+          inputMode="none"
+        />
       </div>
 
       <input type="hidden" name="formStartedAt" value={startedAt} />
