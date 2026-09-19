@@ -11,6 +11,11 @@ const nextConfig = {
         hostname: 'hebbkx1anhila5yf.public.blob.vercel-storage.com',
         pathname: '/image-cHSnE2zJvY69QfFVjp5c3G30ERWkHY.png',
       },
+      {
+        protocol: 'https',
+        hostname: 'hebbkx1anhila5yf.public.blob.vercel-storage.com',
+        pathname: '/image-iA8A2K6EcH12fc4fuezDWoGIIWnwHt.png',
+      },
     ],
   },
   async headers() {
