@@ -8,12 +8,25 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Free Digital Presence Checkup',
+  title: 'Free Digital Presence Checkup | Rooster Ridge Digital',
   description:
-    'Get a personalized review of your website, branding, search visibility, and social presence — measured against a 10-point checklist.',
-  alternates: { canonical: `${siteUrl}/free-checkup` },
-  openGraph: { url: `${siteUrl}/free-checkup`, images: [ogMetadata('free-checkup')] },
-  twitter: { card: 'summary_large_image', images: [twitterImage('free-checkup')] },
+    'Get a personalized review of your website, branding, search visibility, and social presence against a practical 10-point digital checklist.',
+  alternates: { canonical: `${siteUrl}/promo/free-website-checkup` },
+  robots: { index: false, follow: true },
+  openGraph: {
+    title: 'Free Digital Presence Checkup | Rooster Ridge Digital',
+    description:
+      'Get a personalized review of your website, branding, search visibility, and social presence against a practical 10-point digital checklist.',
+    url: `${siteUrl}/promo/free-website-checkup`,
+    images: [ogMetadata('free-checkup')],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Free Digital Presence Checkup | Rooster Ridge Digital',
+    description:
+      'Get a personalized review of your website, branding, search visibility, and social presence against a practical 10-point digital checklist.',
+    images: [twitterImage('free-checkup')],
+  },
 }
 
 export default async function FreeCheckupPage() {

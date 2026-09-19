@@ -10,24 +10,25 @@ import './globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${siteConfig.name} — ${siteConfig.tagline}`,
-    template: `%s — ${siteConfig.name}`,
+    default: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+    template: '%s',
   },
-  description: siteConfig.description,
+  description:
+    'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
   applicationName: siteConfig.name,
   generator: 'v0.app',
   alternates: { canonical: siteUrl },
   openGraph: {
     type: 'website',
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
     description: siteConfig.description,
     url: siteUrl,
     images: [ogMetadata('home')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
     description: siteConfig.description,
     images: [twitterImage('home')],
   },
@@ -46,6 +47,32 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
       <body className="min-h-dvh antialiased font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@graph': [
+                {
+                  '@type': 'Organization',
+                  '@id': `${siteUrl}/#organization`,
+                  name: siteConfig.name,
+                  url: siteUrl,
+                  logo: `${siteUrl}/images/roosters-ridge-digital-logo.png`,
+                  description: siteConfig.description,
+                  sameAs: siteConfig.socials.filter((social) => social.url).map((social) => social.url),
+                },
+                {
+                  '@type': 'WebSite',
+                  '@id': `${siteUrl}/#website`,
+                  name: siteConfig.name,
+                  url: siteUrl,
+                  publisher: { '@id': `${siteUrl}/#organization` },
+                },
+              ],
+            }),
+          }}
+        />
         {children}
         <Toaster position="top-center" />
         {process.env.NODE_ENV === 'production' && <Analytics />}

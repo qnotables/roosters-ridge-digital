@@ -10,12 +10,24 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { packages, secondaryServices, services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Services | Rooster Ridge Digital',
+  title: 'Digital Services | Rooster Ridge Digital',
   description:
     'Web design and development, AI and automation, digital strategy, branding, troubleshooting, and custom digital projects from Rooster Ridge Digital.',
   alternates: { canonical: `${siteUrl}/services` },
-  openGraph: { url: `${siteUrl}/services`, images: [ogMetadata('services')] },
-  twitter: { card: 'summary_large_image', images: [twitterImage('services')] },
+  openGraph: {
+    title: 'Digital Services | Rooster Ridge Digital',
+    description:
+      'Explore web development, AI automation, branding, digital strategy, troubleshooting, and custom digital services from Rooster Ridge Digital.',
+    url: `${siteUrl}/services`,
+    images: [ogMetadata('services')],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Digital Services | Rooster Ridge Digital',
+    description:
+      'Explore web development, AI automation, branding, digital strategy, troubleshooting, and custom digital services from Rooster Ridge Digital.',
+    images: [twitterImage('services')],
+  },
 }
 
 export default function ServicesPage() {

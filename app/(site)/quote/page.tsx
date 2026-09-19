@@ -10,8 +10,20 @@ export const metadata: Metadata = {
   description:
     'Tell Rooster Ridge Digital what you are trying to build, fix, improve, or automate. Start with a clear conversation and a practical next step.',
   alternates: { canonical: `${siteUrl}/quote` },
-  openGraph: { url: `${siteUrl}/quote`, images: [ogMetadata('quote')] },
-  twitter: { card: 'summary_large_image', images: [twitterImage('quote')] },
+  openGraph: {
+    title: 'Start a Project | Rooster Ridge Digital',
+    description:
+      'Start a project with Rooster Ridge Digital for web design, automation, branding, digital strategy, and custom technology solutions.',
+    url: `${siteUrl}/quote`,
+    images: [ogMetadata('quote')],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Start a Project | Rooster Ridge Digital',
+    description:
+      'Start a project with Rooster Ridge Digital for web design, automation, branding, digital strategy, and custom technology solutions.',
+    images: [twitterImage('quote')],
+  },
 }
 
 const reassurances = [

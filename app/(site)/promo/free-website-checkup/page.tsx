@@ -3,11 +3,26 @@ import { CheckCircle2 } from 'lucide-react'
 import { CheckupForm } from '@/components/forms/checkup-form'
 import { Card, CardContent } from '@/components/ui/card'
 import { siteUrl, digitalCheckup } from '@/lib/site-config'
+import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 
 export const metadata: Metadata = {
   title: 'Free Website Checkup | Rooster Ridge Digital',
   description: 'Get a free review of your website covering mobile usability, design, speed, messaging, calls to action, and obvious technical issues.',
   alternates: { canonical: `${siteUrl}/promo/free-website-checkup` },
+  openGraph: {
+    title: 'Free Website Checkup | Rooster Ridge Digital',
+    description:
+      'Get a free review of your website covering mobile usability, design, speed, messaging, calls to action, and obvious technical issues.',
+    url: `${siteUrl}/promo/free-website-checkup`,
+    images: [ogMetadata('free-checkup')],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Free Website Checkup | Rooster Ridge Digital',
+    description:
+      'Get a free review of your website covering mobile usability, design, speed, messaging, calls to action, and obvious technical issues.',
+    images: [twitterImage('free-checkup')],
+  },
 }
 
 export default function FreeWebsiteCheckupCampaign() {

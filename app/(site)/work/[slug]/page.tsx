@@ -19,7 +19,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!project) return { title: 'Project not found', robots: { index: false, follow: false } }
   const title = project.seo_title || `${project.title} — ${siteConfig.name}`
   const description = project.meta_description || project.short_summary
-  return { title, description, alternates: { canonical: `${siteUrl}/work/${project.slug}` }, openGraph: { title, description, url: `${siteUrl}/work/${project.slug}`, type: 'article', images: [{ url: projectImage(project), alt: project.cover_image_alt || project.title }] }, twitter: { card: 'summary_large_image', title, description, images: [projectImage(project)] } }
+  const socialTitle = project.social_sharing_title || title
+  const socialDescription = project.social_sharing_description || description
+  return {
+    title,
+    description,
+    alternates: { canonical: `${siteUrl}/work/${project.slug}` },
+    openGraph: {
+      title: socialTitle,
+      description: socialDescription,
+      url: `${siteUrl}/work/${project.slug}`,
+      type: 'article',
+      images: [{ url: projectImage(project), alt: project.cover_image_alt || project.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: socialTitle,
+      description: socialDescription,
+      images: [projectImage(project)],
+    },
+  }
 }
 
 export default async function ProjectPage({ params }: Props) {
@@ -29,7 +48,17 @@ export default async function ProjectPage({ params }: Props) {
   const index = all.findIndex((item) => item.slug === project.slug)
   const previous = index > 0 ? all[index - 1] : null
   const next = index >= 0 && index < all.length - 1 ? all[index + 1] : null
-  const jsonLd = { '@context': 'https://schema.org', '@type': 'CreativeWork', name: project.title, description: project.short_summary, url: `${siteUrl}/work/${project.slug}`, image: project.cover_image_url ? `${siteUrl}${project.cover_image_url.startsWith('/') ? project.cover_image_url : ''}` : undefined, dateCreated: project.project_date || undefined, genre: categoryLabel(project.primary_category) }
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: project.title,
+    description: project.short_summary,
+    url: `${siteUrl}/work/${project.slug}`,
+    image: projectImage(project),
+    dateCreated: project.project_date || undefined,
+    genre: categoryLabel(project.primary_category),
+    creator: { '@id': `${siteUrl}/#organization` },
+  }
 
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

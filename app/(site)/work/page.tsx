@@ -10,11 +10,23 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Work | Rooster Ridge Digital',
+  title: 'Web Design & Digital Projects | Rooster Ridge Digital',
   description: 'Explore websites, digital platforms, automation systems, branding projects, and custom technology work created by Rooster Ridge Digital.',
   alternates: { canonical: `${siteUrl}/work` },
-  openGraph: { url: `${siteUrl}/work`, images: [ogMetadata('work')] },
-  twitter: { card: 'summary_large_image', images: [twitterImage('work')] },
+  openGraph: {
+    title: 'Web Design & Digital Projects | Rooster Ridge Digital',
+    description:
+      'See websites, digital platforms, automation systems, branding projects, and creative technology work built by Rooster Ridge Digital.',
+    url: `${siteUrl}/work`,
+    images: [ogMetadata('work')],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Web Design & Digital Projects | Rooster Ridge Digital',
+    description:
+      'See websites, digital platforms, automation systems, branding projects, and creative technology work built by Rooster Ridge Digital.',
+    images: [twitterImage('work')],
+  },
 }
 
 type Project = Awaited<ReturnType<typeof getPublishedProjects>>[number]
