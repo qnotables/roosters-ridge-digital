@@ -6,9 +6,9 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Get a Free Project Estimate',
+  title: 'Start a Project | Rooster Ridge Digital',
   description:
-    'Tell us about your project and get a free, no-obligation estimate for websites, branding, content, and promotional materials.',
+    'Tell Rooster Ridge Digital what you are trying to build, fix, improve, or automate. Start with a clear conversation and a practical next step.',
   alternates: { canonical: `${siteUrl}/quote` },
   openGraph: { url: `${siteUrl}/quote`, images: [ogMetadata('quote')] },
   twitter: { card: 'summary_large_image', images: [twitterImage('quote')] },
@@ -34,13 +34,12 @@ export default async function QuotePage({
       <div className="grid gap-12 lg:grid-cols-[1fr_1.4fr]">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Free estimate</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Start a project</span>
             <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Let&apos;s scope your project
+              Let&apos;s build something that works.
             </h1>
             <p className="text-pretty leading-relaxed text-muted-foreground">
-              Share a few details and we&apos;ll reply with a recommended approach and a free estimate. The more you
-              tell us, the more useful our response will be.
+              Tell me what you are trying to build, fix, improve, or automate. You do not need to know exactly what technology you need.
             </p>
           </div>
 
@@ -57,10 +56,10 @@ export default async function QuotePage({
             <CardContent className="flex flex-col gap-2 pt-6">
               <p className="text-sm font-medium">Not sure what you need yet?</p>
               <p className="text-sm text-muted-foreground">
-                Start with a free digital presence checkup and we&apos;ll point you in the right direction.
+                Get a free website checkup first, or describe the problem in plain language and I&apos;ll help you find the right starting point.
               </p>
               <a href="/free-checkup" className="text-sm font-medium text-accent hover:underline">
-                Get the free checkup →
+                Get My Free Website Checkup →
               </a>
             </CardContent>
           </Card>

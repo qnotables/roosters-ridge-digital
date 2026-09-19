@@ -8,7 +8,7 @@ export function CtaBand({
   description = 'Tell us what you need. We will reply with a clear plan, honest scope, and a free project estimate.',
   primaryLabel = siteConfig.cta.primary,
   primaryHref = '/quote',
-  secondaryLabel = 'Get a Free Checkup',
+  secondaryLabel = 'Get My Free Website Checkup',
   secondaryHref = '/free-checkup',
 }: {
   title?: string
