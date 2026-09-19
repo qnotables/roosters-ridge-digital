@@ -63,8 +63,8 @@ export function Hero() {
 
         <div className="relative z-0 order-2 -mx-4 aspect-[16/10] overflow-hidden border-y border-border sm:-mx-6 lg:mx-0 lg:absolute lg:inset-0 lg:order-none lg:aspect-auto lg:border-0">
           <Image
-            src="/images/roosters-ridge-digital-homepage-hero.png"
-            alt="Founder of Rooster’s Ridge Digital working at a website design workstation."
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-cHSnE2zJvY69QfFVjp5c3G30ERWkHY.png"
+            alt="Dark creative workspace with a monitor and phone displaying mountain-inspired website designs."
             fill
             priority
             sizes="(max-width: 1023px) 100vw, 100vw"
