@@ -106,11 +106,11 @@ export const siteConfig = {
 
   /* Calls to action reused across the site. */
   cta: {
-    primary: 'Get a Free Project Estimate',
-    secondary: 'Explore Services',
-    estimate: 'Get an Estimate',
-    checkup: 'Get the Free Checkup',
-    start: 'Start Your Project',
+    primary: 'Start a Project',
+    secondary: 'View My Work',
+    estimate: 'Start a Project',
+    checkup: 'Get My Free Website Checkup',
+    start: 'Start a Project',
   },
 } as const
 
@@ -332,11 +332,11 @@ export const promoItems: PromoItem[] = [
 export const workItems: WorkItem[] = []
 
 export const navLinks = [
-  { href: '/about', label: 'About' },
+  { href: '/', label: 'Home' },
   { href: '/services', label: 'Services' },
   { href: '/work', label: 'Work' },
-  { href: '/promotions', label: 'Promotions' },
-  { href: '/free-checkup', label: 'Free Checkup' },
+  { href: '/about', label: 'About' },
+  { href: '/quote', label: 'Start a Project' },
 ]
 
 export const leadStatuses = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Closed'] as const

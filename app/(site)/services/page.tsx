@@ -10,9 +10,9 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { packages, secondaryServices, services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Services',
+  title: 'Services | Rooster Ridge Digital',
   description:
-    'Websites, social media graphics, logos and branding, SEO and content, digital flyers, and photo editing — everything a small business needs to look professional.',
+    'Web design and development, AI and automation, digital strategy, branding, troubleshooting, and custom digital projects from Rooster Ridge Digital.',
   alternates: { canonical: `${siteUrl}/services` },
   openGraph: { url: `${siteUrl}/services`, images: [ogMetadata('services')] },
   twitter: { card: 'summary_large_image', images: [twitterImage('services')] },
@@ -24,10 +24,10 @@ export default function ServicesPage() {
       <section className="border-b border-border bg-card/40">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
-            eyebrow="Services"
+            eyebrow="What I do"
             as="h1"
-            title="Creative and digital services, done right"
-            description="Each service is designed to make a small business look credible and reach more of the right people. Combine several into a coordinated package, or start with just one."
+            title="Digital work that moves a business forward"
+            description="Choose the kind of help you need, or start with a conversation if the problem is still taking shape. Each engagement is scoped around a useful outcome—not a pile of deliverables."
           />
         </div>
       </section>

@@ -47,7 +47,7 @@ export function SiteHeader() {
 
         <div className="hidden md:block">
           <Button render={<Link href="/quote" />} size="sm">
-            {siteConfig.cta.estimate}
+            {siteConfig.cta.primary}
           </Button>
         </div>
 
@@ -86,7 +86,7 @@ export function SiteHeader() {
                 </Link>
               ))}
               <Button render={<Link href="/quote" onClick={() => setOpen(false)} />} className="mt-3">
-                {siteConfig.cta.estimate}
+                {siteConfig.cta.primary}
               </Button>
             </nav>
           </SheetContent>
