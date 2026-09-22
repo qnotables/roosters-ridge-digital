@@ -88,7 +88,7 @@ export const siteConfig = {
   tagline: 'Websites • Branding • Content • Creative Services',
   domain: 'roostersridgedigital.com',
   description:
-    'Websites, branding, content, and promotional materials designed to help small businesses look credible, reach more people, and turn attention into action.',
+    'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
 
   /* Public contact settings — edit freely. Leave blank to hide. */
   contact: {

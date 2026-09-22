@@ -53,7 +53,7 @@ export function SiteHeader() {
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
-            render={<Button variant="outline" size="icon" className="md:hidden" aria-label="Open menu" />}
+            render={<Button nativeButton variant="outline" size="icon" className="md:hidden" aria-label="Open menu" />}
           >
             <Menu className="size-5" />
           </SheetTrigger>

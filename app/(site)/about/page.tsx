@@ -19,13 +19,14 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'About | Rooster Ridge Digital',
+  title: 'About Rooster Ridge Digital',
   description:
     'Learn about Rooster Ridge Digital, an independent digital studio providing web design, automation, AI tools, branding, digital strategy, and custom technology solutions for businesses and organizations.',
   alternates: { canonical: `${siteUrl}/about` },
   openGraph: {
-    title: `About | ${siteConfig.name}`,
-    description: 'Practical digital solutions for real businesses.',
+    title: 'About Rooster Ridge Digital',
+    description:
+      'Learn how Rooster Ridge Digital approaches web development, automation, branding, and practical digital problem solving.',
     url: `${siteUrl}/about`,
     images: [ogMetadata('about')],
   },

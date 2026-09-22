@@ -7,8 +7,8 @@ import { siteUrl } from '@/lib/site-config'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 
 export const metadata: Metadata = {
-  title: 'Promotions | Rooster Ridge Digital',
-  description: 'Current offers and campaign landing pages from Rooster Ridge Digital.',
+  title: 'Promotions & Free Website Checkups | Rooster Ridge Digital',
+  description: 'Explore current offers and free website checkups from Rooster Ridge Digital for clearer messaging, stronger digital presence, and practical next steps.',
   alternates: { canonical: `${siteUrl}/promotions` },
   openGraph: { url: `${siteUrl}/promotions`, images: [ogMetadata('promotions')] },
   twitter: { card: 'summary_large_image', images: [twitterImage('promotions')] },

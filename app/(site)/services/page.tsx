@@ -8,14 +8,27 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { packages, secondaryServices, services, siteConfig, siteUrl } from '@/lib/site-config'
+import { servicePages } from '@/lib/service-pages'
 
 export const metadata: Metadata = {
-  title: 'Services | Rooster Ridge Digital',
+  title: 'Digital Services | Rooster Ridge Digital',
   description:
     'Web design and development, AI and automation, digital strategy, branding, troubleshooting, and custom digital projects from Rooster Ridge Digital.',
   alternates: { canonical: `${siteUrl}/services` },
-  openGraph: { url: `${siteUrl}/services`, images: [ogMetadata('services')] },
-  twitter: { card: 'summary_large_image', images: [twitterImage('services')] },
+  openGraph: {
+    title: 'Digital Services | Rooster Ridge Digital',
+    description:
+      'Explore web development, AI automation, branding, digital strategy, troubleshooting, and custom digital services from Rooster Ridge Digital.',
+    url: `${siteUrl}/services`,
+    images: [ogMetadata('services')],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Digital Services | Rooster Ridge Digital',
+    description:
+      'Explore web development, AI automation, branding, digital strategy, troubleshooting, and custom digital services from Rooster Ridge Digital.',
+    images: [twitterImage('services')],
+  },
 }
 
 export default function ServicesPage() {
@@ -27,12 +40,33 @@ export default function ServicesPage() {
             eyebrow="What I do"
             as="h1"
             title="Digital work that moves a business forward"
-            description="Choose the kind of help you need, or start with a conversation if the problem is still taking shape. Each engagement is scoped around a useful outcome—not a pile of deliverables."
+            description="Choose the kind of help you need, or start with a conversation if the problem is still taking shape. Rooster Ridge Digital works remotely with businesses and organizations across the United States."
           />
         </div>
       </section>
 
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-16 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <SectionHeading
+          eyebrow="Start with the need"
+          title="Explore the services in more detail"
+          description="Each service page explains who it is for, the problems it can solve, what a project may include, and what to do next."
+        />
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {servicePages.map((service) => {
+            const Icon = service.icon
+            return (
+              <Link key={service.slug} href={`/services/${service.slug}`} className="group flex flex-col gap-3 border border-border bg-card p-5 hover:border-primary/60">
+                <Icon className="size-5 text-primary" aria-hidden="true" />
+                <h2 className="font-semibold group-hover:text-primary">{service.h1}</h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">{service.description}</p>
+                <span className="mt-auto inline-flex items-center gap-2 pt-2 text-sm font-medium text-primary">Explore service <ArrowRight className="size-4" aria-hidden="true" /></span>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-16 sm:px-6">
         {services.map((service, index) => (
           <article
             key={service.slug}
