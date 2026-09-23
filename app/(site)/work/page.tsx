@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, Check, Sparkles } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CtaBand } from '@/components/cta-band'
@@ -40,14 +40,14 @@ function ProjectSection({ project, index }: { project: Project; index: number })
         <span className="absolute left-5 top-5 rounded-full border border-border/70 bg-background/85 px-3 py-1 text-xs font-medium backdrop-blur">{String(index + 1).padStart(2, '0')}</span>
       </Link>
       <div className={`flex flex-col justify-center gap-5 p-6 sm:p-9 lg:p-12 ${reversed ? 'lg:order-1' : ''}`}>
-        <div className="flex flex-wrap gap-2"><Badge variant="outline">{designationLabel(project.designation)}</Badge><Badge variant="secondary">{categoryLabel(project.primary_category)}</Badge></div>
+        <div className="flex flex-wrap gap-2"><Badge variant="outline">{designationLabel(project.designation)}</Badge><Badge variant="secondary">{project.primary_market || categoryLabel(project.primary_category)}</Badge></div>
         <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{project.title}</h2>
         <p className="text-base leading-relaxed text-muted-foreground">{project.short_summary}</p>
         <div className="flex flex-col gap-4 border-y border-border py-5 text-sm">
           <div><h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">The project</h3><p className="mt-1 leading-relaxed">{project.challenge || 'A focused digital project shaped around a real business need.'}</p></div>
           <div><h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">What was built</h3><p className="mt-1 leading-relaxed">{project.creative_approach || project.deliverables.join(', ') || 'A practical digital experience designed for the people who use it.'}</p></div>
         </div>
-        {project.deliverables.length > 0 && <div className="flex flex-wrap gap-2">{project.deliverables.slice(0, 6).map((item) => <span key={item} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Check className="size-3 text-primary" aria-hidden="true" />{item}</span>)}</div>}
+        {(project.core_capabilities.length > 0 || project.deliverables.length > 0) && <div className="flex flex-wrap gap-2">{(project.core_capabilities.length > 0 ? project.core_capabilities : project.deliverables).slice(0, 4).map((item) => <Badge key={item} variant="secondary" className="text-xs">{item}</Badge>)}</div>}
         <Button render={<Link href={`/work/${project.slug}`} />} variant="outline" className="w-fit">Read the project<ArrowRight data-icon="inline-end" /></Button>
       </div>
     </article>
@@ -56,6 +56,8 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
 export default async function WorkPage() {
   const projects = await getPublishedProjects('work')
+  const internalProjects = projects.filter((project) => project.designation === 'internal')
+  const featuredProjects = projects.filter((project) => project.designation !== 'internal')
   return (
     <>
       <section className="border-b border-border bg-card/40">
@@ -66,7 +68,7 @@ export default async function WorkPage() {
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-        {projects.length > 0 ? <div className="flex flex-col gap-8">{projects.map((project, index) => <ProjectSection key={project.id} project={project} index={index} />)}</div> : <div className="flex flex-col items-center gap-5 border border-dashed border-border bg-card/50 px-6 py-16 text-center"><Sparkles className="size-7 text-primary" aria-hidden="true" /><h2 className="text-xl font-semibold">Case studies are being prepared</h2><p className="max-w-lg text-muted-foreground">Real projects are being documented here now. We would rather publish verifiable work than fill this page with fabricated results.</p><Button render={<Link href="/quote" />}>Start a Project<ArrowRight data-icon="inline-end" /></Button></div>}
+        {projects.length > 0 ? <div className="flex flex-col gap-12">{featuredProjects.length > 0 && <div className="flex flex-col gap-8">{featuredProjects.map((project, index) => <ProjectSection key={project.id} project={project} index={index} />)}</div>}{internalProjects.length > 0 && <section className="flex flex-col gap-6 border-t border-border pt-10"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Built on our own system</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">How RRD uses its own systems</h2><p className="mt-2 max-w-2xl text-muted-foreground">Internal projects show the design, SEO, lead generation, automation, and content systems we use ourselves.</p></div><div className="flex flex-col gap-8">{internalProjects.map((project, index) => <ProjectSection key={project.id} project={project} index={index} />)}</div></section>}</div> : <div className="flex flex-col items-center gap-5 border border-dashed border-border bg-card/50 px-6 py-16 text-center"><Sparkles className="size-7 text-primary" aria-hidden="true" /><h2 className="text-xl font-semibold">Case studies are being prepared</h2><p className="max-w-lg text-muted-foreground">Real projects are being documented here now. We would rather publish verifiable work than fill this page with fabricated results.</p><Button render={<Link href="/quote" />}>Start a Project<ArrowRight data-icon="inline-end" /></Button></div>}
       </section>
       <CtaBand title="Need something like this built?" description="Tell me what you are trying to build, fix, or improve. We can start with the problem and work toward the right solution." primaryLabel="Start a Project" secondaryLabel="View Services" secondaryHref="/services" />
     </>
