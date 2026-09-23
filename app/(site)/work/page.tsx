@@ -36,7 +36,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
   return (
     <article className="grid overflow-hidden border border-border bg-card lg:grid-cols-2">
       <Link href={`/work/${project.slug}`} className={`group relative block min-h-72 overflow-hidden bg-muted lg:min-h-[30rem] ${reversed ? 'lg:order-2' : ''}`}>
-        <Image src={projectImage(project)} alt={project.cover_image_alt || project.title} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+        <Image src={projectImage(project)} alt={project.cover_image_alt || project.title} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover object-left-top transition-transform duration-500 group-hover:scale-[1.02]" />
         <span className="absolute left-5 top-5 rounded-full border border-border/70 bg-background/85 px-3 py-1 text-xs font-medium backdrop-blur">{String(index + 1).padStart(2, '0')}</span>
       </Link>
       <div className={`flex flex-col justify-center gap-5 p-6 sm:p-9 lg:p-12 ${reversed ? 'lg:order-1' : ''}`}>
