@@ -33,7 +33,7 @@ export function dashboardCookieOptions() {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production' || Boolean(process.env.V0_RUNTIME_URL),
     sameSite: process.env.NODE_ENV === 'development' ? 'none' as const : 'lax' as const,
-    path: '/admin',
+    path: '/',
     maxAge: 60 * 60 * 24 * 7,
   }
 }
