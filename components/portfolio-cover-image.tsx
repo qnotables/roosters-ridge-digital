@@ -1,0 +1,45 @@
+import Image from 'next/image'
+import { cn } from '@/lib/utils'
+
+type FocalPosition = 'center' | 'top' | 'bottom' | 'left' | 'right'
+
+type PortfolioCoverImageProps = {
+  src: string
+  alt: string
+  priority?: boolean
+  sizes?: string
+  className?: string
+  imageClassName?: string
+  focalPosition?: FocalPosition
+}
+
+const focalClasses: Record<FocalPosition, string> = {
+  center: 'object-center',
+  top: 'object-top',
+  bottom: 'object-bottom',
+  left: 'object-left',
+  right: 'object-right',
+}
+
+export function PortfolioCoverImage({
+  src,
+  alt,
+  priority = false,
+  sizes = '100vw',
+  className,
+  imageClassName,
+  focalPosition = 'center',
+}: PortfolioCoverImageProps) {
+  return (
+    <div className={cn('relative aspect-[16/10] overflow-hidden bg-muted', className)}>
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        priority={priority}
+        sizes={sizes}
+        className={cn('object-cover', focalClasses[focalPosition], imageClassName)}
+      />
+    </div>
+  )
+}
