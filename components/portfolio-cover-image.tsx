@@ -11,6 +11,7 @@ type PortfolioCoverImageProps = {
   className?: string
   imageClassName?: string
   focalPosition?: FocalPosition
+  fillContainer?: boolean
 }
 
 const focalClasses: Record<FocalPosition, string> = {
@@ -29,9 +30,10 @@ export function PortfolioCoverImage({
   className,
   imageClassName,
   focalPosition = 'center',
+  fillContainer = false,
 }: PortfolioCoverImageProps) {
   return (
-    <div className={cn('relative aspect-[16/10] overflow-hidden bg-muted', className)}>
+    <div className={cn('relative overflow-hidden bg-muted', fillContainer ? 'h-full min-h-0' : 'aspect-[16/10]', className)}>
       <Image
         src={src}
         alt={alt}
