@@ -15,10 +15,50 @@ const empty: Partial<PortfolioProject> = { status: 'draft', designation: 'concep
 export function PortfolioManager({ projects }: { projects: PortfolioProject[] }) {
   const [selected, setSelected] = useState<PortfolioProject | null>(null)
   const [status, setStatus] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [coverImageUrl, setCoverImageUrl] = useState('')
+  const [galleryValue, setGalleryValue] = useState('')
   const project = selected ?? empty
 
+  function selectProject(item: PortfolioProject | null) {
+    setSelected(item)
+    setStatus('')
+    setCoverImageUrl(item?.cover_image_url ?? '')
+    setGalleryValue(item?.gallery?.length ? JSON.stringify(item.gallery, null, 2) : '')
+  }
+
+  async function uploadImages(files: FileList | null, gallery = false) {
+    if (!files?.length) return
+    setUploading(true)
+    setStatus('Uploading image...')
+
+    try {
+      const uploaded = [] as { url: string; alt: string }[]
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await fetch('/api/admin/portfolio-images', { method: 'POST', body: formData })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Upload failed')
+        uploaded.push({ url: result.url, alt: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ') })
+      }
+
+      if (gallery) {
+        const current = galleryValue ? JSON.parse(galleryValue) : []
+        setGalleryValue(JSON.stringify([...current, ...uploaded], null, 2))
+      } else {
+        setCoverImageUrl(uploaded[0].url)
+      }
+      setStatus(`${uploaded.length} image${uploaded.length === 1 ? '' : 's'} uploaded. Save the project to keep the changes.`)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'The image could not be uploaded.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function submit(formData: FormData) {
-    try { await savePortfolioProject(formData); setStatus('Project saved.'); setSelected(null) } catch { setStatus('Project could not be saved. Check the required fields.') }
+    try { await savePortfolioProject(formData); setStatus('Project saved.'); selectProject(null) } catch { setStatus('Project could not be saved. Check the required fields.') }
   }
 
   async function remove(formData: FormData) {
@@ -29,8 +69,8 @@ export function PortfolioManager({ projects }: { projects: PortfolioProject[] })
   return <main className="min-h-dvh bg-muted/20 px-4 py-10 sm:px-6"><div className="mx-auto max-w-6xl">
     <div className="flex flex-col justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Portfolio</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Projects and case studies</h1><p className="mt-2 text-sm text-muted-foreground">One project can appear in Work, Promotions, or both.</p></div><div className="flex gap-2"><Button variant="outline" render={<Link href="/admin/leads" />}>Leads</Button><Button variant="outline" render={<Link href="/admin/profile" />}>Profile</Button><Button variant="ghost" render={<Link href="/work" />}>View site</Button></div></div>
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-      <section className="flex flex-col gap-3"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">All projects</h2><Button size="sm" onClick={() => { setSelected(null); setStatus('') }}>New project</Button></div>{projects.map((item) => <button type="button" key={item.id} onClick={() => { setSelected(item); setStatus('') }} className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="font-semibold">{item.title}</span><span className="text-xs uppercase tracking-wide text-primary">{item.status} · {item.designation}</span><span className="text-sm text-muted-foreground">{item.primary_category}</span></button>)}{projects.length === 0 && <p className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">No projects yet.</p>}</section>
-      <form action={submit} className="flex flex-col gap-6 rounded-lg border border-border bg-card p-6"><input type="hidden" name="id" value={project.id ?? ''} /><div><h2 className="text-lg font-semibold">{selected ? 'Edit project' : 'Create project'}</h2><p className="mt-1 text-sm text-muted-foreground">Required fields are marked in the form.</p></div>
+      <section className="flex flex-col gap-3"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">All projects</h2><Button size="sm" onClick={() => selectProject(null)}>New project</Button></div>{projects.map((item) => <button type="button" key={item.id} onClick={() => selectProject(item)} className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="font-semibold">{item.title}</span><span className="text-xs uppercase tracking-wide text-primary">{item.status} · {item.designation}</span><span className="text-sm text-muted-foreground">{item.primary_category}</span></button>)}{projects.length === 0 && <p className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">No projects yet.</p>}</section>
+      <form key={selected?.id ?? 'new'} action={submit} className="flex flex-col gap-6 rounded-lg border border-border bg-card p-6"><input type="hidden" name="id" value={project.id ?? ''} /><div><h2 className="text-lg font-semibold">{selected ? 'Edit project' : 'Create project'}</h2><p className="mt-1 text-sm text-muted-foreground">Required fields are marked in the form.</p></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="title">Title *</Label><Input id="title" name="title" defaultValue={project.title ?? ''} required /></div><div className="flex flex-col gap-2"><Label htmlFor="slug">URL slug *</Label><Input id="slug" name="slug" defaultValue={project.slug ?? ''} placeholder="project-name" required /></div><div className="flex flex-col gap-2"><Label htmlFor="primary_category">Primary category *</Label><Input id="primary_category" name="primary_category" defaultValue={project.primary_category ?? ''} placeholder="event-flyer" required /></div><div className="flex flex-col gap-2"><Label htmlFor="display_order">Display order</Label><Input id="display_order" name="display_order" type="number" defaultValue={project.display_order ?? 0} /></div></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="status">Status</Label><select id="status" name="status" defaultValue={project.status ?? 'draft'} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="draft">Draft</option><option value="published">Published</option></select></div><div className="flex flex-col gap-2"><Label htmlFor="designation">Designation</Label><select id="designation" name="designation" defaultValue={project.designation ?? 'concept'} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="concept">Concept project</option><option value="client">Client project</option></select></div></div>
         <div className="grid gap-3 sm:grid-cols-2"><label className="flex items-center gap-2 text-sm"><Checkbox name="featured" defaultChecked={project.featured} /> Featured project</label><label className="flex items-center gap-2 text-sm"><Checkbox name="show_on_work" defaultChecked={project.show_on_work ?? true} /> Show on Work</label><label className="flex items-center gap-2 text-sm"><Checkbox name="show_on_promotions" defaultChecked={project.show_on_promotions} /> Show on Promotions</label><label className="flex items-center gap-2 text-sm"><Checkbox name="show_client_name" defaultChecked={project.show_client_name} /> Show client name</label></div>
@@ -38,8 +78,8 @@ export function PortfolioManager({ projects }: { projects: PortfolioProject[] })
         <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="client_type">Client type</Label><Input id="client_type" name="client_type" defaultValue={project.client_type ?? ''} placeholder="Local service business" /></div><div className="flex flex-col gap-2"><Label htmlFor="client_name">Client name</Label><Input id="client_name" name="client_name" defaultValue={project.client_name ?? ''} /></div></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="challenge">Challenge</Label><Textarea id="challenge" name="challenge" defaultValue={project.challenge ?? ''} rows={4} /></div><div className="flex flex-col gap-2"><Label htmlFor="creative_approach">Creative approach</Label><Textarea id="creative_approach" name="creative_approach" defaultValue={project.creative_approach ?? ''} rows={4} /></div><div className="flex flex-col gap-2"><Label htmlFor="intended_purpose">Intended purpose</Label><Textarea id="intended_purpose" name="intended_purpose" defaultValue={project.intended_purpose ?? ''} rows={3} /></div><div className="flex flex-col gap-2"><Label htmlFor="verified_outcome">Verified outcome</Label><Textarea id="verified_outcome" name="verified_outcome" defaultValue={project.verified_outcome ?? ''} rows={3} /></div></div>
         <div className="flex flex-col gap-2"><Label htmlFor="deliverables">Deliverables (one per line)</Label><Textarea id="deliverables" name="deliverables" defaultValue={project.deliverables?.join('\n') ?? ''} rows={4} /></div>
-        <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="cover_image_url">Cover image URL</Label><Input id="cover_image_url" name="cover_image_url" defaultValue={project.cover_image_url ?? ''} /></div><div className="flex flex-col gap-2"><Label htmlFor="cover_image_alt">Cover image alt text</Label><Input id="cover_image_alt" name="cover_image_alt" defaultValue={project.cover_image_alt ?? ''} /></div></div>
-        <div className="flex flex-col gap-2"><Label htmlFor="gallery">Gallery JSON</Label><Textarea id="gallery" name="gallery" defaultValue={project.gallery?.length ? JSON.stringify(project.gallery, null, 2) : ''} placeholder={'[{"url":"/images/example.png","alt":"Description"}]'} rows={5} /></div>
+        <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="cover_image_url">Cover image URL</Label><Input id="cover_image_url" name="cover_image_url" value={coverImageUrl} onChange={(event) => setCoverImageUrl(event.target.value)} placeholder="Upload an image or paste a URL" /><label className="flex cursor-pointer items-center gap-2 text-sm text-primary hover:underline"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" onChange={(event) => uploadImages(event.target.files)} disabled={uploading} />{uploading ? 'Uploading...' : 'Upload cover image'}</label></div><div className="flex flex-col gap-2"><Label htmlFor="cover_image_alt">Cover image alt text</Label><Input id="cover_image_alt" name="cover_image_alt" defaultValue={project.cover_image_alt ?? ''} /></div></div>
+        <div className="flex flex-col gap-2"><Label htmlFor="gallery">Gallery JSON</Label><Textarea id="gallery" name="gallery" value={galleryValue} onChange={(event) => setGalleryValue(event.target.value)} placeholder={'[{"url":"/images/example.png","alt":"Description"}]'} rows={5} /><label className="flex cursor-pointer items-center gap-2 text-sm text-primary hover:underline"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple className="sr-only" onChange={(event) => uploadImages(event.target.files, true)} disabled={uploading} />{uploading ? 'Uploading...' : 'Upload gallery images'}</label><p className="text-xs text-muted-foreground">JPG, PNG, WebP, GIF, or AVIF up to 10 MB each. Uploaded URLs are added to the JSON above.</p></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="flex flex-col gap-2"><Label htmlFor="seo_title">SEO title</Label><Input id="seo_title" name="seo_title" defaultValue={project.seo_title ?? ''} /></div><div className="flex flex-col gap-2"><Label htmlFor="project_date">Project date</Label><Input id="project_date" name="project_date" type="date" defaultValue={project.project_date ?? ''} /></div><div className="flex flex-col gap-2"><Label htmlFor="meta_description">Meta description</Label><Textarea id="meta_description" name="meta_description" defaultValue={project.meta_description ?? ''} rows={3} /></div><div className="flex flex-col gap-2"><Label htmlFor="additional_categories">Additional categories</Label><Input id="additional_categories" name="additional_categories" defaultValue={project.additional_categories?.join(', ') ?? ''} placeholder="social-graphic, print" /></div></div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"><p role="status" className="text-sm text-muted-foreground">{status}</p><div className="flex gap-2"><Button type="submit">Save project</Button>{selected && <Button type="submit" formAction={remove} variant="destructive">Delete</Button>}</div></div>
       </form>
