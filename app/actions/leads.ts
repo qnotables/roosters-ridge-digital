@@ -26,6 +26,18 @@ async function getClientIp(): Promise<string> {
   return (h.get('x-forwarded-for')?.split(',')[0] ?? h.get('x-real-ip') ?? 'unknown').trim()
 }
 
+function readTrackingMetadata(formData: FormData): Record<string, string> | null {
+  const raw = sanitize(formData.get('trackingMetadata'), 2400)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === 'string').slice(0, 10))
+  } catch {
+    return null
+  }
+}
+
 function readUtm(formData: FormData) {
   return {
     utmSource: sanitize(formData.get('utmSource'), 200) || null,
@@ -79,6 +91,7 @@ type StoreArgs = {
   primaryConcern: string | null
   sourcePage: string | null
   utm: ReturnType<typeof readUtm>
+  trackingMetadata: Record<string, string> | null
 }
 
 async function storeLead(args: StoreArgs): Promise<boolean> {
@@ -89,14 +102,14 @@ async function storeLead(args: StoreArgs): Promise<boolean> {
         reference_number, lead_type, first_name, last_name, business_name, email, phone,
         preferred_contact_method, website_url, services, project_description, audience,
         timeline, budget_range, primary_concern, source_page,
-        utm_source, utm_medium, utm_campaign, utm_content, referrer
+        utm_source, utm_medium, utm_campaign, utm_content, referrer, tracking_metadata
       ) VALUES (
         ${args.referenceNumber}, ${args.leadType}, ${args.firstName}, ${args.lastName},
         ${args.businessName}, ${args.email}, ${args.phone}, ${args.preferredContactMethod},
         ${args.websiteUrl}, ${JSON.stringify(args.services)}, ${args.projectDescription},
         ${args.audience}, ${args.timeline}, ${args.budgetRange}, ${args.primaryConcern},
         ${args.sourcePage}, ${args.utm.utmSource}, ${args.utm.utmMedium},
-        ${args.utm.utmCampaign}, ${args.utm.utmContent}, ${args.utm.referrer}
+        ${args.utm.utmCampaign}, ${args.utm.utmContent}, ${args.utm.referrer}, ${args.trackingMetadata ? JSON.stringify(args.trackingMetadata) : null}
       )
     `
     return true
@@ -173,6 +186,7 @@ export async function submitQuote(_prev: LeadActionState, formData: FormData): P
     primaryConcern: null,
     sourcePage: sanitize(formData.get('sourcePage'), 120) || '/quote',
     utm: readUtm(formData),
+    trackingMetadata: readTrackingMetadata(formData),
   })
 
   // Never show success if storage failed.
@@ -262,6 +276,7 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
     primaryConcern,
     sourcePage: sanitize(formData.get('sourcePage'), 120) || '/free-checkup',
     utm: readUtm(formData),
+    trackingMetadata: readTrackingMetadata(formData),
   })
 
   if (!stored) {

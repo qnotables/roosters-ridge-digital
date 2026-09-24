@@ -1,7 +1,6 @@
 'use client'
 
 import { useActionState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { ClipboardCheck, Loader2 } from 'lucide-react'
 import { submitCheckup } from '@/app/actions/leads'
 import { initialLeadState } from '@/lib/leads'
@@ -22,7 +21,6 @@ import { Field } from '@/components/forms/field'
 import { HiddenTrackingFields } from '@/components/forms/hidden-tracking-fields'
 
 export function CheckupForm() {
-  const router = useRouter()
   const [state, formAction, pending] = useActionState(submitCheckup, initialLeadState)
   const startedRef = useRef(false)
   const errorRef = useRef<HTMLDivElement>(null)
@@ -30,19 +28,29 @@ export function CheckupForm() {
   useEffect(() => {
     if (state.ok && state.referenceNumber) {
       trackEvent('checkup_form_submitted', { reference: state.referenceNumber })
-      const params = new URLSearchParams({ ref: state.referenceNumber, type: 'checkup' })
-      if (state.emailWarning) params.set('emailWarning', '1')
-      router.push(`/thank-you?${params.toString()}`)
     } else if (state.message || state.errors) {
       errorRef.current?.focus()
     }
-  }, [state, router])
+  }, [state])
 
   function handleFirstInteraction() {
     if (!startedRef.current) {
       startedRef.current = true
       trackEvent('checkup_form_started')
     }
+  }
+
+  if (state.ok) {
+    return (
+      <div role="status" aria-live="polite" className="flex flex-col gap-4 rounded-lg border border-primary/40 bg-primary/10 p-6">
+        <ClipboardCheck className="size-7 text-primary" aria-hidden="true" />
+        <div>
+          <h3 className="text-xl font-semibold">Your request has been received.</h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">We&apos;ll review your information and contact you with the next steps.</p>
+          {state.referenceNumber && <p className="mt-3 font-mono text-xs text-muted-foreground">Reference: {state.referenceNumber}</p>}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -99,7 +107,7 @@ export function CheckupForm() {
       {state.errors?.consent && <p className="text-sm text-destructive">{state.errors.consent}</p>}
 
       <div className="flex items-center gap-4">
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" nativeButton size="lg" disabled={pending}>
           {pending ? (
             <>
               <Loader2 data-icon="inline-start" className="animate-spin" />
@@ -108,7 +116,7 @@ export function CheckupForm() {
           ) : (
             <>
               <ClipboardCheck data-icon="inline-start" />
-              Request my free checkup
+              Request My Free Digital Checkup
             </>
           )}
         </Button>
