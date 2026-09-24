@@ -10,9 +10,12 @@ import { getStoredUtm } from '@/lib/use-utm'
  * - sourcePage: the path the form was submitted from
  * - UTM + referrer: first-touch attribution captured on landing
  */
+const attributionKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'campaign', 'creative', 'site', 'device', 'region', 'sub_id'] as const
+
 export function HiddenTrackingFields({ sourcePage }: { sourcePage: string }) {
   const [startedAt] = useState(() => Date.now())
   const [utm, setUtm] = useState<Record<string, string>>({})
+  const [metadata, setMetadata] = useState('')
 
   useEffect(() => {
     const stored = getStoredUtm()
@@ -23,6 +26,12 @@ export function HiddenTrackingFields({ sourcePage }: { sourcePage: string }) {
       utmContent: stored.utmContent ?? '',
       referrer: stored.referrer ?? '',
     })
+    const params = new URLSearchParams(window.location.search)
+    const campaignMetadata = Object.fromEntries(attributionKeys.flatMap((key) => {
+      const value = params.get(key)
+      return value ? [[key, value.slice(0, 200)]] : []
+    }))
+    setMetadata(JSON.stringify(campaignMetadata))
   }, [])
 
   return (
@@ -47,6 +56,7 @@ export function HiddenTrackingFields({ sourcePage }: { sourcePage: string }) {
       <input type="hidden" name="utmCampaign" value={utm.utmCampaign ?? ''} />
       <input type="hidden" name="utmContent" value={utm.utmContent ?? ''} />
       <input type="hidden" name="referrer" value={utm.referrer ?? ''} />
+      <input type="hidden" name="trackingMetadata" value={metadata} />
     </>
   )
 }
