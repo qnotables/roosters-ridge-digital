@@ -8,6 +8,7 @@ import { CtaBand } from '@/components/cta-band'
 import { getPublishedProjects, categoryLabel, designationLabel, projectImage } from '@/lib/portfolio'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export const metadata: Metadata = {
   title: 'Web Design & Digital Projects | Rooster’s Ridge Digital',
@@ -60,6 +61,7 @@ export default async function WorkPage() {
   const featuredProjects = projects.filter((project) => project.designation !== 'internal')
   return (
     <>
+      <Breadcrumbs items={[{ label: 'Portfolio' }]} />
       <section className="border-b border-border bg-card/40">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Real projects + interactive demos</p>
