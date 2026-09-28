@@ -57,7 +57,7 @@ export default function RootLayout({
                   '@id': `${siteUrl}/#organization`,
                   name: siteConfig.name,
                   url: siteUrl,
-                  logo: `${siteUrl}/images/roosters-ridge-digital-logo.png`,
+                  logo: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RRD-StiLEzpyP4LWOeF3YpoZXsnGz7Ykqe.png',
                   description: siteConfig.description,
                   sameAs: siteConfig.socials.filter((social) => social.url).map((social) => social.url),
                 },

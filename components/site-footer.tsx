@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { Mail } from 'lucide-react'
 import { SocialLinks } from '@/components/social-links'
@@ -12,7 +11,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="flex flex-col gap-4">
           <Link href="/" className="inline-flex w-fit items-center">
-            <Image src="/images/roosters-ridge-digital-logo.png" alt="Rooster's Ridge Digital" width={260} height={82} className="h-20 w-auto rounded-sm px-2 py-1 object-contain" />
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RRD-StiLEzpyP4LWOeF3YpoZXsnGz7Ykqe.png" alt="Rooster's Ridge Digital" width={260} height={82} className="h-20 w-auto rounded-sm object-contain" />
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-foreground/80">{siteConfig.description}</p>
           {siteConfig.contact.email && <a href={`mailto:${siteConfig.contact.email}`} className="inline-flex items-center gap-2 text-sm text-foreground/90 transition-colors hover:text-primary"><Mail className="size-4" />{siteConfig.contact.email}</a>}

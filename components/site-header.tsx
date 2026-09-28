@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -21,13 +20,13 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
-          <Image
-            src="/images/roosters-ridge-digital-logo.png"
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RRD-StiLEzpyP4LWOeF3YpoZXsnGz7Ykqe.png"
             alt="Rooster's Ridge Digital"
             width={196}
             height={64}
-            priority
-            className="h-16 w-auto rounded-sm px-2 py-1 object-contain"
+            fetchPriority="high"
+            className="h-16 w-auto rounded-sm object-contain"
           />
         </Link>
 
@@ -57,12 +56,12 @@ export function SiteHeader() {
           <SheetContent side="right" className="w-[min(20rem,85vw)] p-0">
             <SheetTitle className="sr-only">Menu</SheetTitle>
             <div className="flex items-center justify-between border-b border-border px-4 h-16">
-              <Image
-                src="/images/roosters-ridge-digital-logo.png"
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RRD-StiLEzpyP4LWOeF3YpoZXsnGz7Ykqe.png"
                 alt="Rooster's Ridge Digital"
                 width={178}
                 height={56}
-                className="h-[3.75rem] w-auto rounded-sm px-2 py-1 object-contain"
+                className="h-[3.75rem] w-auto rounded-sm object-contain"
               />
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close menu">
                 <X className="size-5" />
