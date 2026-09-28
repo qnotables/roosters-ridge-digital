@@ -6,10 +6,11 @@ import { siteUrl } from '@/lib/site-config'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes = ['', '/about', '/contact', '/services', '/work', '/promotions', '/free-checkup', '/promo/free-website-checkup', '/services/web-design', '/services/automation', '/services/digital-strategy', '/services/branding', '/services/website-troubleshooting', '/services/custom-solutions', '/quote', '/privacy']
   const projects = await getPublishedProjects()
+  const lastModified = new Date()
   return [
-    ...routes.map((route) => ({ url: `${siteUrl}${route}` })),
-    { url: `${siteUrl}/industries` },
-    ...industrySlugs.map(({ slug }) => ({ url: `${siteUrl}/industries/${slug}` })),
-    ...projects.map((project) => ({ url: `${siteUrl}/work/${project.slug}` })),
+    ...routes.map((route) => ({ url: `${siteUrl}${route}`, lastModified })),
+    { url: `${siteUrl}/industries`, lastModified },
+    ...industrySlugs.map(({ slug }) => ({ url: `${siteUrl}/industries/${slug}`, lastModified })),
+    ...projects.map((project) => ({ url: `${siteUrl}/work/${project.slug}`, lastModified })),
   ]
 }

@@ -7,11 +7,12 @@ import { digitalCheckup } from '@/lib/site-config'
 import { getBusinessProfile } from '@/lib/business-profile'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export const metadata: Metadata = {
-  title: 'Free Digital Checkup | Rooster’s Ridge Digital',
+  title: 'Free Website & Digital Systems Checkup | Rooster’s Ridge Digital',
   description:
-    'Get a free digital checkup from Rooster’s Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
+    'Get a free review of your website, lead-generation process, automation opportunities, and digital customer experience.',
   alternates: { canonical: `${siteUrl}/free-checkup` },
   robots: { index: true, follow: true },
   openGraph: {
@@ -43,7 +44,9 @@ export default async function FreeCheckupPage() {
   const profile = await getBusinessProfile()
 
   return (
-    <div className="bg-card/20">
+    <>
+      <Breadcrumbs items={[{ label: 'Free Checkup' }]} />
+      <div className="bg-card/20">
       <section className="border-b border-border">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
           <div className="max-w-4xl">
@@ -146,5 +149,6 @@ export default async function FreeCheckupPage() {
         </section>
       </main>
     </div>
+    </>
   )
 }

@@ -83,7 +83,7 @@ export type SocialLink = {
 }
 
 export const siteConfig = {
-  name: "Rooster's Ridge Digital",
+  name: 'Rooster’s Ridge Digital',
   shortName: "Rooster's Ridge",
   tagline: 'Websites • Lead Generation • Automation • Custom Business Systems',
   domain: 'roostersridgedigital.com',

@@ -10,7 +10,7 @@ import './globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Rooster’s Ridge Digital | Digital Business Systems',
+    default: 'Rooster’s Ridge Digital | Websites, Lead Generation & Business Automation',
     template: '%s',
   },
   description: siteConfig.description,

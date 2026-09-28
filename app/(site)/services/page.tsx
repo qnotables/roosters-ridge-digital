@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { packages, secondaryServices, services, siteConfig, siteUrl } from '@/lib/site-config'
 import { servicePages } from '@/lib/service-pages'
-import { serviceCategories } from '@/data/industries'
+import { serviceCategories, industries } from '@/data/industries'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export const metadata: Metadata = {
   title: 'Digital Business Systems & Services | Rooster’s Ridge Digital',
@@ -35,6 +36,7 @@ export const metadata: Metadata = {
 export default function ServicesPage() {
   return (
     <>
+      <Breadcrumbs items={[{ label: 'Services' }]} />
       <section className="border-b border-border bg-card/40">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
@@ -66,6 +68,8 @@ export default function ServicesPage() {
           })}
         </div>
       </section>
+
+      <section className="border-y border-border bg-card/40"><div className="mx-auto max-w-6xl px-4 py-14 sm:px-6"><SectionHeading eyebrow="See it in context" title="Explore systems by industry" description="See how lead generation, scheduling, customer portals, and ecommerce can be shaped around a real operating model." /><div className="mt-6 flex flex-wrap gap-x-5 gap-y-3">{industries.map((industry) => <Link key={industry.slug} href={`/industries/${industry.slug}`} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">{industry.name} demo <ArrowRight className="size-4" aria-hidden="true" /></Link>)}</div></div></section>
 
       <section className="border-y border-border bg-card/40"><div className="mx-auto max-w-6xl px-4 py-14 sm:px-6"><SectionHeading eyebrow="Connected systems" title="More than a website" description="Combine the pieces that fit your business: lead generation, operations, customer communication, and reporting." /><div className="mt-8 flex flex-wrap gap-2.5">{serviceCategories.map((category) => <Badge key={category} variant="secondary" className="px-3 py-1.5 font-normal">{category}</Badge>)}</div></div></section>
 
