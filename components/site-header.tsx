@@ -17,16 +17,16 @@ export function SiteHeader() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-50 overflow-visible border-b border-border/80 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
+        <Link href="/" className="relative z-10 flex items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RRD-StiLEzpyP4LWOeF3YpoZXsnGz7Ykqe.png"
             alt="Rooster's Ridge Digital"
             width={196}
             height={64}
             fetchPriority="high"
-            className="h-16 w-auto rounded-sm object-contain"
+            className="h-[4.8rem] w-auto max-w-none rounded-sm object-contain"
           />
         </Link>
 
@@ -61,7 +61,7 @@ export function SiteHeader() {
                 alt="Rooster's Ridge Digital"
                 width={178}
                 height={56}
-                className="h-[3.75rem] w-auto rounded-sm object-contain"
+                className="h-[4.5rem] w-auto max-w-none rounded-sm object-contain"
               />
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close menu">
                 <X className="size-5" />
