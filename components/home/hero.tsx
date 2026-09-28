@@ -4,11 +4,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { siteConfig } from '@/lib/site-config'
 import { trackEvent } from '@/lib/analytics'
 import { useCaptureUtm } from '@/lib/use-utm'
 
-const highlights = ['Websites that convert', 'Consistent branding', 'Search-ready content', 'Promo-ready creative']
+const highlights = ['Lead generation systems', 'Business automation', 'Custom dashboards', 'Digital tools that fit']
 
 export function Hero() {
   useCaptureUtm()
@@ -28,27 +27,18 @@ export function Hero() {
           </span>
 
           <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-5xl">
-            <span className="block whitespace-nowrap">Look credible.</span>
-            <span className="block whitespace-nowrap">Reach more people.</span>
-            <span className="block whitespace-nowrap text-primary">Turn attention into action.</span>
+            <span className="block whitespace-nowrap">Websites are</span>
+            <span className="block whitespace-nowrap">just the beginning.</span>
+            <span className="block whitespace-nowrap text-primary">Build what comes next.</span>
           </h1>
 
           <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-            {siteConfig.name} builds websites, branding, content, and promotional materials that help small
-            businesses show up polished and professional — everywhere their customers look.
+            We build websites, lead-generation systems, automation, dashboards, ecommerce platforms, and digital tools designed around how your business actually operates.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              render={<Link href="/quote" onClick={() => trackEvent('hero_estimate_clicked')} />}
-              size="lg"
-            >
-              {siteConfig.cta.primary}
-              <ArrowRight data-icon="inline-end" />
-            </Button>
-            <Button render={<Link href="/services" />} size="lg" variant="outline">
-              {siteConfig.cta.secondary}
-            </Button>
+            <Button render={<Link href="/industries" onClick={() => trackEvent('hero_estimate_clicked')} />} size="lg">Explore Industry Demos <ArrowRight data-icon="inline-end" /></Button>
+            <Button render={<Link href="/free-checkup" />} size="lg" variant="outline">Get a Free Digital Checkup</Button>
           </div>
 
           <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 sm:max-w-md">

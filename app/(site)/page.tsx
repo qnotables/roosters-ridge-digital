@@ -3,6 +3,7 @@ import { Hero } from '@/components/home/hero'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 import { ServicesOverview } from '@/components/home/services-overview'
+import { IndustryShowcase } from '@/components/home/industry-showcase'
 import { ValueProps } from '@/components/home/value-props'
 import { SelectedWork } from '@/components/home/selected-work'
 import { Process } from '@/components/home/process'
@@ -35,6 +36,7 @@ export default function HomePage() {
     <>
       <Hero />
       <ServicesOverview />
+      <IndustryShowcase />
       <SelectedWork />
       <ValueProps />
       <Process />

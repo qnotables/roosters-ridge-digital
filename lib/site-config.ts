@@ -334,9 +334,10 @@ export const workItems: WorkItem[] = []
 export const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/services', label: 'Services' },
-  { href: '/work', label: 'Work' },
+  { href: '/industries', label: 'Industries' },
+  { href: '/work', label: 'Portfolio' },
   { href: '/about', label: 'About' },
-  { href: '/quote', label: 'Start a Project' },
+  { href: '/contact', label: 'Contact' },
 ]
 
 export const leadStatuses = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Closed'] as const
