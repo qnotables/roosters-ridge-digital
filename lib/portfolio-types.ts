@@ -1,4 +1,6 @@
 export type PortfolioImage = { url: string; alt: string; caption?: string }
+export type CoverFit = 'cover' | 'contain'
+export type CoverPosition = 'center' | 'top' | 'bottom' | 'left' | 'right'
 
 export type PortfolioProject = {
   id: string
@@ -28,6 +30,9 @@ export type PortfolioProject = {
   verified_outcome: string | null
   cover_image_url: string | null
   cover_image_alt: string | null
+  /** Display settings are derived until the portfolio schema stores per-project media preferences. */
+  cover_fit?: CoverFit
+  cover_position?: CoverPosition
   gallery: PortfolioImage[]
   project_date: string | null
   live_project_url: string | null
@@ -50,4 +55,15 @@ export type PortfolioProject = {
   show_deliverables: boolean
   show_market_translation: boolean
   show_applicable_industries: boolean
+}
+
+/** Designed covers with embedded typography should stay fully visible inside the shared 16:9 frame. */
+export function projectCoverFit(project: Pick<PortfolioProject, 'slug' | 'title' | 'cover_fit'>): CoverFit {
+  if (project.cover_fit) return project.cover_fit
+  const identity = `${project.slug} ${project.title}`.toLowerCase()
+  return /qnotables|mysolsolution|shepherds[- ]not[- ]sheep/.test(identity) ? 'contain' : 'cover'
+}
+
+export function projectCoverPosition(project: Pick<PortfolioProject, 'cover_position'>): CoverPosition {
+  return project.cover_position || 'center'
 }
