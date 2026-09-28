@@ -3,6 +3,7 @@ import { hasDashboardAccess } from '@/lib/admin-auth'
 import { getBusinessProfile } from '@/lib/business-profile'
 import type { Metadata } from 'next'
 import { ProfileEditor } from '@/components/admin/profile-editor'
+import { AdminShell } from '@/components/admin/admin-shell'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -13,5 +14,5 @@ export const dynamic = 'force-dynamic'
 export default async function AdminProfilePage() {
   if (!(await hasDashboardAccess())) redirect('/admin/sign-in')
   const profile = await getBusinessProfile()
-  return <ProfileEditor profile={profile} userEmail="Dashboard key access" />
+  return <AdminShell><ProfileEditor profile={profile} userEmail="Dashboard key access" /></AdminShell>
 }
