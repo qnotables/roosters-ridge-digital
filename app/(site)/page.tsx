@@ -11,22 +11,22 @@ import { CheckupTeaser } from '@/components/home/checkup-teaser'
 import { CtaBand } from '@/components/cta-band'
 
 export const metadata: Metadata = {
-  title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+  title: 'Rooster’s Ridge Digital | Digital Business Systems',
   description:
-    'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
+    'Rooster’s Ridge Digital builds websites, lead-generation systems, automation, dashboards, ecommerce platforms, and custom digital business systems.',
   alternates: { canonical: siteUrl },
   openGraph: {
-    title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+    title: 'Rooster’s Ridge Digital | Web Design, Automation & Digital Solutions',
     description:
-      'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
+      'Rooster’s Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
     url: siteUrl,
     images: [ogMetadata('home')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+    title: 'Rooster’s Ridge Digital | Web Design, Automation & Digital Solutions',
     description:
-      'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
+      'Rooster’s Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
     images: [twitterImage('home')],
   },
 }

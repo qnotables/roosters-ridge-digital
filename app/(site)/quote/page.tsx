@@ -6,22 +6,22 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { services, siteConfig, siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Start a Project | Rooster Ridge Digital',
+  title: 'Start a Project | Rooster’s Ridge Digital',
   description:
-    'Tell Rooster Ridge Digital what you are trying to build, fix, improve, or automate. Start with a clear conversation and a practical next step.',
+    'Tell Rooster’s Ridge Digital what you are trying to build, fix, improve, or automate. Start with a clear conversation and a practical next step.',
   alternates: { canonical: `${siteUrl}/quote` },
   openGraph: {
-    title: 'Start a Project | Rooster Ridge Digital',
+    title: 'Start a Project | Rooster’s Ridge Digital',
     description:
-      'Start a project with Rooster Ridge Digital for web design, automation, branding, digital strategy, and custom technology solutions.',
+      'Start a project with Rooster’s Ridge Digital for web design, automation, branding, digital strategy, and custom technology solutions.',
     url: `${siteUrl}/quote`,
     images: [ogMetadata('quote')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Start a Project | Rooster Ridge Digital',
+    title: 'Start a Project | Rooster’s Ridge Digital',
     description:
-      'Start a project with Rooster Ridge Digital for web design, automation, branding, digital strategy, and custom technology solutions.',
+      'Start a project with Rooster’s Ridge Digital for web design, automation, branding, digital strategy, and custom technology solutions.',
     images: [twitterImage('quote')],
   },
 }

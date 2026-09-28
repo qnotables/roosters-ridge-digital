@@ -9,23 +9,23 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Free Digital Checkup | Rooster Ridge Digital',
+  title: 'Free Digital Checkup | Rooster’s Ridge Digital',
   description:
-    'Get a free digital checkup from Rooster Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
+    'Get a free digital checkup from Rooster’s Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
   alternates: { canonical: `${siteUrl}/free-checkup` },
   robots: { index: true, follow: true },
   openGraph: {
-    title: 'Free Digital Checkup | Rooster Ridge Digital',
+    title: 'Free Digital Checkup | Rooster’s Ridge Digital',
     description:
-      'Get a free digital checkup from Rooster Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
+      'Get a free digital checkup from Rooster’s Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
     url: `${siteUrl}/free-checkup`,
     images: [ogMetadata('free-checkup')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free Digital Checkup | Rooster Ridge Digital',
+    title: 'Free Digital Checkup | Rooster’s Ridge Digital',
     description:
-      'Get a free digital checkup from Rooster Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
+      'Get a free digital checkup from Rooster’s Ridge Digital. Review your website, SEO, mobile experience, branding, lead generation, and digital performance.',
     images: [twitterImage('free-checkup')],
   },
 }
@@ -52,7 +52,7 @@ export default async function FreeCheckupPage() {
               Is Your Website Actually Working for Your Business?
             </h1>
             <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
-              Get a FREE Digital Checkup from Rooster Ridge Digital and find out what&apos;s working, what isn&apos;t, and where your business could be stronger online.
+              Get a FREE Digital Checkup from Rooster&apos;s Ridge Digital and find out what&apos;s working, what isn&apos;t, and where your business could be stronger online.
             </p>
           </div>
           <div className="flex flex-col items-start gap-4 rounded-xl border border-primary/40 bg-primary/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -94,7 +94,7 @@ export default async function FreeCheckupPage() {
               </div>
               <div className="rounded-lg border border-primary/40 bg-primary/10 p-5">
                 <p className="text-xl font-semibold">$250 OFF Your First Website Project</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Complete your free digital checkup and receive $250 off your first qualifying website project with Rooster Ridge Digital.</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Complete your free digital checkup and receive $250 off your first qualifying website project with Rooster’s Ridge Digital.</p>
                 <p className="mt-4 text-xs leading-5 text-muted-foreground">Limited-time promotional offer. Applies to the first qualifying website project started after completion of the free digital checkup. One promotional discount per business. Cannot be combined with other offers.</p>
               </div>
             </div>
@@ -127,9 +127,9 @@ export default async function FreeCheckupPage() {
 
         <section className="grid gap-8 border-y border-border py-12 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Rooster Ridge Digital</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Rooster’s Ridge Digital</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">Local Roots. Global Possibilities.</h2>
-            <p className="mt-4 leading-relaxed text-muted-foreground">Rooster Ridge Digital works with businesses, nonprofits, entrepreneurs, and organizations remotely to build better websites, stronger digital systems, and more effective customer experiences.</p>
+            <p className="mt-4 leading-relaxed text-muted-foreground">Rooster’s Ridge Digital works with businesses, nonprofits, entrepreneurs, and organizations remotely to build better websites, stronger digital systems, and more effective customer experiences.</p>
             {profile.response_time && <p className="mt-4 text-sm text-muted-foreground">{profile.response_time}</p>}
           </div>
           <Button render={<a href="#checkup-form" />} size="lg" className="w-full sm:w-auto">

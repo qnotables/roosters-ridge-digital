@@ -12,22 +12,22 @@ import { servicePages } from '@/lib/service-pages'
 import { serviceCategories } from '@/data/industries'
 
 export const metadata: Metadata = {
-  title: 'Digital Services | Rooster Ridge Digital',
+  title: 'Digital Business Systems & Services | Rooster’s Ridge Digital',
   description:
-    'Web design and development, AI and automation, digital strategy, branding, troubleshooting, and custom digital projects from Rooster Ridge Digital.',
+    'Explore websites, lead-generation systems, CRM workflows, automation, dashboards, ecommerce, and custom digital business systems from Rooster’s Ridge Digital.',
   alternates: { canonical: `${siteUrl}/services` },
   openGraph: {
-    title: 'Digital Services | Rooster Ridge Digital',
-    description:
-      'Explore web development, AI automation, branding, digital strategy, troubleshooting, and custom digital services from Rooster Ridge Digital.',
+  title: 'Digital Business Systems & Services | Rooster’s Ridge Digital',
+  description:
+    'Explore websites, lead-generation systems, CRM workflows, automation, dashboards, ecommerce, and custom digital business systems from Rooster’s Ridge Digital.',
     url: `${siteUrl}/services`,
     images: [ogMetadata('services')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Digital Services | Rooster Ridge Digital',
-    description:
-      'Explore web development, AI automation, branding, digital strategy, troubleshooting, and custom digital services from Rooster Ridge Digital.',
+  title: 'Digital Business Systems & Services | Rooster’s Ridge Digital',
+  description:
+    'Explore websites, lead-generation systems, CRM workflows, automation, dashboards, ecommerce, and custom digital business systems from Rooster’s Ridge Digital.',
     images: [twitterImage('services')],
   },
 }
@@ -41,7 +41,7 @@ export default function ServicesPage() {
             eyebrow="What I do"
             as="h1"
             title="Digital work that moves a business forward"
-            description="Choose the kind of help you need, or start with a conversation if the problem is still taking shape. Rooster Ridge Digital works remotely with businesses and organizations across the United States."
+            description="Choose the kind of help you need, or start with a conversation if the problem is still taking shape. Rooster’s Ridge Digital works remotely with businesses and organizations across the United States."
           />
         </div>
       </section>

@@ -13,10 +13,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const industry = getIndustry(slug)
   if (!industry) return {}
   const focused = industry.slug === 'solar'
-    ? { title: 'Solar Website Design & Lead Generation Demo | Rooster Ridge Digital', description: 'Explore a solar lead generation website, qualification form, savings calculator, CRM pipeline, and follow-up workflow built as an interactive demo.' }
+    ? { title: 'Solar Website Design & Lead Generation Demo | Rooster’s Ridge Digital', description: 'Explore a solar lead generation website, qualification form, savings calculator, CRM pipeline, and follow-up workflow built as an interactive demo.' }
     : industry.slug === 'roofing'
-      ? { title: 'Roofing Website Design & Storm Damage Lead Demo | Rooster Ridge Digital', description: 'Explore a roofing lead generation website with inspection intake, damage photo uploads, estimate flow, job pipeline, and insurance workflow.' }
-      : { title: `${industry.name} Digital Systems Demo | Rooster Ridge Digital`, description: `${industry.subhead} Explore an interactive ${industry.name.toLowerCase()} website and workflow demo built by Rooster Ridge Digital.` }
+      ? { title: 'Roofing Website Design & Storm Damage Lead Demo | Rooster’s Ridge Digital', description: 'Explore a roofing lead generation website with inspection intake, damage photo uploads, estimate flow, job pipeline, and insurance workflow.' }
+      : { title: `${industry.name} Digital Systems Demo | Rooster’s Ridge Digital`, description: `${industry.subhead} Explore an interactive ${industry.name.toLowerCase()} website and workflow demo built by Rooster’s Ridge Digital.` }
   return { title: focused.title, description: focused.description, keywords: industry.slug === 'solar' ? ['solar website design', 'solar lead generation website', 'solar CRM website', 'solar sales funnel'] : industry.slug === 'roofing' ? ['roofing website design', 'roofing lead generation', 'roof inspection lead form', 'storm damage marketing website'] : undefined, alternates: { canonical: `${siteUrl}/industries/${industry.slug}` }, openGraph: { title: focused.title, description: focused.description, url: `${siteUrl}/industries/${industry.slug}` } }
 }
 

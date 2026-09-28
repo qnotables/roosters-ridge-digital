@@ -10,25 +10,24 @@ import './globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+    default: 'Rooster’s Ridge Digital | Digital Business Systems',
     template: '%s',
   },
-  description:
-    'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
+  description: siteConfig.description,
   applicationName: siteConfig.name,
   generator: 'v0.app',
   alternates: { canonical: siteUrl },
   openGraph: {
     type: 'website',
     siteName: siteConfig.name,
-    title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+    title: 'Rooster’s Ridge Digital | Web Design, Automation & Digital Solutions',
     description: siteConfig.description,
     url: siteUrl,
     images: [ogMetadata('home')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Rooster Ridge Digital | Web Design, Automation & Digital Solutions',
+    title: 'Rooster’s Ridge Digital | Web Design, Automation & Digital Solutions',
     description: siteConfig.description,
     images: [twitterImage('home')],
   },

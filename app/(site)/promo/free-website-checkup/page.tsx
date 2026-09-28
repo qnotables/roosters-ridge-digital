@@ -7,11 +7,11 @@ import { siteUrl, digitalCheckup } from '@/lib/site-config'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 
 export const metadata: Metadata = {
-  title: 'Free Website Checkup | Rooster Ridge Digital',
+  title: 'Free Website Checkup | Rooster’s Ridge Digital',
   description: 'Get a free review of your website covering mobile usability, design, speed, messaging, calls to action, and obvious technical issues.',
   alternates: { canonical: `${siteUrl}/promo/free-website-checkup` },
   openGraph: {
-    title: 'Free Website Checkup | Rooster Ridge Digital',
+    title: 'Free Website Checkup | Rooster’s Ridge Digital',
     description:
       'Get a free review of your website covering mobile usability, design, speed, messaging, calls to action, and obvious technical issues.',
     url: `${siteUrl}/promo/free-website-checkup`,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free Website Checkup | Rooster Ridge Digital',
+    title: 'Free Website Checkup | Rooster’s Ridge Digital',
     description:
       'Get a free review of your website covering mobile usability, design, speed, messaging, calls to action, and obvious technical issues.',
     images: [twitterImage('free-checkup')],

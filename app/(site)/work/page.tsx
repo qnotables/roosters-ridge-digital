@@ -10,21 +10,21 @@ import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { siteUrl } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Web Design & Digital Projects | Rooster Ridge Digital',
-  description: 'Explore websites, digital platforms, automation systems, branding projects, and custom technology work created by Rooster Ridge Digital.',
+  title: 'Web Design & Digital Projects | Rooster’s Ridge Digital',
+  description: 'Explore websites, digital platforms, automation systems, branding projects, and custom technology work created by Rooster’s Ridge Digital.',
   alternates: { canonical: `${siteUrl}/work` },
   openGraph: {
-    title: 'Web Design & Digital Projects | Rooster Ridge Digital',
+    title: 'Web Design & Digital Projects | Rooster’s Ridge Digital',
     description:
-      'See websites, digital platforms, automation systems, branding projects, and creative technology work built by Rooster Ridge Digital.',
+      'See websites, digital platforms, automation systems, branding projects, and creative technology work built by Rooster’s Ridge Digital.',
     url: `${siteUrl}/work`,
     images: [ogMetadata('work')],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Web Design & Digital Projects | Rooster Ridge Digital',
+    title: 'Web Design & Digital Projects | Rooster’s Ridge Digital',
     description:
-      'See websites, digital platforms, automation systems, branding projects, and creative technology work built by Rooster Ridge Digital.',
+      'See websites, digital platforms, automation systems, branding projects, and creative technology work built by Rooster’s Ridge Digital.',
     images: [twitterImage('work')],
   },
 }
@@ -62,14 +62,15 @@ export default async function WorkPage() {
     <>
       <section className="border-b border-border bg-card/40">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Selected work</p>
-          <h1 className="mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-6xl">Built. Shipped. Working.</h1>
-          <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">A selection of websites, platforms, digital systems, branding projects, and technical solutions built by Rooster Ridge Digital.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Real projects + interactive demos</p>
+          <h1 className="mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-6xl">Real Systems. Different Industries.</h1>
+          <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">Explore real projects alongside interactive industry demos that show lead generation, ecommerce, community platforms, payments, automation, admin systems, and custom workflows.</p>
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
         {projects.length > 0 ? <div className="flex flex-col gap-12">{featuredProjects.length > 0 && <div className="flex flex-col gap-8">{featuredProjects.map((project, index) => <ProjectSection key={project.id} project={project} index={index} />)}</div>}{internalProjects.length > 0 && <section className="flex flex-col gap-6 border-t border-border pt-10"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Built on our own system</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">How RRD uses its own systems</h2><p className="mt-2 max-w-2xl text-muted-foreground">Internal projects show the design, SEO, lead generation, automation, and content systems we use ourselves.</p></div><div className="flex flex-col gap-8">{internalProjects.map((project, index) => <ProjectSection key={project.id} project={project} index={index} />)}</div></section>}</div> : <div className="flex flex-col items-center gap-5 border border-dashed border-border bg-card/50 px-6 py-16 text-center"><Sparkles className="size-7 text-primary" aria-hidden="true" /><h2 className="text-xl font-semibold">Case studies are being prepared</h2><p className="max-w-lg text-muted-foreground">Real projects are being documented here now. We would rather publish verifiable work than fill this page with fabricated results.</p><Button render={<Link href="/quote" />}>Start a Project<ArrowRight data-icon="inline-end" /></Button></div>}
       </section>
+      <section className="border-y border-border bg-card/40"><div className="mx-auto max-w-6xl px-4 py-14 sm:px-6"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Interactive Industry Demos</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">See the systems in context</h2><p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">These examples are demonstrations created by Rooster&apos;s Ridge Digital, not customer projects or operating businesses.</p><Link href="/industries" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">Explore all industries <ArrowRight className="size-4" aria-hidden="true" /></Link></div></section>
       <CtaBand title="Need something like this built?" description="Tell me what you are trying to build, fix, or improve. We can start with the problem and work toward the right solution." primaryLabel="Start a Project" secondaryLabel="View Services" secondaryHref="/services" />
     </>
   )

@@ -22,9 +22,11 @@ export function SiteFooter() {
         <nav aria-label="Company" className="flex flex-col gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Company</h2>
           <Link href="/about" className="text-sm text-foreground/90 hover:text-primary">About</Link>
-          <Link href="/work" className="text-sm text-foreground/90 hover:text-primary">Work</Link>
+          <Link href="/work" className="text-sm text-foreground/90 hover:text-primary">Portfolio</Link>
+          <Link href="/industries" className="text-sm text-foreground/90 hover:text-primary">Industries</Link>
           <Link href="/services" className="text-sm text-foreground/90 hover:text-primary">Services</Link>
-          <Link href="/quote" className="text-sm text-foreground/90 hover:text-primary">Start a Project</Link>
+          <Link href="/free-checkup" className="text-sm text-foreground/90 hover:text-primary">Free Checkup</Link>
+          <Link href="/contact" className="text-sm text-foreground/90 hover:text-primary">Contact</Link>
         </nav>
 
         <nav aria-label="Services" className="flex flex-col gap-3">

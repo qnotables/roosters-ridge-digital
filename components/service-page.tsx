@@ -23,7 +23,7 @@ export async function ServicePageTemplate({ service }: { service: ServicePage })
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
           <div className="max-w-4xl">
             <div className="flex size-12 items-center justify-center rounded-md bg-primary/10 text-primary"><Icon aria-hidden="true" /></div>
-            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Rooster Ridge Digital service</p>
+            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Rooster’s Ridge Digital service</p>
             <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-6xl">{service.h1}</h1>
             <p className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-muted-foreground">{service.intro}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
