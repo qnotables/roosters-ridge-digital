@@ -34,11 +34,11 @@ export function SiteHeader() {
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
           {navLinks.map((link) => link.href === '/industries' ? (
             <div key={link.href} className="group relative">
-              <Link href="/industries" className={cn('inline-flex items-center gap-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors hover:text-primary', isActive(link.href) ? 'text-primary' : 'text-muted-foreground')}>{link.label}<ChevronDown className="size-3.5" aria-hidden="true" /></Link>
-              <div className="invisible absolute left-0 top-full z-50 mt-1 grid w-80 grid-cols-2 gap-1 rounded-md border border-border bg-popover p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{industries.map((industry) => <Link key={industry.slug} href={`/industries/${industry.slug}`} className="rounded-sm px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground">{industry.name}</Link>)}</div>
+              <Link href="/industries" className={cn('inline-flex items-center gap-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors hover:text-primary', isActive(link.href) ? 'text-primary' : 'text-foreground/80')}>{link.label}<ChevronDown className="size-3.5" aria-hidden="true" /></Link>
+              <div className="invisible absolute left-0 top-full z-50 mt-1 grid w-80 grid-cols-2 gap-1 rounded-md border border-border bg-popover p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{industries.map((industry) => <Link key={industry.slug} href={`/industries/${industry.slug}`} className="rounded-sm px-3 py-2 text-sm text-foreground/85 hover:bg-accent hover:text-foreground">{industry.name}</Link>)}</div>
             </div>
           ) : (
-            <Link key={link.href} href={link.href} className={cn('rounded-sm px-3 py-2 text-sm font-medium transition-colors hover:text-primary', isActive(link.href) ? 'text-primary' : 'text-muted-foreground')}>{link.label}</Link>
+            <Link key={link.href} href={link.href} className={cn('rounded-sm px-3 py-2 text-sm font-medium transition-colors hover:text-primary', isActive(link.href) ? 'text-primary' : 'text-foreground/80')}>{link.label}</Link>
           ))}
         </nav>
 
@@ -69,7 +69,7 @@ export function SiteHeader() {
               </Button>
             </div>
             <nav className="flex flex-col p-3" aria-label="Mobile">
-              {navLinks.map((link) => <div key={link.href} className="flex flex-col"> <Link href={link.href} onClick={() => setOpen(false)} className={cn('rounded-sm px-3 py-3 text-base font-medium transition-colors hover:bg-secondary', isActive(link.href) ? 'text-primary' : 'text-foreground')}>{link.label}</Link>{link.href === '/industries' && <div className="grid grid-cols-2 gap-1 px-3 pb-2">{industries.map((industry) => <Link key={industry.slug} href={`/industries/${industry.slug}`} onClick={() => setOpen(false)} className="py-1 text-xs text-muted-foreground hover:text-primary">{industry.name}</Link>)}</div>}</div>)}
+              {navLinks.map((link) => <div key={link.href} className="flex flex-col"> <Link href={link.href} onClick={() => setOpen(false)} className={cn('rounded-sm px-3 py-3 text-base font-medium transition-colors hover:bg-secondary', isActive(link.href) ? 'text-primary' : 'text-foreground')}>{link.label}</Link>{link.href === '/industries' && <div className="grid grid-cols-2 gap-1 px-3 pb-2">{industries.map((industry) => <Link key={industry.slug} href={`/industries/${industry.slug}`} onClick={() => setOpen(false)} className="py-1 text-xs text-foreground/80 hover:text-primary">{industry.name}</Link>)}</div>}</div>)}
               <Button render={<Link href="/quote" onClick={() => setOpen(false)} />} className="mt-3">
                 {siteConfig.cta.primary}
               </Button>
