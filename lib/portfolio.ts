@@ -1,7 +1,9 @@
 import 'server-only'
 import { sql } from '@/lib/db'
 
+import { projectCoverFit, projectCoverPosition } from '@/lib/portfolio-types'
 import type { PortfolioImage, PortfolioProject } from '@/lib/portfolio-types'
+export { projectCoverFit, projectCoverPosition } from '@/lib/portfolio-types'
 export type { PortfolioImage, PortfolioProject } from '@/lib/portfolio-types'
 
 /* Database-backed portfolio queries use the shared client-safe project shape. */

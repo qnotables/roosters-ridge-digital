@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
-type FocalPosition = 'center' | 'top' | 'bottom' | 'left' | 'right'
+import type { CoverFit, CoverPosition } from '@/lib/portfolio-types'
 
 type PortfolioCoverImageProps = {
   src: string
@@ -10,11 +10,11 @@ type PortfolioCoverImageProps = {
   sizes?: string
   className?: string
   imageClassName?: string
-  focalPosition?: FocalPosition
-  fillContainer?: boolean
+  fit?: CoverFit
+  position?: CoverPosition
 }
 
-const focalClasses: Record<FocalPosition, string> = {
+const focalClasses: Record<CoverPosition, string> = {
   center: 'object-center',
   top: 'object-top',
   bottom: 'object-bottom',
@@ -29,18 +29,18 @@ export function PortfolioCoverImage({
   sizes = '100vw',
   className,
   imageClassName,
-  focalPosition = 'center',
-  fillContainer = false,
+  fit = 'cover',
+  position = 'center',
 }: PortfolioCoverImageProps) {
   return (
-    <div className={cn('relative overflow-hidden bg-muted', fillContainer ? 'h-full min-h-0' : 'aspect-[16/10]', className)}>
+    <div className={cn('relative aspect-[16/9] w-full overflow-hidden border border-border/70 bg-muted', className)}>
       <Image
         src={src}
         alt={alt}
         fill
         priority={priority}
         sizes={sizes}
-        className={cn('object-cover', focalClasses[focalPosition], imageClassName)}
+        className={cn(fit === 'contain' ? 'object-contain' : 'object-cover', focalClasses[position], imageClassName)}
       />
     </div>
   )
