@@ -1,0 +1,18 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import { industries, industryIconMap } from '@/data/industries'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { siteUrl } from '@/lib/site-config'
+
+export const metadata: Metadata = { title: 'Industry Digital Systems | Rooster Ridge Digital', description: 'Explore interactive industry demos for solar, roofing, HVAC, electrical, landscaping, nonprofits, ecommerce, and professional services.', alternates: { canonical: `${siteUrl}/industries` } }
+
+export default function IndustriesPage() {
+  return <>
+    <section className="border-b border-border bg-card/40"><div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24"><Badge variant="outline">Interactive industry demos</Badge><h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">Built for your industry. Designed around how your business actually works.</h1><p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">Explore interactive examples built around the workflows, customers, and sales processes of different industries. Every system can be customized to fit your business rather than forcing your business into a generic template.</p><div className="mt-8 flex flex-wrap gap-3"><Button render={<Link href="/quote" />}>Talk through your workflow <ArrowRight data-icon="inline-end" /></Button><Button render={<Link href="/services" />} variant="outline">Explore services</Button></div></div></section>
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20"><div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">{industries.map((industry) => { const Icon = industryIconMap[industry.iconName]; return <Card key={industry.slug} className="group flex flex-col bg-card/70 transition-colors hover:border-primary/60"><CardHeader><div className="flex items-center justify-between"><span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary"><Icon aria-hidden="true" /></span><span className="font-mono text-xs text-muted-foreground">Demo</span></div><CardTitle className="pt-2">{industry.name}</CardTitle></CardHeader><CardContent className="flex flex-1 flex-col gap-4"><p className="text-sm leading-relaxed text-muted-foreground">{industry.description}</p><div className="flex flex-wrap gap-1.5">{industry.features.slice(0, 3).map((feature) => <Badge key={feature} variant="secondary" className="font-normal">{feature}</Badge>)}</div><Button render={<Link href={`/industries/${industry.slug}`} />} variant="outline" className="mt-auto w-full">View interactive demo <ArrowRight data-icon="inline-end" /></Button></CardContent></Card> })}</div></section>
+    <section className="border-y border-border bg-card/40"><div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-14 sm:px-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">More than a website</p><h2 className="mt-2 text-2xl font-semibold">Connect the front end to the work behind it.</h2><p className="mt-2 max-w-xl text-sm text-muted-foreground">Lead capture, scheduling, payments, dashboards, automation, and customer communication can operate as one considered system.</p></div><Button render={<Link href="/free-checkup" />} variant="outline">Get a free digital checkup</Button></div></section>
+  </>
+}

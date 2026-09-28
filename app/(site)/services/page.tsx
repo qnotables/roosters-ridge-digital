@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { packages, secondaryServices, services, siteConfig, siteUrl } from '@/lib/site-config'
 import { servicePages } from '@/lib/service-pages'
+import { serviceCategories } from '@/data/industries'
 
 export const metadata: Metadata = {
   title: 'Digital Services | Rooster Ridge Digital',
@@ -65,6 +66,8 @@ export default function ServicesPage() {
           })}
         </div>
       </section>
+
+      <section className="border-y border-border bg-card/40"><div className="mx-auto max-w-6xl px-4 py-14 sm:px-6"><SectionHeading eyebrow="Connected systems" title="More than a website" description="Combine the pieces that fit your business: lead generation, operations, customer communication, and reporting." /><div className="mt-8 flex flex-wrap gap-2.5">{serviceCategories.map((category) => <Badge key={category} variant="secondary" className="px-3 py-1.5 font-normal">{category}</Badge>)}</div></div></section>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-16 sm:px-6">
         {services.map((service, index) => (

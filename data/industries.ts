@@ -1,170 +1,41 @@
-import type { LucideIcon } from 'lucide-react'
-import {
-  BriefcaseBusiness,
-  Building2,
-  Cable,
-  CreditCard,
-  Flower2,
-  Flame,
-  HeartHandshake,
-  Home,
-  ShoppingBag,
-  Snowflake,
-  Sparkles,
-  Sun,
-  Zap,
-} from 'lucide-react'
+import { AirVent, Calculator, CircuitBoard, Flower2, HeartHandshake, House, ShoppingBag, UserRound, type LucideIcon } from 'lucide-react'
 
-export type IndustryLayout = 'solar' | 'roofing' | 'hvac' | 'electrical' | 'landscaping' | 'nonprofit' | 'ecommerce' | 'professional-services'
+export type IndustryIconName = 'calculator' | 'house' | 'air-vent' | 'circuit-board' | 'flower-2' | 'heart-handshake' | 'shopping-bag' | 'user-round'
+export const industryIconMap: Record<IndustryIconName, LucideIcon> = { calculator: Calculator, house: House, 'air-vent': AirVent, 'circuit-board': CircuitBoard, 'flower-2': Flower2, 'heart-handshake': HeartHandshake, 'shopping-bag': ShoppingBag, 'user-round': UserRound }
+
+export type IndustryVariant = 'solar' | 'roofing' | 'hvac' | 'electrical' | 'landscaping' | 'nonprofit' | 'ecommerce' | 'professional-services'
 
 export type Industry = {
-  slug: IndustryLayout
+  slug: IndustryVariant
   name: string
-  shortName: string
-  icon: LucideIcon
-  accent: string
+  iconName: IndustryIconName
   description: string
   hero: string
-  heroDescription: string
+  subhead: string
   cta: string
   services: string[]
-  capabilities: string[]
+  features: string[]
   proof: string[]
-  demoLabel: string
-  formTitle: string
-  formFields: string[]
-  workflow: { label: string; value: string; detail: string }[]
-  faqs: { question: string; answer: string }[]
+  variant: IndustryVariant
+  formLabel: string
+  workflow: string[]
 }
 
 export const industries: Industry[] = [
-  {
-    slug: 'solar', name: 'Solar', shortName: 'Solar', icon: Sun, accent: 'from-amber-400/25 via-orange-500/10 to-background',
-    description: 'Turn curiosity about solar into qualified consultations, savings conversations, and booked appointments.',
-    hero: 'Make the next energy decision feel simple.',
-    heroDescription: 'A conversion-focused solar system that helps homeowners and commercial buyers understand their options, estimate savings, and take the next step without guesswork.',
-    cta: 'See If Your Home Qualifies', services: ['Residential solar', 'Commercial solar', 'Battery storage', 'EV charger integration'],
-    capabilities: ['Savings estimate interface', 'Electric bill upload', 'Residential / commercial routing', 'Financing and battery education', 'Service-area lookup', 'Automated follow-up'],
-    proof: ['Lead capture built around utility costs', 'Appointment booking connected to qualification', 'Referral partner intake for local growth'],
-    demoLabel: 'Interactive solar demo', formTitle: 'See what your solar lead flow could look like', formFields: ['Street address', 'Monthly electric bill', 'Residential or commercial'],
-    workflow: [{ label: 'New inquiry', value: '18', detail: 'This week' }, { label: 'Qualified', value: '62%', detail: 'After bill review' }, { label: 'Appointments', value: '11', detail: 'Booked automatically' }],
-    faqs: [{ question: 'Can this connect to an existing CRM?', answer: 'Yes. The qualification flow can send structured lead data to the CRM, calendar, email, or reporting system you already use.' }, { question: 'Can commercial and residential leads be separated?', answer: 'Yes. The selector can route each lead into different forms, pipelines, follow-up sequences, and sales owners.' }],
-  },
-  {
-    slug: 'roofing', name: 'Roofing', shortName: 'Roofing', icon: Home, accent: 'from-slate-400/25 via-red-500/10 to-background',
-    description: 'Build trust after the storm with fast inspection requests, photo intake, financing, and claim-ready follow-up.',
-    hero: 'When the roof is urgent, the next step should be obvious.',
-    heroDescription: 'A storm-restoration experience designed for homeowners who need answers quickly and contractors who need a clean path from damage photo to scheduled inspection.',
-    cta: 'Request Free Roof Inspection', services: ['Storm damage inspections', 'Roof replacement', 'Insurance claim assistance', 'Emergency repairs'],
-    capabilities: ['Photo upload intake', 'Residential / commercial routing', 'Before-and-after proof gallery', 'Insurance claim education', 'Emergency repair CTA', 'Inspection scheduling'],
-    proof: ['Mobile-first storm lead capture', 'Project photos organized before the first call', 'Financing and service-area content in context'],
-    demoLabel: 'Interactive roofing demo', formTitle: 'Request a free roof inspection', formFields: ['Property address', 'Upload damage photos', 'Type of help needed'],
-    workflow: [{ label: 'New storm lead', value: '24', detail: 'Last 7 days' }, { label: 'Photos received', value: '79%', detail: 'Before first call' }, { label: 'Inspections', value: '14', detail: 'On the calendar' }],
-    faqs: [{ question: 'Can customers upload photos from their phone?', answer: 'Yes. The form can accept multiple photos and route the request with the property address and urgency level.' }, { question: 'Can the site explain insurance claims?', answer: 'Yes. Educational content can be placed beside the request flow without promising coverage or outcomes.' }],
-  },
-  {
-    slug: 'hvac', name: 'HVAC', shortName: 'HVAC', icon: Snowflake, accent: 'from-sky-400/25 via-cyan-500/10 to-background',
-    description: 'Give homeowners a faster path to emergency service, maintenance plans, replacements, and seasonal offers.',
-    hero: 'Comfort starts with a faster service request.',
-    heroDescription: 'An HVAC experience built around urgency and repeat business: route the emergency call, book the maintenance visit, and make the replacement decision easier.',
-    cta: 'Schedule HVAC Service', services: ['Heating service', 'Cooling service', 'Equipment replacement', 'Maintenance plans'],
-    capabilities: ['Emergency service banner', 'Service and replacement routing', 'Seasonal promotion blocks', 'Maintenance plan enrollment', 'Service-area lookup', 'Appointment booking'],
-    proof: ['Urgency-aware contact paths', 'Seasonal campaigns without rebuilding the site', 'Repeat-service reminders and plan visibility'],
-    demoLabel: 'Interactive HVAC demo', formTitle: 'Schedule service or request a replacement quote', formFields: ['Service address', 'Heating or cooling', 'Preferred appointment window'],
-    workflow: [{ label: 'Open requests', value: '32', detail: 'Today' }, { label: 'Maintenance plans', value: '+18%', detail: 'This season' }, { label: 'Booked slots', value: '86%', detail: 'Calendar fill' }],
-    faqs: [{ question: 'Can emergency and routine requests be separated?', answer: 'Yes. The first action can route emergency service to a call-first path and routine work to scheduling.' }, { question: 'Can seasonal promotions be updated?', answer: 'Yes. Promotions are structured content blocks that can be swapped without redesigning the core experience.' }],
-  },
-  {
-    slug: 'electrical', name: 'Electrical', shortName: 'Electrical', icon: Zap, accent: 'from-yellow-300/25 via-violet-500/10 to-background',
-    description: 'Turn technical services into clear next steps for panels, generators, EV chargers, and urgent repairs.',
-    hero: 'Make complex electrical work easier to understand.',
-    heroDescription: 'A focused electrical contractor experience that separates emergencies from planned upgrades and turns technical questions into qualified quote requests.',
-    cta: 'Request Electrical Service', services: ['Electrical repairs', 'EV charger installation', 'Generator installation', 'Panel upgrades'],
-    capabilities: ['Emergency electrical CTA', 'Panel upgrade assessment', 'EV charger education', 'Generator quote flow', 'Residential / commercial routing', 'Financing prompts'],
-    proof: ['Service-specific qualification', 'Clear explanations for high-consideration work', 'Appointment and quote paths that share one lead record'],
-    demoLabel: 'Interactive electrical demo', formTitle: 'Tell us what you need help with', formFields: ['Project address', 'Service type', 'Describe the issue'],
-    workflow: [{ label: 'Service requests', value: '41', detail: 'This month' }, { label: 'Quote-ready', value: '54%', detail: 'Qualified leads' }, { label: 'EV inquiries', value: '23', detail: 'New demand' }],
-    faqs: [{ question: 'Can a form handle multiple service types?', answer: 'Yes. The request path can adapt based on whether the visitor needs emergency service, an upgrade, or a new installation.' }, { question: 'Can visitors book online?', answer: 'Yes. Booking can be limited to the service types and areas your team is ready to schedule.' }],
-  },
-  {
-    slug: 'landscaping', name: 'Landscaping', shortName: 'Landscaping', icon: Flower2, accent: 'from-emerald-300/25 via-lime-500/10 to-background',
-    description: 'Show the work, capture the vision, and turn seasonal interest into qualified outdoor projects.',
-    hero: 'Let the work sell the next outdoor project.',
-    heroDescription: 'A visual landscaping experience that pairs project galleries and before-and-after proof with a quote request flow built for photos, service areas, and seasonal demand.',
-    cta: 'Request a Landscape Quote', services: ['Landscape design', 'Lawn care', 'Outdoor living', 'Seasonal services'],
-    capabilities: ['Before-and-after gallery', 'Project photo uploads', 'Maintenance plan options', 'Seasonal service campaigns', 'Design consultation booking', 'Service-area display'],
-    proof: ['Visual proof before the first conversation', 'Photo-led project qualification', 'Recurring maintenance opportunities surfaced naturally'],
-    demoLabel: 'Interactive landscaping demo', formTitle: 'Start your outdoor project', formFields: ['Project address', 'What are you imagining?', 'Upload project photos'],
-    workflow: [{ label: 'Quote requests', value: '27', detail: 'This month' }, { label: 'Design consults', value: '9', detail: 'Booked' }, { label: 'Maintenance plans', value: '34%', detail: 'Of new clients' }],
-    faqs: [{ question: 'Can visitors send photos of the space?', answer: 'Yes. Photo intake helps the team understand the property before the consultation and creates a better first conversation.' }, { question: 'Can recurring services be promoted?', answer: 'Yes. Maintenance plans and seasonal services can be displayed as clear options alongside project work.' }],
-  },
-  {
-    slug: 'nonprofit', name: 'Nonprofit', shortName: 'Nonprofit', icon: HeartHandshake, accent: 'from-rose-300/25 via-fuchsia-500/10 to-background',
-    description: 'Connect mission, programs, volunteers, donors, and community stories in one welcoming digital front door.',
-    hero: 'Make it easier for people to join the mission.',
-    heroDescription: 'A mission-driven platform that helps supporters donate, volunteer, register for events, find resources, and understand the impact of their involvement.',
-    cta: 'See the Nonprofit Demo', services: ['Donation journeys', 'Volunteer signup', 'Program directories', 'Events and newsletters'],
-    capabilities: ['Impact statistics', 'Donation and payment integration', 'Volunteer intake', 'Event registration', 'Resource directory', 'Partner and sponsor area'],
-    proof: ['Mission-first storytelling', 'Supporter actions connected to follow-up', 'Program content structured for easy updates'],
-    demoLabel: 'Interactive nonprofit demo', formTitle: 'Find your way to help', formFields: ['I want to', 'Name and email', 'How can we connect?'],
-    workflow: [{ label: 'New supporters', value: '126', detail: 'This quarter' }, { label: 'Volunteer forms', value: '43', detail: 'Ready to match' }, { label: 'Events', value: '6', detail: 'Upcoming' }],
-    faqs: [{ question: 'Can donations and volunteer signups live together?', answer: 'Yes. Different supporter actions can share one consistent experience while routing to the right follow-up.' }, { question: 'Can staff update programs?', answer: 'The platform can be structured with editable program, event, story, and resource content for future administration.' }],
-  },
-  {
-    slug: 'ecommerce', name: 'Ecommerce', shortName: 'Ecommerce', icon: ShoppingBag, accent: 'from-purple-300/25 via-indigo-500/10 to-background',
-    description: 'Create a storefront that makes products easy to discover, buy, reorder, and recommend.',
-    hero: 'Turn product discovery into a better buying experience.',
-    heroDescription: 'A mobile-first ecommerce storefront concept with collections, variants, cart flows, upsells, reviews, inventory visibility, and automated customer follow-up.',
-    cta: 'Explore the Storefront Demo', services: ['Product storefronts', 'Collections and variants', 'Checkout flows', 'Retention automation'],
-    capabilities: ['Product showcase', 'Cart and checkout preview', 'Upsell sections', 'Subscription examples', 'Inventory preview', 'Abandoned-cart workflow'],
-    proof: ['Mobile-first shopping patterns', 'Product data built for growth', 'Customer communication connected to purchase behavior'],
-    demoLabel: 'Interactive ecommerce demo', formTitle: 'See how a storefront can work harder', formFields: ['What do you sell?', 'Current platform', 'Growth goal'],
-    workflow: [{ label: 'Products', value: '248', detail: 'In catalog' }, { label: 'Cart recovery', value: '31%', detail: 'Automation target' }, { label: 'Repeat buyers', value: '42%', detail: 'Retention view' }],
-    faqs: [{ question: 'Can this connect to an existing catalog?', answer: 'Yes. The storefront can be designed around an existing ecommerce platform or a custom product system.' }, { question: 'Can subscriptions be supported?', answer: 'Subscription and recurring purchase flows can be included when they fit the product and platform.' }],
-  },
-  {
-    slug: 'professional-services', name: 'Professional Services', shortName: 'Professional Services', icon: BriefcaseBusiness, accent: 'from-blue-300/25 via-slate-500/10 to-background',
-    description: 'Turn expertise into a clear consultation path with proof, team visibility, client intake, and organized follow-up.',
-    hero: 'Make expertise easier to trust and easier to hire.',
-    heroDescription: 'A professional services platform for consultants, accountants, attorneys, agencies, and other experts who need a credible path from first question to qualified consultation.',
-    cta: 'Book a Consultation', services: ['Consultation booking', 'Service positioning', 'Client portals', 'Lead and document intake'],
-    capabilities: ['Services and team profiles', 'Case study cards', 'Consultation booking', 'Document upload', 'Client portal preview', 'CRM automation'],
-    proof: ['Trust-building content hierarchy', 'Lead intake that respects expertise and time', 'Client communications organized around the relationship'],
-    demoLabel: 'Interactive professional services demo', formTitle: 'Start with the right conversation', formFields: ['What do you need help with?', 'Preferred consultation type', 'Brief project context'],
-    workflow: [{ label: 'Consultation requests', value: '19', detail: 'This week' }, { label: 'Qualified leads', value: '71%', detail: 'After intake' }, { label: 'Portal users', value: '84', detail: 'Active clients' }],
-    faqs: [{ question: 'Can different services have different intake forms?', answer: 'Yes. The site can ask only the questions relevant to the service selected and route the request to the right person.' }, { question: 'Can clients access documents securely?', answer: 'A client portal can be designed as part of a larger authenticated platform with role-based access.' }],
-  },
+  { slug: 'solar', name: 'Solar & Energy', iconName: 'calculator', description: 'Qualification, savings estimates, financing, and follow-up built into one clean journey.', hero: 'Turn curiosity into qualified solar conversations.', subhead: 'A conversion-focused solar experience that helps homeowners understand savings, storage, and the next step before a sales call.', cta: 'See If You Qualify', services: ['Residential solar', 'Battery storage', 'EV charging', 'Commercial energy'], features: ['Savings estimate', 'Bill upload', 'Financing paths', 'Lead dashboard'], proof: ['Qualification form', 'Automated follow-up', 'Service area lookup'], variant: 'solar', formLabel: 'See what your home could save', workflow: ['New inquiry captured', 'Bill and address reviewed', 'Appointment invitation sent'] },
+  { slug: 'roofing', name: 'Roofing & Restoration', iconName: 'house', description: 'Storm-ready lead capture, inspection scheduling, photo intake, and claim support.', hero: 'Own the moment after the storm.', subhead: 'A roofing demo designed around urgency, trust, and the details crews need before the first inspection.', cta: 'Request a Free Inspection', services: ['Roof replacement', 'Storm restoration', 'Emergency repair', 'Insurance support'], features: ['Photo upload', 'Inspection scheduler', 'Before & after gallery', 'Financing options'], proof: ['Residential / commercial switch', 'Service area finder', 'Claim intake workflow'], variant: 'roofing', formLabel: 'Start your roof inspection request', workflow: ['Damage request received', 'Photos routed to the team', 'Inspection time confirmed'] },
+  { slug: 'hvac', name: 'HVAC', iconName: 'air-vent', description: 'Fast service booking, maintenance plans, replacement quotes, and seasonal campaigns.', hero: 'Make comfort easier to schedule.', subhead: 'A practical HVAC experience that routes emergencies quickly and turns seasonal demand into recurring service.', cta: 'Schedule HVAC Service', services: ['Heating repair', 'AC installation', 'Maintenance plans', 'Indoor air quality'], features: ['Emergency banner', 'Service selector', 'Maintenance plan cards', 'Seasonal offer'], proof: ['Appointment booking', 'Replacement quote', 'Residential / commercial switch'], variant: 'hvac', formLabel: 'Find the right HVAC next step', workflow: ['Service need selected', 'Availability matched', 'Confirmation and reminders sent'] },
+  { slug: 'electrical', name: 'Electrical', iconName: 'circuit-board', description: 'Quote requests for panels, generators, EV chargers, and everyday electrical work.', hero: 'Make complex electrical work feel clear.', subhead: 'A confident electrical contractor demo that turns technical services into understandable choices and booked estimates.', cta: 'Request an Electrical Quote', services: ['Panel upgrades', 'Generators', 'EV chargers', 'Electrical repairs'], features: ['Project assessment', 'Emergency CTA', 'Financing section', 'Service area lookup'], proof: ['Residential / commercial switch', 'Quote workflow', 'Review capture'], variant: 'electrical', formLabel: 'Tell us what you need powered', workflow: ['Project details submitted', 'Scope reviewed by the team', 'Quote appointment offered'] },
+  { slug: 'landscaping', name: 'Landscaping', iconName: 'flower-2', description: 'Visual project intake for lawn care, outdoor design, seasonal work, and maintenance.', hero: 'Show the transformation before the estimate.', subhead: 'A visual landscaping experience that makes it easy to share a project idea, browse services, and book a design conversation.', cta: 'Plan Your Outdoor Space', services: ['Landscape design', 'Lawn care', 'Hardscaping', 'Seasonal cleanup'], features: ['Project photo upload', 'Before & after gallery', 'Maintenance plans', 'Design consultation'], proof: ['Visual portfolio', 'Seasonal services', 'Quote request'], variant: 'landscaping', formLabel: 'Start a project conversation', workflow: ['Project photos received', 'Scope and style reviewed', 'Design consultation booked'] },
+  { slug: 'nonprofit', name: 'Nonprofit', iconName: 'heart-handshake', description: 'Mission storytelling, donations, volunteers, events, and community resources in one place.', hero: 'Give your mission more ways to move people.', subhead: 'A mission-first platform that makes impact visible and gives supporters a clear way to donate, volunteer, or show up.', cta: 'Explore the Mission Flow', services: ['Programs', 'Events', 'Volunteer intake', 'Donations'], features: ['Impact statistics', 'Story cards', 'Event registration', 'Resource directory'], proof: ['Donor journey', 'Partner area', 'Newsletter capture'], variant: 'nonprofit', formLabel: 'Connect with the organization', workflow: ['Supporter chooses a path', 'Interest is routed', 'Follow-up keeps the relationship moving'] },
+  { slug: 'ecommerce', name: 'Ecommerce', iconName: 'shopping-bag', description: 'A focused storefront system for products, subscriptions, checkout, retention, and inventory.', hero: 'Make the path from browse to buy feel inevitable.', subhead: 'A storefront demo that treats merchandising, checkout, retention, and operations as one connected experience.', cta: 'Shop the Demo Store', services: ['Product catalog', 'Subscriptions', 'Upsells', 'Inventory'], features: ['Variant selector', 'Cart preview', 'Review rail', 'Abandoned cart flow'], proof: ['Mobile-first storefront', 'Checkout preview', 'Inventory view'], variant: 'ecommerce', formLabel: 'Join the product list', workflow: ['Product viewed', 'Cart intent recognized', 'Helpful follow-up delivered'] },
+  { slug: 'professional-services', name: 'Professional Services', iconName: 'user-round', description: 'Consultation booking, case studies, team expertise, client portals, and document workflows.', hero: 'Turn expertise into a clearer client journey.', subhead: 'A composed professional services experience that builds trust early and makes it simple to book the right conversation.', cta: 'Book a Consultation', services: ['Consulting', 'Advisory', 'Legal', 'Accounting'], features: ['Consultation booking', 'Team profiles', 'Client portal preview', 'Document intake'], proof: ['Case study cards', 'FAQ', 'CRM workflow'], variant: 'professional-services', formLabel: 'Find the right conversation', workflow: ['Inquiry categorized', 'Consultation matched', 'Documents and reminders organized'] },
 ]
-
-export const industryBySlug = Object.fromEntries(industries.map((industry) => [industry.slug, industry])) as Record<IndustryLayout, Industry>
-
-export const industryIconMap: Record<string, LucideIcon> = { Sun, Home, Snowflake, Zap, Flower2, HeartHandshake, ShoppingBag, BriefcaseBusiness, Building2, Cable, CreditCard, Flame, Sparkles }
 
 export function getIndustry(slug: string) {
   return industries.find((industry) => industry.slug === slug)
 }
 
-export function getIndustryMetadata(industry: Industry) {
-  return {
-    title: `${industry.name} Website & Business Systems Demo | Rooster's Ridge Digital`,
-    description: `${industry.heroDescription} Explore an interactive ${industry.name.toLowerCase()} industry demo from Rooster's Ridge Digital.`,
-  }
-}
+export const industrySlugs = industries.map(({ slug }) => ({ slug }))
 
-export function getIndustryHref(slug: IndustryLayout) {
-  return `/industries/${slug}`
-}
-
-export function getIndustryIcon(name: string) {
-  return industryIconMap[name] ?? Sparkles
-}
-
-export const industryDemoNotice = 'This is an interactive demonstration created by Rooster's Ridge Digital.'
-export const industryIndexIcons = [Sun, Home, Snowflake, Zap, Flower2, HeartHandshake, ShoppingBag, BriefcaseBusiness]
-export const industryCategoryIcons = { service: Cable, workflow: CreditCard, demo: Sparkles, urgent: Flame }
-export type IndustryIconName = keyof typeof industryCategoryIcons
-export type IndustryAccent = Industry['accent']
-export type IndustryFeature = { title: string; detail: string; icon?: LucideIcon }
-export type IndustrySection = { heading: string; description: string; features: IndustryFeature[] }
-export type IndustryNavigation = { label: string; href: string }
-export type IndustryContent = Industry
+export const serviceCategories = ['Website Design & Development', 'Lead Generation Systems', 'CRM & Lead Management', 'Business Automation', 'Appointment & Scheduling Systems', 'Ecommerce', 'Payment Integration', 'Custom Dashboards', 'Client Portals', 'SEO & Local Search', 'Email Automation', 'API Integrations', 'AI-Assisted Business Tools', 'Analytics & Reporting']
