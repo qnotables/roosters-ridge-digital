@@ -39,6 +39,13 @@ export function SiteFooter() {
           <Link href="/promotions" className="text-sm text-foreground/90 hover:text-primary">Current Promotions</Link>
           <Link href="/free-checkup" className="text-sm text-foreground/90 hover:text-primary">Free Website Checkup</Link>
           <Link href="/privacy" className="text-sm text-foreground/90 hover:text-primary">Privacy</Link>
+          <div className="mt-2 w-fit self-end rounded-md border border-border/70 bg-background/60 p-1.5">
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/vETERAN%20OWNED-KSW6ud6YG4Qcrtylew6Yq7BjpUQ5aP.png"
+              alt="Veteran owned business"
+              className="h-14 w-24 object-contain"
+            />
+          </div>
         </nav>
       </div>
 
