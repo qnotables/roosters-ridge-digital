@@ -19,7 +19,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 overflow-visible border-b border-border/80 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Link href="/" className="relative z-10 flex items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RRD-StiLEzpyP4LWOeF3YpoZXsnGz7Ykqe.png"
             alt="Rooster's Ridge Digital"
