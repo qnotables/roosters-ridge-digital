@@ -55,7 +55,7 @@
   --secondary-foreground: oklch(0.96 0.006 90);
 
   --muted: oklch(0.27 0.024 264);
-  --muted-foreground: oklch(0.72 0.02 262);
+  --muted-foreground: oklch(0.80 0.018 262);
 
   /* Restrained electric-blue secondary accent */
   --accent: oklch(0.62 0.17 252);
@@ -64,9 +64,9 @@
   --destructive: oklch(0.62 0.2 25);
   --destructive-foreground: oklch(0.97 0.01 90);
 
-  --border: oklch(0.34 0.02 264);
-  --input: oklch(0.34 0.02 264);
-  --ring: oklch(0.74 0.15 58);
+  --border: oklch(0.42 0.022 264);
+  --input: oklch(0.44 0.022 264);
+  --ring: oklch(0.82 0.15 72);
 
   --radius: 0.25rem;
 }
@@ -77,6 +77,16 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  ::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
   }
 }
 
