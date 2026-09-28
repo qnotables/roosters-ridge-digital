@@ -27,9 +27,7 @@ export function Hero() {
           </span>
 
           <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-5xl">
-            <span className="block whitespace-nowrap">Websites are</span>
-            <span className="block whitespace-nowrap">just the beginning.</span>
-            <span className="block whitespace-nowrap text-primary">Build what comes next.</span>
+            <span className="block">Websites Are Just the Beginning.</span>
           </h1>
 
           <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
@@ -37,8 +35,8 @@ export function Hero() {
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button render={<Link href="/industries" onClick={() => trackEvent('hero_estimate_clicked')} />} size="lg">Explore Industry Demos <ArrowRight data-icon="inline-end" /></Button>
-            <Button render={<Link href="/free-checkup" />} size="lg" variant="outline">Get a Free Digital Checkup</Button>
+            <Button render={<Link href="/industries" onClick={() => trackEvent('explore_industry_demos_clicked')} />} size="lg">Explore Industry Demos <ArrowRight data-icon="inline-end" /></Button>
+            <Button render={<Link href="/free-checkup" onClick={() => trackEvent('free_checkup_clicked')} />} size="lg" variant="outline">Get a Free Digital Checkup</Button>
           </div>
 
           <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 sm:max-w-md">

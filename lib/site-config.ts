@@ -85,10 +85,10 @@ export type SocialLink = {
 export const siteConfig = {
   name: "Rooster's Ridge Digital",
   shortName: "Rooster's Ridge",
-  tagline: 'Websites • Branding • Content • Creative Services',
+  tagline: 'Websites • Lead Generation • Automation • Custom Business Systems',
   domain: 'roostersridgedigital.com',
   description:
-    'Rooster Ridge Digital helps businesses with web design, AI automation, digital strategy, branding, and custom technology solutions.',
+    'Rooster’s Ridge Digital builds websites, lead-generation systems, automation, dashboards, ecommerce platforms, and custom digital business systems.',
 
   /* Public contact settings — edit freely. Leave blank to hide. */
   contact: {
@@ -336,9 +336,26 @@ export const navLinks = [
   { href: '/services', label: 'Services' },
   { href: '/industries', label: 'Industries' },
   { href: '/work', label: 'Portfolio' },
+  { href: '/free-checkup', label: 'Free Checkup' },
   { href: '/about', label: 'About' },
   { href: '/contact', label: 'Contact' },
 ]
+
+export const industryOptions = ['Solar', 'Roofing', 'HVAC', 'Electrical', 'Landscaping', 'Retail / Ecommerce', 'Nonprofit', 'Professional Services', 'Home Services', 'Other'] as const
+
+export const checkupGoalOptions = [
+  'Generate more leads',
+  'Book more appointments',
+  'Improve local search visibility',
+  'Automate follow-up',
+  'Manage customers or leads',
+  'Sell products online',
+  'Improve an outdated website',
+  'Create a client portal or dashboard',
+  'Connect existing systems',
+  'Build something custom',
+  'Not sure yet',
+] as const
 
 export const leadStatuses = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Closed'] as const
 

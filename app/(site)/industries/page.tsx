@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { siteUrl } from '@/lib/site-config'
 
-export const metadata: Metadata = { title: 'Industry Digital Systems | Rooster Ridge Digital', description: 'Explore interactive industry demos for solar, roofing, HVAC, electrical, landscaping, nonprofits, ecommerce, and professional services.', alternates: { canonical: `${siteUrl}/industries` } }
+export const metadata: Metadata = { title: 'Industry Digital Systems | Rooster’s Ridge Digital', description: 'Explore interactive industry demos for solar, roofing, HVAC, electrical, landscaping, nonprofits, ecommerce, and professional services.', alternates: { canonical: `${siteUrl}/industries` } }
 
 export default function IndustriesPage() {
   return <>

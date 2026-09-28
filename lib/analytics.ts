@@ -5,6 +5,10 @@ import { track } from '@vercel/analytics'
 /** Named conversion events tracked across the funnel. */
 export type ConversionEvent =
   | 'hero_estimate_clicked'
+  | 'explore_industry_demos_clicked'
+  | 'industry_demo_clicked'
+  | 'free_checkup_clicked'
+  | 'build_something_like_this_clicked'
   | 'services_viewed'
   | 'service_estimate_requested'
   | 'checkup_form_started'

@@ -13,8 +13,9 @@ import {
 } from '@/lib/leads'
 import {
   budgetOptions,
-  concernOptions,
+  checkupGoalOptions,
   contactMethods,
+  industryOptions,
   services as allServices,
   timelineOptions,
 } from '@/lib/site-config'
@@ -241,7 +242,8 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
   const email = sanitize(formData.get('email'), 200)
   const businessName = sanitize(formData.get('businessName'), 150)
   const websiteUrl = sanitizeUrl(formData.get('websiteUrl'))
-  const primaryConcern = sanitize(formData.get('primaryConcern'), 80)
+  const industry = sanitize(formData.get('industry'), 80)
+  const primaryConcern = sanitize(formData.get('primaryConcern'), 100)
   const consent = formData.get('consent') === 'on'
 
   const errors: Record<string, string> = {}
@@ -249,8 +251,10 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
   if (!email) errors.email = 'Please enter your email address.'
   else if (!isValidEmail(email)) errors.email = 'Please enter a valid email address.'
   if (!businessName) errors.businessName = 'Please enter your business name.'
-  if (!primaryConcern) errors.primaryConcern = 'Please choose your primary area of concern.'
-  else if (!concernOptions.includes(primaryConcern)) errors.primaryConcern = 'Please choose a valid option.'
+  if (!industry) errors.industry = 'Please choose your industry.'
+  else if (!industryOptions.includes(industry as (typeof industryOptions)[number])) errors.industry = 'Please choose a valid industry.'
+  if (!primaryConcern) errors.primaryConcern = 'Please choose what you would like to improve.'
+  else if (!checkupGoalOptions.includes(primaryConcern as (typeof checkupGoalOptions)[number])) errors.primaryConcern = 'Please choose a valid option.'
   if (!consent) errors.consent = 'Please confirm you agree to be contacted about your request.'
 
   if (Object.keys(errors).length > 0) {
@@ -276,7 +280,10 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
     primaryConcern,
     sourcePage: sanitize(formData.get('sourcePage'), 120) || '/free-checkup',
     utm: readUtm(formData),
-    trackingMetadata: readTrackingMetadata(formData),
+    trackingMetadata: {
+      ...(readTrackingMetadata(formData) ?? {}),
+      industry,
+    },
   })
 
   if (!stored) {

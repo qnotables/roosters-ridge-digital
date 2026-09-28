@@ -1,10 +1,10 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { ClipboardCheck, Loader2 } from 'lucide-react'
 import { submitCheckup } from '@/app/actions/leads'
 import { initialLeadState } from '@/lib/leads'
-import { concernOptions } from '@/lib/site-config'
+import { checkupGoalOptions, industryOptions } from '@/lib/site-config'
 import { trackEvent } from '@/lib/analytics'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,8 +22,15 @@ import { HiddenTrackingFields } from '@/components/forms/hidden-tracking-fields'
 
 export function CheckupForm() {
   const [state, formAction, pending] = useActionState(submitCheckup, initialLeadState)
+  const [industry, setIndustry] = useState('')
   const startedRef = useRef(false)
   const errorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const requestedIndustry = new URLSearchParams(window.location.search).get('industry')
+    const match = industryOptions.find((option) => option.toLowerCase().replaceAll(' / ', '-').replaceAll(' ', '-') === requestedIndustry?.toLowerCase())
+    if (match) setIndustry(match)
+  }, [])
 
   useEffect(() => {
     if (state.ok && state.referenceNumber) {
@@ -83,22 +90,28 @@ export function CheckupForm() {
         </Field>
       </div>
 
-      <Field id="primaryConcern" label="What is your primary concern?" required error={state.errors?.primaryConcern}>
-        <Select name="primaryConcern">
-          <SelectTrigger id="primaryConcern" className="w-full" aria-invalid={!!state.errors?.primaryConcern}>
-            <SelectValue placeholder="Choose the area you want reviewed first" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {concernOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </Field>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <Field id="industry" label="Industry" required error={state.errors?.industry}>
+          <Select name="industry" value={industry} onValueChange={(value) => value && setIndustry(value)}>
+            <SelectTrigger id="industry" className="w-full" aria-invalid={!!state.errors?.industry}>
+              <SelectValue placeholder="Choose your industry" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>{industryOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field id="primaryConcern" label="What would you most like your website or digital system to do better?" required error={state.errors?.primaryConcern}>
+          <Select name="primaryConcern">
+            <SelectTrigger id="primaryConcern" className="w-full" aria-invalid={!!state.errors?.primaryConcern}>
+              <SelectValue placeholder="Choose your biggest opportunity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>{checkupGoalOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
 
       <div className="flex items-start gap-3">
         <input id="consent" name="consent" type="checkbox" required className="mt-1 size-4 accent-primary" aria-invalid={!!state.errors?.consent} />
