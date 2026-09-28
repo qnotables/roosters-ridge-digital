@@ -17,13 +17,6 @@ export function SiteFooter() {
           <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{siteConfig.description}</p>
           {siteConfig.contact.email && <a href={`mailto:${siteConfig.contact.email}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"><Mail className="size-4" />{siteConfig.contact.email}</a>}
           <SocialLinks className="flex gap-2" />
-          <div className="mt-1 w-fit rounded-md border border-border/70 bg-background/60 p-1.5">
-            <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/vETERAN%20OWNED-KSW6ud6YG4Qcrtylew6Yq7BjpUQ5aP.png"
-              alt="Veteran owned business"
-              className="h-14 w-24 object-contain"
-            />
-          </div>
         </div>
 
         <nav aria-label="Company" className="flex flex-col gap-3">
@@ -46,6 +39,13 @@ export function SiteFooter() {
           <Link href="/promotions" className="text-sm text-foreground/90 hover:text-primary">Current Promotions</Link>
           <Link href="/free-checkup" className="text-sm text-foreground/90 hover:text-primary">Free Website Checkup</Link>
           <Link href="/privacy" className="text-sm text-foreground/90 hover:text-primary">Privacy</Link>
+          <div className="mt-2 w-fit self-end rounded-md border border-border/70 bg-background/60 p-1.5">
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/vETERAN%20OWNED-KSW6ud6YG4Qcrtylew6Yq7BjpUQ5aP.png"
+              alt="Veteran owned business"
+              className="h-14 w-24 object-contain"
+            />
+          </div>
         </nav>
       </div>
 
