@@ -10,6 +10,7 @@ import {
   isValidEmail,
   sanitize,
   sanitizeUrl,
+  SMS_DISCLOSURE_VERSION,
 } from '@/lib/leads'
 import {
   budgetOptions,
@@ -93,6 +94,10 @@ type StoreArgs = {
   sourcePage: string | null
   utm: ReturnType<typeof readUtm>
   trackingMetadata: Record<string, string> | null
+  smsConsent: boolean
+  smsConsentAt: Date
+  smsConsentSource: string
+  smsConsentVersion: string
 }
 
 async function storeLead(args: StoreArgs): Promise<boolean> {
@@ -103,14 +108,16 @@ async function storeLead(args: StoreArgs): Promise<boolean> {
         reference_number, lead_type, first_name, last_name, business_name, email, phone,
         preferred_contact_method, website_url, services, project_description, audience,
         timeline, budget_range, primary_concern, source_page,
-        utm_source, utm_medium, utm_campaign, utm_content, referrer, tracking_metadata
+        utm_source, utm_medium, utm_campaign, utm_content, referrer, tracking_metadata,
+        sms_consent, sms_consent_at, sms_consent_source, sms_consent_version
       ) VALUES (
         ${args.referenceNumber}, ${args.leadType}, ${args.firstName}, ${args.lastName},
         ${args.businessName}, ${args.email}, ${args.phone}, ${args.preferredContactMethod},
         ${args.websiteUrl}, ${JSON.stringify(args.services)}, ${args.projectDescription},
         ${args.audience}, ${args.timeline}, ${args.budgetRange}, ${args.primaryConcern},
         ${args.sourcePage}, ${args.utm.utmSource}, ${args.utm.utmMedium},
-        ${args.utm.utmCampaign}, ${args.utm.utmContent}, ${args.utm.referrer}, ${args.trackingMetadata ? JSON.stringify(args.trackingMetadata) : null}
+        ${args.utm.utmCampaign}, ${args.utm.utmContent}, ${args.utm.referrer}, ${args.trackingMetadata ? JSON.stringify(args.trackingMetadata) : null},
+        ${args.smsConsent}, ${args.smsConsentAt}, ${args.smsConsentSource}, ${args.smsConsentVersion}
       )
     `
     return true
@@ -146,6 +153,9 @@ export async function submitQuote(_prev: LeadActionState, formData: FormData): P
   const timeline = sanitize(formData.get('timeline'), 80)
   const budgetRange = sanitize(formData.get('budgetRange'), 80)
   const consent = formData.get('consent') === 'on'
+  const smsConsent = formData.get('smsConsent') === 'yes'
+  const smsConsentAt = new Date()
+  const smsConsentSource = sanitize(formData.get('sourcePage'), 120) || '/quote'
   const selectedServices = formData
     .getAll('services')
     .map((s) => sanitize(s, 80))
@@ -188,6 +198,10 @@ export async function submitQuote(_prev: LeadActionState, formData: FormData): P
     sourcePage: sanitize(formData.get('sourcePage'), 120) || '/quote',
     utm: readUtm(formData),
     trackingMetadata: readTrackingMetadata(formData),
+    smsConsent,
+    smsConsentAt,
+    smsConsentSource,
+    smsConsentVersion: SMS_DISCLOSURE_VERSION,
   })
 
   // Never show success if storage failed.
@@ -215,7 +229,10 @@ export async function submitQuote(_prev: LeadActionState, formData: FormData): P
       audience,
       timeline,
       budgetRange,
-      sourcePage: sanitize(formData.get('sourcePage'), 120) || '/quote',
+      sourcePage: smsConsentSource,
+      smsConsent,
+      smsConsentAt,
+      smsConsentVersion: SMS_DISCLOSURE_VERSION,
     }),
     sendLeadConfirmation({ referenceNumber, firstName, email }),
   ])
@@ -284,6 +301,10 @@ export async function submitCheckup(_prev: LeadActionState, formData: FormData):
       ...(readTrackingMetadata(formData) ?? {}),
       industry,
     },
+    smsConsent: false,
+    smsConsentAt: new Date(),
+    smsConsentSource: sanitize(formData.get('sourcePage'), 120) || '/free-checkup',
+    smsConsentVersion: SMS_DISCLOSURE_VERSION,
   })
 
   if (!stored) {

@@ -25,6 +25,7 @@ export type LeadActionState = {
 }
 
 export const initialLeadState: LeadActionState = { ok: false }
+export const SMS_DISCLOSURE_VERSION = '2026-09-29-v1'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
