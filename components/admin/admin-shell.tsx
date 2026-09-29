@@ -11,6 +11,7 @@ const navigation = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/leads', label: 'Leads', icon: FileText },
   { href: '/admin/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
+  { href: '/admin/estimating', label: 'Estimates', icon: FileText },
   { href: '/admin/pricing', label: 'Pricing library', icon: Calculator },
   { href: '/admin/estimating/new', label: 'New estimate', icon: Settings2 },
 ]
