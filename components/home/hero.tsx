@@ -14,7 +14,7 @@ export function Hero() {
 
   return (
     <section className="relative overflow-hidden border-b border-border bg-[#111a2b]">
-      <div className="relative mx-auto flex min-h-0 max-w-6xl flex-col px-4 sm:px-6 lg:min-h-[680px] lg:justify-center">
+      <div className="relative mx-auto flex min-h-0 w-full flex-col px-4 sm:px-6 lg:min-h-[680px] lg:justify-center">
         <div
           className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-[78%] bg-gradient-to-r from-[#111a2b] via-[#111a2b]/95 via-35% to-transparent lg:block"
           aria-hidden="true"
