@@ -20,6 +20,10 @@ const sections = [
     body: 'We use your information solely to respond to your request, prepare an estimate or checkup, and communicate with you about your project. We do not sell your information.',
   },
   {
+    heading: 'SMS/MMS consent',
+    body: 'The project form includes a separate, optional SMS/MMS checkbox. A phone number, form submission, or general contact consent does not authorize SMS/MMS messages. When the checkbox is used, we record the choice, time, form source, and disclosure version with the inquiry. The current form code does not include a connected SMS/MMS sending provider; any future SMS workflow must honor STOP and HELP requests and the separate consent record.',
+  },
+  {
     heading: 'Email',
     body: 'We send a confirmation of your request and follow-up messages related to your inquiry. Transactional emails are sent through our email provider.',
   },

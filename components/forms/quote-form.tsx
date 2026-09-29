@@ -23,6 +23,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Field } from '@/components/forms/field'
 import { HiddenTrackingFields } from '@/components/forms/hidden-tracking-fields'
+import { SmsConsent } from '@/components/forms/sms-consent'
 
 export function QuoteForm({ preselectedService }: { preselectedService?: string }) {
   const router = useRouter()
@@ -201,6 +202,8 @@ export function QuoteForm({ preselectedService }: { preselectedService?: string 
         </label>
         {state.errors?.consent && <p className="text-xs font-medium text-destructive">{state.errors.consent}</p>}
       </div>
+
+      <SmsConsent error={state.errors?.smsConsent} />
 
       <div className="flex items-center gap-4">
         <Button type="submit" size="lg" disabled={pending}>

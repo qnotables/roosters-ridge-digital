@@ -72,6 +72,9 @@ export async function sendInternalLeadNotification(lead: {
   timeline?: string | null
   budgetRange?: string | null
   sourcePage?: string | null
+  smsConsent?: boolean
+  smsConsentAt?: Date | null
+  smsConsentVersion?: string | null
 }): Promise<SendResult> {
   const rows = [
     ['Reference', lead.referenceNumber],
@@ -88,6 +91,9 @@ export async function sendInternalLeadNotification(lead: {
     ['Timeline', lead.timeline ?? '—'],
     ['Budget', lead.budgetRange ?? '—'],
     ['Source', lead.sourcePage ?? '—'],
+    ['SMS consent', lead.smsConsent ? 'Yes' : 'No'],
+    ['SMS consent recorded', lead.smsConsentAt?.toISOString() ?? '—'],
+    ['SMS disclosure version', lead.smsConsentVersion ?? '—'],
   ]
     .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#666">${esc(k)}</td><td>${esc(v)}</td></tr>`)
     .join('')
