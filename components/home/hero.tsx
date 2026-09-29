@@ -51,7 +51,7 @@ export function Hero() {
 
         <div className="relative z-0 order-2 -mx-4 aspect-[16/10] overflow-hidden border-y border-border sm:-mx-6 lg:mx-0 lg:absolute lg:inset-0 lg:order-none lg:aspect-auto lg:border-0">
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-cHSnE2zJvY69QfFVjp5c3G30ERWkHY.png"
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/exec-69792e32-e07f-4958-9ca8-e9e1aadbb831-sbnS9xvJI0CoUdFOLtWbblVTrJ4ieE.png"
             alt="Dark creative workspace with a monitor and phone displaying mountain-inspired website designs."
             fill
             priority
