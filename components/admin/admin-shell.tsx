@@ -2,14 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BarChart3, BriefcaseBusiness, Calculator, ExternalLink, FileText, LogOut, Menu, Settings2, X } from 'lucide-react'
+import { BarChart3, BriefcaseBusiness, Calculator, ExternalLink, FileText, LogOut, Mail, Menu, Settings2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { authClient } from '@/lib/auth-client'
+import { toast } from 'sonner'
 
 const navigation = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/leads', label: 'Leads', icon: FileText },
+  { href: '/admin/email', label: 'Email', icon: Mail },
   { href: '/admin/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
   { href: '/admin/estimating', label: 'Estimates', icon: FileText },
   { href: '/admin/pricing', label: 'Pricing library', icon: Calculator },
@@ -22,9 +25,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
 
   async function signOut() {
-    await fetch('/api/admin/sign-out', { method: 'POST' })
-    router.push('/admin/sign-in')
-    router.refresh()
+    try {
+      const staffResult = await authClient.signOut()
+      if (staffResult.error) throw new Error('Staff sign-out failed')
+      await fetch('/api/admin/sign-out', { method: 'POST' })
+      router.push('/admin/sign-in')
+      router.refresh()
+    } catch {
+      toast.error('Could not fully sign out. Please retry to clear both dashboard and staff access.')
+    }
   }
 
   return (

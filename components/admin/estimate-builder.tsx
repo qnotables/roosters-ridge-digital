@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { EmailEstimateButton } from '@/components/admin/email-estimate-button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -658,8 +659,8 @@ export function EstimateBuilder({
         ...item,
       })),
       recurringItems: payload.recurringItems.map((item, idx) => ({
-        id: item.id || `rec-${idx}`,
         ...item,
+        id: item.id || `rec-${idx}`,
       })),
       createdAt: initialEstimate?.createdAt || new Date().toISOString(),
     }
@@ -696,6 +697,7 @@ export function EstimateBuilder({
             >
               <Eye className="size-4" /> Preview Customer PDF
             </Button>
+            {initialEstimate?.id && <EmailEstimateButton estimateId={initialEstimate.id} />}
             {isEditing && (
               <Button
                 variant="outline"
@@ -1062,7 +1064,7 @@ export function EstimateBuilder({
                           </div>
 
                           {/* When selected, show quantity and override controls */}
-                          {isSelected && (
+                          {selectedItem && (
                             <div className="flex items-center gap-2 rounded-md border border-border bg-card p-1.5">
                               <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
                                 Qty:
@@ -1101,7 +1103,7 @@ export function EstimateBuilder({
                       </div>
 
                       {/* Optional Client Scope Note for this feature */}
-                      {isSelected && (
+                      {selectedItem && (
                         <div className="mt-3 pl-8">
                           <input
                             type="text"
@@ -1266,7 +1268,7 @@ export function EstimateBuilder({
                         </div>
                       </div>
 
-                      {isChecked && (
+                      {selected && (
                         <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
                           <span className="text-muted-foreground">Quoted Rate:</span>
                           <div className="flex items-center gap-1 font-mono">

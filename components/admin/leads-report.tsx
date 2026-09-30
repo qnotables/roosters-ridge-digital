@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { LeadEmailHistory } from '@/components/admin/lead-email-history'
 import {
   formatLeadDate,
   leadDisplayName,
@@ -140,7 +141,7 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
                             <div className="px-5 py-4 text-sm text-muted-foreground">{formatLeadDate(lead.created_at)}</div>
                             <div className="px-5 py-4 text-right"><Button variant="ghost" size="sm" onClick={() => setOpenId(isOpen ? null : lead.id)} aria-expanded={isOpen}>{isOpen ? 'Hide' : 'View'}</Button></div>
                           </div>
-                          {isOpen && <LeadDetails lead={lead} onDelete={handleDelete} isDeleting={isDeleting} />}
+                          {isOpen && <><LeadDetails lead={lead} onDelete={handleDelete} isDeleting={isDeleting} /><div className="px-5 pb-5"><LeadEmailHistory leadId={String(lead.id)} /></div></>}
                         </td>
                       </tr>
                     )
