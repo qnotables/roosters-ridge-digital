@@ -25,15 +25,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
 
   async function signOut() {
-    try {
-      const staffResult = await authClient.signOut()
-      if (staffResult.error) throw new Error('Staff sign-out failed')
-      await fetch('/api/admin/sign-out', { method: 'POST' })
-      router.push('/admin/sign-in')
-      router.refresh()
-    } catch {
-      toast.error('Could not fully sign out. Please retry to clear both dashboard and staff access.')
+    const [staffResult, dashboardResult] = await Promise.allSettled([
+      authClient.signOut(),
+      fetch('/api/admin/sign-out', { method: 'POST' }),
+    ])
+    if (dashboardResult.status === 'rejected' || !dashboardResult.value.ok) {
+      toast.error('Could not clear dashboard access. Please retry signing out.')
+      return
     }
+    if (staffResult.status === 'rejected' || staffResult.value.error) {
+      toast.warning('Dashboard access cleared, but the staff session could not be cleared. Sign out of the staff account when access is restored.')
+    }
+    router.push('/admin/sign-in')
+    router.refresh()
   }
 
   return (
