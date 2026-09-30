@@ -74,6 +74,16 @@ export type WorkspaceData = {
   } | null;
   templates: EmailTemplate[];
 };
+export function confirmEmailStaffSession(workspace: unknown, expectedEmail: string) {
+  const account = (workspace as Partial<WorkspaceData> | null | undefined)?.staffAccount;
+  if (!account?.email) {
+    throw new Error("The email workspace could not confirm your staff session. Open this preview in a new tab and sign in there so your browser can retain the staff session. Sender settings have not been changed.");
+  }
+  if (account.email.toLowerCase() !== expectedEmail.trim().toLowerCase()) {
+    throw new Error("The email workspace is signed in as a different staff account. Sign out the current staff session, then sign in with your staff email and password.");
+  }
+}
+
 export async function emailFetcher<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   const data = await response.json();

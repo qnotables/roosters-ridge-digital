@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
-import type { WorkspaceData } from "@/lib/email-workspace-types";
+import { confirmEmailStaffSession, type WorkspaceData } from "@/lib/email-workspace-types";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,12 +44,12 @@ export function EmailStaffAccess({
     try {
       const result = await task();
       if (result.error) throw new Error(result.error.message || "Staff authentication failed");
+      const workspace = await refresh();
       if (requireSession) {
-        const session = await authClient.getSession({ query: { disableCookieCache: true } });
-        if (session.error) throw new Error("Unable to check staff sign-in. Please try again.");
-        if (!session.data?.user) throw new Error("Sign-in did not persist. Open this preview in a new tab and sign in there so your browser can retain the staff session.");
+        confirmEmailStaffSession(workspace, email);
+        setPassword("");
+        setOtp("");
       }
-      await refresh();
       setFeedback(success);
       toast.success(success);
     } catch (e) {
