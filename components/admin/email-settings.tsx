@@ -9,13 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { EmailStaffAccess } from "@/components/admin/email-staff-access";
-import { emailOperation, type EmailSetup, type WorkspaceData } from "@/lib/email-workspace-types";
+import { emailOperation, emailSettingsAccessBlocker, type EmailSetup, type WorkspaceData } from "@/lib/email-workspace-types";
 
 export function EmailSettings({ setup, staff, staffAccount, refresh }: { setup: EmailSetup; staff: WorkspaceData["staff"]; staffAccount: WorkspaceData["staffAccount"]; refresh: () => Promise<unknown> }) {
   const [sender, setSender] = useState(setup.sender);
   const [staffEmails, setStaffEmails] = useState(setup.staffEmails.join("\n"));
   const [busy, setBusy] = useState(false);
+  const accessBlocker = emailSettingsAccessBlocker(setup.staffEmails[0], staffAccount);
   async function save() {
+    if (accessBlocker) { toast.error(accessBlocker); return; }
     setBusy(true);
     try { await emailOperation("settings", { sender, staffEmails }); await refresh(); toast.success("Email settings saved"); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Unable to save settings"); }
@@ -30,9 +32,16 @@ export function EmailSettings({ setup, staff, staffAccount, refresh }: { setup: 
       <div><dt className="text-muted-foreground">Delivery tracking</dt><dd>{setup.deliveryTrackingReady ? "Webhook secret configured; events confirm delivery" : "Unavailable: RESEND_WEBHOOK_SECRET missing (sending still allowed)"}</dd></div>
     </dl>
     {setup.providerError && <p className="text-sm text-muted-foreground">{setup.providerError}</p>}
-    <form onSubmit={e => { e.preventDefault(); void save(); }}><FieldGroup><Field><FieldLabel htmlFor="email-sender">Sender email address (required to send)</FieldLabel><Input id="email-sender" type="email" required value={sender} onChange={e => setSender(e.target.value)} aria-describedby="email-sender-help" /><FieldDescription id="email-sender-help">Use your actual authorized address on a verified Resend domain, then save settings. Your staff sign-in address is not automatically used as the sender.</FieldDescription></Field><Field><FieldLabel htmlFor="email-staff">Approved staff emails</FieldLabel><Textarea id="email-staff" rows={3} value={staffEmails} onChange={e => setStaffEmails(e.target.value)} /><FieldDescription>One per line. The first address is the email administrator; only that verified, signed-in account may change existing settings. Current administrator: {setup.staffEmails[0] || "Not yet configured"}.</FieldDescription></Field><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save settings"}</Button></FieldGroup></form>
+    <Alert variant={accessBlocker ? "destructive" : "default"}>
+      <AlertTitle>{accessBlocker ? "Administrator sign-in required to save" : "Settings access confirmed"}</AlertTitle>
+      <AlertDescription>
+        <p>Current staff account: {staffAccount?.email || "Not signed in"}. Email administrator: {setup.staffEmails[0] || "Not yet configured"}.</p>
+        {accessBlocker ? <><p id="email-settings-blocker">{accessBlocker}</p><a href="#email-staff-access" className="underline">Review staff sign-in & verification</a></> : <p>{setup.staffEmails.length ? "This verified administrator account may save sender settings and staff permissions." : "Initial email settings may be configured through dashboard access."}</p>}
+      </AlertDescription>
+    </Alert>
+    <form onSubmit={e => { e.preventDefault(); void save(); }}><FieldGroup><Field><FieldLabel htmlFor="email-sender">Sender email address (required to send)</FieldLabel><Input id="email-sender" type="email" required value={sender} onChange={e => setSender(e.target.value)} aria-describedby="email-sender-help" /><FieldDescription id="email-sender-help">Use your actual authorized address on a verified Resend domain, then save settings. Your staff sign-in address is not automatically used as the sender.</FieldDescription></Field><Field><FieldLabel htmlFor="email-staff">Approved staff emails</FieldLabel><Textarea id="email-staff" rows={3} value={staffEmails} onChange={e => setStaffEmails(e.target.value)} /><FieldDescription>One per line. The first address is the email administrator; only that verified, signed-in account may change existing settings. Current administrator: {setup.staffEmails[0] || "Not yet configured"}.</FieldDescription></Field><Button type="submit" disabled={busy || Boolean(accessBlocker)} aria-describedby={accessBlocker ? "email-settings-blocker" : undefined}>{busy ? "Saving…" : "Save settings"}</Button></FieldGroup></form>
     <p className="text-sm text-muted-foreground">Reply-To: {setup.replyTo || "Missing monitored business email"}. <Link href="/admin/profile" className="text-primary underline">Edit business profile & signature</Link>. Client replies are not received in this dashboard.</p>
-    <details open={!staff}><summary className="cursor-pointer text-sm font-medium">Staff sign-in & verification</summary><div className="mt-3"><EmailStaffAccess staff={staff} staffAccount={staffAccount} administratorEmail={setup.staffEmails[0]} refresh={refresh} /></div></details>
+    <details id="email-staff-access" open={!staff || Boolean(accessBlocker)}><summary className="cursor-pointer text-sm font-medium">Staff sign-in & verification</summary><div className="mt-3"><EmailStaffAccess staff={staff} staffAccount={staffAccount} administratorEmail={setup.staffEmails[0]} refresh={refresh} /></div></details>
     <details><summary className="cursor-pointer text-sm font-medium">Optional setup & DNS details</summary><div className="mt-3 flex flex-col gap-3 text-sm text-muted-foreground">
       <p>Attachments only: connect a separate <strong>private</strong> Vercel Blob store with prefix <code>RRD_EMAIL_BLOB</code>, providing <code>RRD_EMAIL_BLOB_READ_WRITE_TOKEN</code>. Keep the public media store and <code>BLOB_READ_WRITE_TOKEN</code> unchanged.</p>
       <p>Delivery tracking only: configure a Resend webhook at your deployed URL + <code>{setup.webhookPath}</code> for sent, delivered, delivery_delayed, bounced, complained, failed, and suppressed. Set its signing secret as <code>RESEND_WEBHOOK_SECRET</code>. No inbound setup is needed.</p>
