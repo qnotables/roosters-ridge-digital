@@ -45,7 +45,7 @@ function SectionTitle({ eyebrow, title, copy }: { eyebrow: string; title: string
 }
 
 function Workflow({ items, tone = 'solar' }: { items: string[]; tone?: 'solar' | 'roofing' }) {
-  return <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">{items.map((item, index) => <div key={item} className="relative rounded-lg border border-border bg-card p-4"><div className={cn('flex size-8 items-center justify-center rounded-full text-xs font-semibold', tone === 'solar' ? 'bg-amber-400/15 text-amber-300' : 'bg-orange-400/15 text-orange-300')}>{String(index + 1).padStart(2, '0')}</div><p className="mt-4 text-sm font-medium leading-relaxed">{item}</p>{index < items.length - 1 && <ChevronRight className="absolute -right-3 top-7 z-10 hidden size-5 text-muted-foreground lg:block" aria-hidden="true" />}</div>)}</div>
+  return <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">{items.map((item, index) => <div key={item} className="relative rounded-lg border border-border bg-card p-4 text-[#CBD5E1]"><div className={cn('flex size-8 items-center justify-center rounded-full text-xs font-semibold', tone === 'solar' ? 'bg-amber-400/15 text-amber-300' : 'bg-orange-400/15 text-orange-300')}>{String(index + 1).padStart(2, '0')}</div><p className="mt-4 text-sm font-medium leading-relaxed text-[#F8FAFC]">{item}</p>{index < items.length - 1 && <ChevronRight className="absolute -right-3 top-7 z-10 hidden size-5 text-[#CBD5E1] lg:block" aria-hidden="true" />}</div>)}</div>
 }
 
 function Comparison() {

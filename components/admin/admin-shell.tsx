@@ -2,14 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BarChart3, BriefcaseBusiness, Calculator, ExternalLink, FileText, LogOut, Menu, Settings2, X } from 'lucide-react'
+import { BarChart3, BriefcaseBusiness, Calculator, ExternalLink, FileText, LogOut, Mail, Menu, Settings2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { authClient } from '@/lib/auth-client'
+import { toast } from 'sonner'
 
 const navigation = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/leads', label: 'Leads', icon: FileText },
+  { href: '/admin/email', label: 'Email', icon: Mail },
   { href: '/admin/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
   { href: '/admin/estimating', label: 'Estimates', icon: FileText },
   { href: '/admin/pricing', label: 'Pricing library', icon: Calculator },
@@ -22,7 +25,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
 
   async function signOut() {
-    await fetch('/api/admin/sign-out', { method: 'POST' })
+    const [staffResult, dashboardResult] = await Promise.allSettled([
+      authClient.signOut(),
+      fetch('/api/admin/sign-out', { method: 'POST' }),
+    ])
+    if (dashboardResult.status === 'rejected' || !dashboardResult.value.ok) {
+      toast.error('Could not clear dashboard access. Please retry signing out.')
+      return
+    }
+    if (staffResult.status === 'rejected' || staffResult.value.error) {
+      toast.warning('Dashboard access cleared, but the staff session could not be cleared. Sign out of the staff account when access is restored.')
+    }
     router.push('/admin/sign-in')
     router.refresh()
   }

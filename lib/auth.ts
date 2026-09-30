@@ -6,10 +6,14 @@ const cookieSecret = configuredCookieSecret && configuredCookieSecret.length >= 
 
 export const auth = createNeonAuth({
   baseUrl,
-  cookies: { secret: cookieSecret },
+  cookies: {
+    secret: cookieSecret,
+    sameSite: process.env.NODE_ENV === 'development' ? 'none' : 'lax',
+  },
 })
 
 export async function getAuthSession() {
+  if (!process.env.NEON_AUTH_BASE_URL || !configuredCookieSecret || configuredCookieSecret.length < 32) return null
   const { data } = await auth.getSession()
   return data
 }
