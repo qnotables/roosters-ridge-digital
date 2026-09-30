@@ -247,6 +247,23 @@ beforeEach(() => {
     return { rows: [] };
   });
 });
+describe("email request origin protection", () => {
+  it("accepts the exact public host behind a reverse proxy", async () => {
+    const { checkEmailOrigin } = await vi.importActual<any>("@/lib/email-workspace-db");
+    expect(() => checkEmailOrigin(new Request("https://localhost:3000/api/admin/email", {
+      headers: { origin: "https://preview.vercel.run", host: "preview.vercel.run" },
+    }))).not.toThrow();
+  });
+  it("rejects missing and cross-site origins behind a reverse proxy", async () => {
+    const { checkEmailOrigin } = await vi.importActual<any>("@/lib/email-workspace-db");
+    for (const origin of ["", "https://attacker.test", "http://preview.vercel.run"]) {
+      expect(() => checkEmailOrigin(new Request("https://localhost:3000/api/admin/email", {
+        headers: { origin, host: "preview.vercel.run" },
+      }))).toThrow(/Invalid request origin/);
+    }
+  });
+});
+
 describe("email validation and safe customer PDF", () => {
   it("rejects unresolved placeholders in subject, HTML and plain text", () => {
     for (const field of ["subject", "html", "plainText"])
@@ -309,19 +326,27 @@ describe("protected persistence and reliable sending", () => {
     expect(state.message.html).toBe("<p>Hello</p>");
     expect(state.send).not.toHaveBeenCalled();
   });
-  it("denies draft access and sending without individual staff permission", async () => {
+  it("denies drafts, sending, and reconciliation without dashboard access", async () => {
     state.allowed = false;
     await expect(saveEmailDraft(draft)).rejects.toThrow(/Unauthorized/);
-    state.allowed = true;
-    state.staff = false;
-    await expect(sendEmailDraft(id)).rejects.toThrow(/Staff/);
+    await expect(sendEmailDraft(id)).rejects.toThrow(/Unauthorized/);
+    await expect(reconcileEmailDraft(id)).rejects.toThrow(/Unauthorized/);
     expect(state.send).not.toHaveBeenCalled();
   });
-  it("attributes staff and distinguishes acceptance from delivery", async () => {
+  it("allows dashboard sending without a staff account and distinguishes acceptance from delivery", async () => {
+    state.staff = false;
     expect(await sendEmailDraft(id)).toEqual({ id, state: "accepted" });
-    expect(state.message.sender_id).toBe("staff-1");
+    expect(state.message.sender_id).toBe("dashboard");
+    expect(state.message.sender_email).toBe("sender@example.test");
     expect(state.send.mock.calls[0][0].replyTo).toBe("reply@example.test");
     expect(state.message.state).not.toBe("delivered");
+  });
+  it("binds suppression recipients as one JSON parameter, not an expanded SQL array", async () => {
+    state.message.recipients = { to: ["delivered@resend.dev"], cc: ["copy@example.test"], bcc: ["private@example.test"] };
+    await sendEmailDraft(id);
+    const lookup = state.execute.mock.calls.map(([q]) => dialect.sqlToQuery(q)).find(q => q.sql.startsWith("SELECT email FROM email_suppressions"));
+    expect(lookup?.sql).toContain("jsonb_array_elements_text($1::jsonb)");
+    expect(lookup?.params).toEqual([JSON.stringify(["delivered@resend.dev", "copy@example.test", "private@example.test"])]);
   });
   it("returns existing acceptance on duplicate sends", async () => {
     await sendEmailDraft(id);

@@ -26,8 +26,6 @@ export async function emailReadiness() {
     missing.push("Monitored Reply-To email in business profile");
   const attachmentsReady = Boolean(process.env.RRD_EMAIL_BLOB_READ_WRITE_TOKEN);
   const deliveryTrackingReady = Boolean(process.env.RESEND_WEBHOOK_SECRET);
-  if (!settings.staffEmails.length)
-    missing.push("Approved staff email addresses");
   let domainStatus = "not checked";
   let records: {
     record: string;

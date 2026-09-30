@@ -74,6 +74,15 @@ export type WorkspaceData = {
   } | null;
   templates: EmailTemplate[];
 };
+export function emailSettingsAccessBlocker(administratorEmail: string | undefined, account: WorkspaceData["staffAccount"]) {
+  if (!administratorEmail) return "";
+  if (!account) return `No staff session is signed in. Sign in as ${administratorEmail} under Staff sign-in & verification. The dashboard key and the sender address do not establish a staff session.`;
+  if (account.email.toLowerCase() !== administratorEmail.toLowerCase()) return `Signed in as ${account.email}, but the email administrator is ${administratorEmail}. Sign out the current staff account and sign in as ${administratorEmail}. Changing the approved staff list cannot grant your current account administrator access.`;
+  if (!account.emailVerified) return `Signed in as ${account.email}, but this account's email is not verified. Complete email verification below before saving settings.`;
+  if (!account.approved) return `Signed in as ${account.email}, but the account is not approved for email. Refresh the workspace to check the saved staff permissions.`;
+  return "";
+}
+
 export function confirmEmailStaffSession(workspace: unknown, expectedEmail: string) {
   const account = (workspace as Partial<WorkspaceData> | null | undefined)?.staffAccount;
   if (!account?.email) {

@@ -30,7 +30,7 @@ export function EmailWorkspace({ draftId, leadId }: { draftId?: string; leadId?:
   return <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6">
     <header className="flex flex-wrap items-center justify-between gap-4">
       <div><h1 className="flex items-center gap-3 text-3xl font-semibold"><Mail className="size-7 text-primary" />Email</h1><p className="mt-2 text-sm text-muted-foreground">Send a client message or a saved quote. Replies go to your business mailbox.</p></div>
-      <div className="flex gap-2"><Button variant="outline" onClick={() => setSettingsOpen(true)}><Settings2 data-icon="inline-start" />Settings & staff</Button><Button onClick={() => openMessage("")}><Plus data-icon="inline-start" />New email</Button></div>
+      <div className="flex gap-2"><Button variant="outline" onClick={() => setSettingsOpen(true)}><Settings2 data-icon="inline-start" />Email settings</Button><Button onClick={() => openMessage("")}><Plus data-icon="inline-start" />New email</Button></div>
     </header>
     <Tabs value={view} onValueChange={value => setView(String(value))}>
       <TabsList><TabsTrigger value="compose">Compose</TabsTrigger><TabsTrigger value="sent">Sent</TabsTrigger></TabsList>
@@ -45,6 +45,6 @@ export function EmailWorkspace({ draftId, leadId }: { draftId?: string; leadId?:
         {sent.length ? <ul className="flex flex-col divide-y divide-border">{sent.map(m => <li key={m.id}><button type="button" className="flex w-full flex-wrap items-center justify-between gap-3 py-4 text-left" onClick={() => openMessage(m.id)}><div className="min-w-0"><p className="truncate font-medium">{m.subject || "Untitled message"}</p><p className="mt-1 break-all text-xs text-muted-foreground">{m.recipients.to.join(", ")} · {new Date(m.created_at).toLocaleDateString()}</p>{m.last_error && <p className="mt-1 text-xs text-destructive">{m.last_error}</p>}</div><Badge variant={["failed", "bounced", "complained"].includes(m.state) ? "destructive" : "secondary"}>{m.state === "queued" ? "Acceptance uncertain" : m.state === "accepted" ? "Accepted by provider" : m.state}</Badge></button></li>)}</ul> : <p className="py-10 text-center text-muted-foreground">No send attempts yet. Saved drafts stay on Compose.</p>}
       </CardContent></Card></TabsContent>
     </Tabs>
-    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>Email settings</DialogTitle><DialogDescription>Sender, staff permission, attachments, and delivery tracking.</DialogDescription></DialogHeader><EmailSettings setup={data.setup} staff={data.staff} staffAccount={data.staffAccount} refresh={mutate} /></DialogContent></Dialog>
+    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>Email settings</DialogTitle><DialogDescription>One sender address. No separate staff login.</DialogDescription></DialogHeader><EmailSettings setup={data.setup} refresh={mutate} /></DialogContent></Dialog>
   </main>;
 }

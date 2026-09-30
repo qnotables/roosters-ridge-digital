@@ -38,14 +38,18 @@ describe("independent email setup requirements", () => {
     expect(ready.missing).toContain("RESEND_API_KEY");
     expect(ready.missing).toContain("Monitored Reply-To email in business profile");
   });
-  it("requires an actual sender and approved staff without inventing addresses", async () => {
+  it("requires an actual sender without inventing addresses", async () => {
     state.sender = "";
     state.staffEmails = [];
     const ready = await emailReadiness();
     expect(ready.ready).toBe(false);
     expect(ready.sender).toBe("");
     expect(ready.missing).toContain("Configured sender address");
-    expect(ready.missing).toContain("Approved staff email addresses");
+    expect(ready.missing).not.toContain("Approved staff email addresses");
+  });
+  it("allows a configured single sender without any approved staff accounts", async () => {
+    state.staffEmails = [];
+    expect((await emailReadiness()).ready).toBe(true);
   });
   it("blocks a known unauthorized sender domain", async () => {
     state.get.mockResolvedValue({ data: { name: "example.test", status: "failed", records: [], capabilities: { sending: "disabled" } }, error: null });
