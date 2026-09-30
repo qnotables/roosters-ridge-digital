@@ -5,49 +5,51 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { EmailStaffAccess } from "@/components/admin/email-staff-access";
-import { emailOperation, emailSettingsAccessBlocker, type EmailSetup, type WorkspaceData } from "@/lib/email-workspace-types";
+import { emailOperation, type EmailSetup } from "@/lib/email-workspace-types";
 
-export function EmailSettings({ setup, staff, staffAccount, refresh }: { setup: EmailSetup; staff: WorkspaceData["staff"]; staffAccount: WorkspaceData["staffAccount"]; refresh: () => Promise<unknown> }) {
+export function EmailSettings({ setup, refresh }: { setup: EmailSetup; refresh: () => Promise<unknown> }) {
   const [sender, setSender] = useState(setup.sender);
-  const [staffEmails, setStaffEmails] = useState(setup.staffEmails.join("\n"));
   const [busy, setBusy] = useState(false);
-  const accessBlocker = emailSettingsAccessBlocker(setup.staffEmails[0], staffAccount);
   async function save() {
-    if (accessBlocker) { toast.error(accessBlocker); return; }
     setBusy(true);
-    try { await emailOperation("settings", { sender, staffEmails }); await refresh(); toast.success("Email settings saved"); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Unable to save settings"); }
-    finally { setBusy(false); }
+    try {
+      await emailOperation("settings", { sender });
+      await refresh();
+      toast.success("Sender address saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save sender");
+    } finally {
+      setBusy(false);
+    }
   }
   return <section className="flex flex-col gap-5" aria-label="Email configuration">
-    <Alert variant={setup.ready ? "default" : "destructive"}><AlertTitle>{setup.ready ? "Ordinary email sending configured" : "Sending needs setup"}</AlertTitle><AlertDescription><p>{setup.missing.length ? setup.missing.join("; ") : "Resend still checks credentials and sender authorization when sending."}</p>{!setup.sender && <p>Signing in does not configure the sending address. Enter your authorized sender email below and select Save settings to enable sending once all required setup is complete.</p>}</AlertDescription></Alert>
-    <dl className="grid gap-3 text-sm sm:grid-cols-2">
-      <div><dt className="text-muted-foreground">Sending credentials</dt><dd>{setup.hasApiKey ? "Configured on server" : "Missing RESEND_API_KEY"}</dd></div>
-      <div><dt className="text-muted-foreground">Sender domain</dt><dd>{setup.domainName || "Not configured"} · {setup.domainStatus}</dd></div>
-      <div><dt className="text-muted-foreground">Attachments & quote PDFs</dt><dd>{setup.attachmentsReady ? "Private storage credential configured" : "Optional — unavailable: RRD_EMAIL_BLOB_READ_WRITE_TOKEN missing. Ordinary emails can still be sent."}</dd></div>
-      <div><dt className="text-muted-foreground">Delivery tracking</dt><dd>{setup.deliveryTrackingReady ? "Webhook secret configured; events confirm delivery" : "Unavailable: RESEND_WEBHOOK_SECRET missing (sending still allowed)"}</dd></div>
-    </dl>
-    {setup.providerError && <p className="text-sm text-muted-foreground">{setup.providerError}</p>}
-    <Alert variant={accessBlocker ? "destructive" : "default"}>
-      <AlertTitle>{accessBlocker ? "Administrator sign-in required to save" : "Settings access confirmed"}</AlertTitle>
-      <AlertDescription>
-        <p>Current staff account: {staffAccount?.email || "Not signed in"}. Email administrator: {setup.staffEmails[0] || "Not yet configured"}.</p>
-        {accessBlocker ? <><p id="email-settings-blocker">{accessBlocker}</p><a href="#email-staff-access" className="underline">Review staff sign-in & verification</a></> : <p>{setup.staffEmails.length ? "This verified administrator account may save sender settings and staff permissions." : "Initial email settings may be configured through dashboard access."}</p>}
-      </AlertDescription>
+    <Alert variant={setup.ready ? "default" : "destructive"}>
+      <AlertTitle>{setup.ready ? "Ready to send" : "Sender setup needed"}</AlertTitle>
+      <AlertDescription>{setup.missing.length ? setup.missing.join("; ") : `Emails send from ${setup.sender}. Your existing dashboard access is all you need.`}</AlertDescription>
     </Alert>
-    <form onSubmit={e => { e.preventDefault(); void save(); }}><FieldGroup><Field><FieldLabel htmlFor="email-sender">Sender email address (required to send)</FieldLabel><Input id="email-sender" type="email" required value={sender} onChange={e => setSender(e.target.value)} aria-describedby="email-sender-help" /><FieldDescription id="email-sender-help">Use your actual authorized address on a verified Resend domain, then save settings. Your staff sign-in address is not automatically used as the sender.</FieldDescription></Field><Field><FieldLabel htmlFor="email-staff">Approved staff emails</FieldLabel><Textarea id="email-staff" rows={3} value={staffEmails} onChange={e => setStaffEmails(e.target.value)} /><FieldDescription>One per line. The first address is the email administrator; only that verified, signed-in account may change existing settings. Current administrator: {setup.staffEmails[0] || "Not yet configured"}.</FieldDescription></Field><Button type="submit" disabled={busy || Boolean(accessBlocker)} aria-describedby={accessBlocker ? "email-settings-blocker" : undefined}>{busy ? "Saving…" : "Save settings"}</Button></FieldGroup></form>
-    <p className="text-sm text-muted-foreground">Reply-To: {setup.replyTo || "Missing monitored business email"}. <Link href="/admin/profile" className="text-primary underline">Edit business profile & signature</Link>. Client replies are not received in this dashboard.</p>
-    <details id="email-staff-access" open={!staff || Boolean(accessBlocker)}><summary className="cursor-pointer text-sm font-medium">Staff sign-in & verification</summary><div className="mt-3"><EmailStaffAccess staff={staff} staffAccount={staffAccount} administratorEmail={setup.staffEmails[0]} refresh={refresh} /></div></details>
-    <details><summary className="cursor-pointer text-sm font-medium">Optional setup & DNS details</summary><div className="mt-3 flex flex-col gap-3 text-sm text-muted-foreground">
-      <p>Attachments only: connect a separate <strong>private</strong> Vercel Blob store with prefix <code>RRD_EMAIL_BLOB</code>, providing <code>RRD_EMAIL_BLOB_READ_WRITE_TOKEN</code>. Keep the public media store and <code>BLOB_READ_WRITE_TOKEN</code> unchanged.</p>
-      <p>Delivery tracking only: configure a Resend webhook at your deployed URL + <code>{setup.webhookPath}</code> for sent, delivered, delivery_delayed, bounced, complained, failed, and suppressed. Set its signing secret as <code>RESEND_WEBHOOK_SECRET</code>. No inbound setup is needed.</p>
-      <p>Use a Resend key with read access for domain inspection and uncertain-send reconciliation. Disable domain open/click tracking. Preserve existing mailbox MX records; never add a second SPF TXT record.</p>
-      {setup.records.map((r, i) => <p key={i} className="break-all font-mono text-xs">{r.type} {r.name}: {r.value} · TTL {r.ttl}{r.priority !== undefined ? ` · Priority ${r.priority}` : ""} · {r.status}</p>)}
-      <p>Staff must have a verified individual account and be on the allowlist. Configure the actual preview and production trusted origins in the existing Neon Auth configuration if staff sign-in is rejected.</p>
-    </div></details>
+    <form onSubmit={event => { event.preventDefault(); void save(); }}>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="email-sender">Sender email address</FieldLabel>
+          <Input id="email-sender" type="email" required value={sender} onChange={event => setSender(event.target.value)} aria-describedby="email-sender-help" />
+          <FieldDescription id="email-sender-help">Use your single sending address on a verified Resend domain. No staff accounts, passwords, or email verification codes are needed here.</FieldDescription>
+        </Field>
+        <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save sender"}</Button>
+      </FieldGroup>
+    </form>
+    <p className="text-sm text-muted-foreground">Replies go to {setup.replyTo || setup.sender || "your business mailbox"}. <Link href="/admin/profile" className="text-primary underline">Edit reply address & signature</Link>.</p>
+    <details>
+      <summary className="cursor-pointer text-sm font-medium">Provider & optional features</summary>
+      <div className="mt-3 flex flex-col gap-3 text-sm text-muted-foreground">
+        <p>Sending credentials: {setup.hasApiKey ? "configured on server" : "missing RESEND_API_KEY"}.</p>
+        <p>Sender domain: {setup.domainName || "save a sender address"} · {setup.domainStatus}.</p>
+        {setup.providerError && <p>{setup.providerError}</p>}
+        <p>Attachments: {setup.attachmentsReady ? "available" : "not configured; not needed for a plain email"}.</p>
+        <p>Delivery tracking: {setup.deliveryTrackingReady ? "configured" : "optional; sending is still allowed"}.</p>
+        {setup.records.map((record, index) => <p key={index} className="break-all font-mono text-xs">{record.type} {record.name}: {record.value} · {record.status}</p>)}
+      </div>
+    </details>
   </section>;
 }

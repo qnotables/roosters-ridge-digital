@@ -107,7 +107,6 @@ export function EmailComposer({
   ];
   const canSend =
     data.setup.ready &&
-    Boolean(data.staff) &&
     missing.length === 0 &&
     (!message?.estimate_id ||
       files.some((f) => f.estimate_id === message.estimate_id)) &&
@@ -237,18 +236,9 @@ export function EmailComposer({
           <Alert>
             <AlertTitle>Drafts are available · sending is disabled</AlertTitle>
             <AlertDescription>
-              <p>{data.setup.missing.join("; ")}. {data.staff ? "Staff sign-in is complete, but email sending still needs the configuration above." : "Email configuration and individual staff sign-in are separate requirements."}</p>
-              <p>Enter and save an authorized sender address in Settings & staff. Attachments and delivery tracking are optional for ordinary emails.</p>
+              <p>{data.setup.missing.join("; ")}.</p>
+              <p>Save your sender address in Email settings. No separate email account login is needed. Attachments and delivery tracking are optional.</p>
               <Button type="button" variant="outline" onClick={onOpenSettings}>Configure sending</Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        {!data.staff && (
-          <Alert>
-            <AlertTitle>Individual staff sign-in required to send</AlertTitle>
-            <AlertDescription>
-              Open Settings & staff to sign in with a verified, approved account.
-              Dashboard access alone cannot send.
             </AlertDescription>
           </Alert>
         )}
@@ -495,9 +485,7 @@ export function EmailComposer({
         <p className="text-xs text-muted-foreground">
           Replies go to{" "}
           {data.setup.replyTo || "the configured business mailbox"}.<br />
-          {data.staff
-            ? `Sending staff: ${data.staff.email}`
-            : "No individual staff account signed in."}
+            Sender: {data.setup.sender}
         </p>
         <div className="flex flex-wrap gap-2">
           {!locked && (
@@ -521,7 +509,7 @@ export function EmailComposer({
             <Eye data-icon="inline-start" />
             Preview
           </Button>
-          {(message?.state === "queued" || (attemptLocked && !message?.provider_id)) ? <Button disabled={busy || !data.staff} onClick={() => act(async () => {
+          {(message?.state === "queued" || (attemptLocked && !message?.provider_id)) ? <Button disabled={busy} onClick={() => act(async () => {
             try { const result = await emailOperation("reconcile", { id }); setFeedback(`Provider status: ${result.state}. No new email was sent.`); }
             finally { await refresh(); }
           })}>{busy ? "Checking…" : "Check provider status"}</Button> : <Button disabled={busy || !canSend} onClick={send}><Send data-icon="inline-start" />{busy ? "Sending…" : "Send"}</Button>}

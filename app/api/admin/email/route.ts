@@ -4,8 +4,6 @@ import {
   requireEmailAccess,
   checkEmailOrigin,
   emailErrorResponse,
-  currentStaff,
-  emailStaffAccess,
   emailSettings,
   EmailError,
 } from "@/lib/email-workspace-db";
@@ -41,13 +39,12 @@ export async function GET(request: Request) {
     const leads = await emailDb.execute(
       query`SELECT id,first_name,last_name,business_name,email FROM leads ORDER BY created_at DESC LIMIT 500`,
     );
-    const [setup, access, templates] = await Promise.all([
+    const [setup, templates] = await Promise.all([
       emailReadiness(),
-      emailStaffAccess(),
       emailTemplates(),
     ]);
     return Response.json(
-      { messages: messages.rows, leads: leads.rows, setup, ...access, templates },
+      { messages: messages.rows, leads: leads.rows, setup, staff: null, staffAccount: null, templates },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
@@ -77,32 +74,13 @@ export async function POST(request: Request) {
       return Response.json({ ok: true });
     }
     if (body.action === "settings") {
-      const existing = await emailSettings();
-      if (existing.staffEmails.length) {
-        const staff = await currentStaff();
-        if (!staff || staff.email.toLowerCase() !== existing.staffEmails[0])
-          throw new EmailError(
-            "Only the first approved staff account (email administrator) may change sender settings or staff permissions.",
-            403,
-          );
-      }
       const sender = String(body.sender || "")
         .trim()
         .toLowerCase();
-      const staffEmails = [
-        ...new Set(
-          String(body.staffEmails || "")
-            .split(/[\s,;]+/)
-            .map((e) => e.trim().toLowerCase())
-            .filter(Boolean),
-        ),
-      ];
-      if (sender && !EMAIL.test(sender))
+      if (!EMAIL.test(sender))
         throw new EmailError("Enter a valid sender address.");
-      if (staffEmails.length > 30 || staffEmails.some((e) => !EMAIL.test(e)))
-        throw new EmailError("Enter at most 30 valid staff email addresses.");
       await emailDb.execute(
-        query`INSERT INTO email_settings (id,sender,staff_emails) VALUES (1,${sender},${JSON.stringify(staffEmails)}::jsonb) ON CONFLICT (id) DO UPDATE SET sender=EXCLUDED.sender,staff_emails=EXCLUDED.staff_emails,updated_at=now()`,
+        query`INSERT INTO email_settings (id,sender,staff_emails) VALUES (1,${sender},'[]'::jsonb) ON CONFLICT (id) DO UPDATE SET sender=EXCLUDED.sender,updated_at=now()`,
       );
       return Response.json(await emailSettings());
     }

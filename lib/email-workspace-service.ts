@@ -4,7 +4,6 @@ import {
   emailDb,
   query,
   requireEmailAccess,
-  requireStaff,
   EmailError,
   findMessage,
   findAttachments,
@@ -62,8 +61,9 @@ export async function saveEmailDraft(input: DraftInput) {
 }
 export async function sendEmailDraft(id: string) {
   if (!UUID.test(id)) throw new EmailError("Invalid message ID.");
-  const staff = await requireStaff();
+  await requireEmailAccess();
   const readiness = await emailReadiness();
+  const sender = { id: "dashboard", email: readiness.sender };
   if (!readiness.ready)
     throw new EmailError(
       `Sending disabled: ${readiness.missing.join("; ")}.`,
@@ -85,11 +85,6 @@ export async function sendEmailDraft(id: string) {
       return { complete: true, row };
     if (row.state === "queued")
       throw new EmailError("Acceptance is uncertain or sending is in progress. Check provider status before retrying; no duplicate send is allowed.", 409);
-    if (row.attempt_id && row.sender_id !== staff.id)
-      throw new EmailError(
-        "Only the original sending staff member can retry this attempt.",
-        403,
-      );
     if (
       row.attempt_at &&
       Date.now() - new Date(row.attempt_at).getTime() > 23 * 60 * 60 * 1000
@@ -110,11 +105,11 @@ export async function sendEmailDraft(id: string) {
         true,
       );
       const rate = await tx.execute(
-        query`SELECT count(*) FILTER (WHERE attempt_at > now()-interval '1 minute')::int AS minute, count(*) FILTER (WHERE attempt_at > now()-interval '1 day')::int AS day FROM email_messages WHERE user_id='dashboard' AND sender_id=${staff.id}`,
+        query`SELECT count(*) FILTER (WHERE attempt_at > now()-interval '1 minute')::int AS minute, count(*) FILTER (WHERE attempt_at > now()-interval '1 day')::int AS day FROM email_messages WHERE user_id='dashboard' AND sender_id=${sender.id}`,
       );
       if (Number(rate.rows[0].minute) >= 5 || Number(rate.rows[0].day) >= 50)
         throw new EmailError(
-          "Staff sending limit reached: 5 per minute, 50 per day.",
+          "Dashboard sending limit reached: 5 per minute, 50 per day.",
           429,
         );
       const files = await tx.execute(
@@ -152,27 +147,27 @@ export async function sendEmailDraft(id: string) {
     })));
     const addresses = [...payload.to, ...payload.cc, ...payload.bcc];
     const suppressed = await tx.execute(
-      query`SELECT email FROM email_suppressions WHERE email=ANY(${addresses}::text[])`,
+      query`SELECT email FROM email_suppressions WHERE email IN (SELECT jsonb_array_elements_text(${JSON.stringify(addresses)}::jsonb))`,
     );
     if (suppressed.rows.length)
       throw new EmailError(
         "A recipient is suppressed after a hard bounce or spam complaint. Remove that recipient; do not retry delivery.",
       );
     const requestRate = await tx.execute(
-      query`SELECT count(*)::int AS count FROM email_send_requests WHERE staff_id=${staff.id} AND created_at > now()-interval '1 minute'`,
+      query`SELECT count(*)::int AS count FROM email_send_requests WHERE staff_id=${sender.id} AND created_at > now()-interval '1 minute'`,
     );
     if (Number(requestRate.rows[0].count) >= 5)
       throw new EmailError(
-        "Staff send-request limit reached. Wait one minute before retrying.",
+        "Dashboard send-request limit reached. Wait one minute before retrying.",
         429,
       );
     await tx.execute(
-      query`INSERT INTO email_send_requests (id,staff_id,message_id) VALUES (${randomUUID()}::uuid,${staff.id},${id}::uuid)`,
+      query`INSERT INTO email_send_requests (id,staff_id,message_id) VALUES (${randomUUID()}::uuid,${sender.id},${id}::uuid)`,
     );
     const attemptId = row.attempt_id || randomUUID();
     // Freeze exactly one provider payload so retries cannot change content under the same idempotency key.
     await tx.execute(
-      query`UPDATE email_messages SET state='queued',sender_id=${staff.id},sender_email=${staff.email},attempt_id=${attemptId}::uuid,attempt_at=COALESCE(attempt_at,now()),frozen_payload=${JSON.stringify(payload)}::jsonb,retry_safe=false,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard'`,
+      query`UPDATE email_messages SET state='queued',sender_id=${sender.id},sender_email=${sender.email},attempt_id=${attemptId}::uuid,attempt_at=COALESCE(attempt_at,now()),frozen_payload=${JSON.stringify(payload)}::jsonb,retry_safe=false,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard'`,
     );
     return { complete: false, row, payload, attemptId, files };
   });
@@ -230,18 +225,18 @@ export async function sendEmailDraft(id: string) {
 }
 export async function reconcileEmailDraft(id: string) {
   if (!UUID.test(id)) throw new EmailError("Invalid message ID.");
-  const staff = await requireStaff();
+  await requireEmailAccess();
+  const sender = { id: "dashboard" };
   const row = await findMessage(id);
   if (!row) throw new EmailError("Message not found.", 404);
   if (row.provider_id) return { id, state: row.state };
   if (row.state !== "queued" || !row.attempt_at || !row.frozen_payload)
     throw new EmailError("This message has no uncertain sending attempt.", 409);
-  if (row.sender_id !== staff.id) throw new EmailError("Only the original sending staff member can reconcile this attempt.", 403);
   await emailDb.transaction(async tx => {
     await tx.execute(query`SELECT pg_advisory_xact_lock(hashtext('email-send-workspace'))`);
-    const rate = await tx.execute(query`SELECT count(*)::int AS count FROM email_send_requests WHERE staff_id=${staff.id} AND created_at > now()-interval '1 minute'`);
-    if (Number(rate.rows[0].count) >= 5) throw new EmailError("Staff status-check limit reached. Wait one minute before checking again.", 429);
-    await tx.execute(query`INSERT INTO email_send_requests (id,staff_id,message_id) VALUES (${randomUUID()}::uuid,${staff.id},${id}::uuid)`);
+    const rate = await tx.execute(query`SELECT count(*)::int AS count FROM email_send_requests WHERE staff_id=${sender.id} AND created_at > now()-interval '1 minute'`);
+    if (Number(rate.rows[0].count) >= 5) throw new EmailError("Dashboard status-check limit reached. Wait one minute before checking again.", 429);
+    await tx.execute(query`INSERT INTO email_send_requests (id,staff_id,message_id) VALUES (${randomUUID()}::uuid,${sender.id},${id}::uuid)`);
   });
   const provider = emailProvider();
   let after: string | undefined;

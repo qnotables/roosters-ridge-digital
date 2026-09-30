@@ -72,7 +72,11 @@ export async function requireStaff() {
 }
 export function checkEmailOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  if (!origin || origin !== new URL(request.url).origin)
+  const requestUrl = new URL(request.url);
+  const host = request.headers.get("host");
+  // Next.js can expose an internal localhost URL behind the preview's reverse proxy.
+  const publicOrigin = host ? new URL(`${requestUrl.protocol}//${host}`).origin : requestUrl.origin;
+  if (!origin || (origin !== requestUrl.origin && origin !== publicOrigin))
     throw new EmailError("Invalid request origin.", 403);
 }
 export function emailErrorResponse(error: unknown) {
