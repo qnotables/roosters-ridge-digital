@@ -66,6 +66,12 @@ export type WorkspaceData = {
   leads: EmailLead[];
   setup: EmailSetup;
   staff: { id: string; name: string; email: string } | null;
+  staffAccount: {
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    approved: boolean;
+  } | null;
   templates: EmailTemplate[];
 };
 export async function emailFetcher<T>(url: string): Promise<T> {

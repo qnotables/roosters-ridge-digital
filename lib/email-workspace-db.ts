@@ -42,12 +42,24 @@ export function approvedEmailStaff(
     return null;
   return { id: user.id, email: user.email, name: user.name };
 }
-export async function currentStaff() {
+export async function emailStaffAccess() {
   await requireEmailAccess();
-  const session = await getAuthSession();
-  if (!session?.user) return null;
+  const session = await getAuthSession(true);
+  if (!session?.user) return { staff: null, staffAccount: null };
   const settings = await emailSettings();
-  return approvedEmailStaff(session.user, settings.staffEmails);
+  const user = session.user;
+  return {
+    staff: approvedEmailStaff(user, settings.staffEmails),
+    staffAccount: {
+      name: user.name,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      approved: settings.staffEmails.includes(user.email.toLowerCase()),
+    },
+  };
+}
+export async function currentStaff() {
+  return (await emailStaffAccess()).staff;
 }
 export async function requireStaff() {
   const staff = await currentStaff();
