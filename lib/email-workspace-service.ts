@@ -83,6 +83,8 @@ export async function sendEmailDraft(id: string) {
       ["accepted", "delivered", "bounced", "complained"].includes(row.state)
     )
       return { complete: true, row };
+    if (row.state === "queued")
+      throw new EmailError("Acceptance is uncertain or sending is in progress. Check provider status before retrying; no duplicate send is allowed.", 409);
     if (row.attempt_id && row.sender_id !== staff.id)
       throw new EmailError(
         "Only the original sending staff member can retry this attempt.",
@@ -143,6 +145,11 @@ export async function sendEmailDraft(id: string) {
         files: attachments,
       };
     }
+    if (payload.files.length && !readiness.attachmentsReady)
+      throw new EmailError("Private attachment storage is missing. Configure RRD_EMAIL_BLOB_READ_WRITE_TOKEN before sending attachments or quote PDFs.", 409);
+    const files = await Promise.all(payload.files.map(async f => ({
+      filename: f.name, content: await attachmentBytes(f), contentType: f.content_type,
+    })));
     const addresses = [...payload.to, ...payload.cc, ...payload.bcc];
     const suppressed = await tx.execute(
       query`SELECT email FROM email_suppressions WHERE email=ANY(${addresses}::text[])`,
@@ -167,17 +174,11 @@ export async function sendEmailDraft(id: string) {
     await tx.execute(
       query`UPDATE email_messages SET state='queued',sender_id=${staff.id},sender_email=${staff.email},attempt_id=${attemptId}::uuid,attempt_at=COALESCE(attempt_at,now()),frozen_payload=${JSON.stringify(payload)}::jsonb,retry_safe=false,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard'`,
     );
-    return { complete: false, row, payload, attemptId };
+    return { complete: false, row, payload, attemptId, files };
   });
   if (prepared.complete) return { state: prepared.row.state, id };
   const payload = prepared.payload!;
-  const files = await Promise.all(
-    payload.files.map(async (f) => ({
-      filename: f.name,
-      content: await attachmentBytes(f),
-      contentType: f.content_type,
-    })),
-  );
+  const files = prepared.files!;
   try {
     const { data, error } = await emailProvider().emails.send(
       {
@@ -190,7 +191,7 @@ export async function sendEmailDraft(id: string) {
         text: payload.text,
         replyTo: payload.replyTo,
         attachments: files,
-        tags: [{ name: "workspace_message", value: id }],
+        tags: [{ name: "workspace_message", value: id }, { name: "workspace_attempt", value: prepared.attemptId! }],
       },
       { idempotencyKey: `rrd-email/${prepared.attemptId}` },
     );
@@ -206,11 +207,12 @@ export async function sendEmailDraft(id: string) {
       );
       throw new EmailError(
         definitive
-          ? "Resend rejected the email. Your draft is preserved; review the failure details before retrying."
-          : "Acceptance is uncertain. Retry this unchanged attempt within 23 hours; do not create a duplicate message.",
+          ? `Resend rejected the email: ${error.message}. Your draft is preserved.`
+          : "Acceptance is uncertain. Check provider status; sending again is blocked to prevent duplicates.",
         409,
       );
     }
+    if (!data?.id) throw new Error("Provider acceptance ID missing");
     await emailDb.execute(
       query`UPDATE email_messages SET provider_id=${data.id},state=CASE WHEN state IN ('queued','draft','failed') THEN 'accepted' ELSE state END,accepted_at=COALESCE(accepted_at,now()),last_error=NULL,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard'`,
     );
@@ -218,14 +220,64 @@ export async function sendEmailDraft(id: string) {
   } catch (error) {
     if (error instanceof EmailError) throw error;
     await emailDb.execute(
-      query`UPDATE email_messages SET last_error='Acceptance uncertain. Retry the unchanged attempt within 23 hours.',updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard' AND provider_id IS NULL`,
+      query`UPDATE email_messages SET last_error='Acceptance uncertain. Check provider status before any retry; do not create a duplicate email.',updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard' AND provider_id IS NULL`,
     );
     throw new EmailError(
-      "Network or persistence failure: acceptance is uncertain. Retry this unchanged attempt within 23 hours.",
+      "Network or persistence failure: acceptance is uncertain. Check provider status; do not send a duplicate email.",
       409,
     );
   }
 }
+export async function reconcileEmailDraft(id: string) {
+  if (!UUID.test(id)) throw new EmailError("Invalid message ID.");
+  const staff = await requireStaff();
+  const row = await findMessage(id);
+  if (!row) throw new EmailError("Message not found.", 404);
+  if (row.provider_id) return { id, state: row.state };
+  if (row.state !== "queued" || !row.attempt_at || !row.frozen_payload)
+    throw new EmailError("This message has no uncertain sending attempt.", 409);
+  if (row.sender_id !== staff.id) throw new EmailError("Only the original sending staff member can reconcile this attempt.", 403);
+  await emailDb.transaction(async tx => {
+    await tx.execute(query`SELECT pg_advisory_xact_lock(hashtext('email-send-workspace'))`);
+    const rate = await tx.execute(query`SELECT count(*)::int AS count FROM email_send_requests WHERE staff_id=${staff.id} AND created_at > now()-interval '1 minute'`);
+    if (Number(rate.rows[0].count) >= 5) throw new EmailError("Staff status-check limit reached. Wait one minute before checking again.", 429);
+    await tx.execute(query`INSERT INTO email_send_requests (id,staff_id,message_id) VALUES (${randomUUID()}::uuid,${staff.id},${id}::uuid)`);
+  });
+  const provider = emailProvider();
+  let after: string | undefined;
+  const since = new Date(row.attempt_at).getTime() - 60_000;
+  let lookups = 0;
+  // Missing list results never prove non-acceptance: keep the attempt locked unless its provider tag is found.
+  for (let page = 0; page < 3; page++) {
+    const listed = await provider.emails.list({ limit: 100, ...(after ? { after } : {}) });
+    if (listed.error || !listed.data) throw new EmailError("Provider status could not be read. Check Resend read permissions; the message remains locked and no email was resent.", 409);
+    for (const candidate of listed.data.data) {
+      if (new Date(candidate.created_at).getTime() < since) continue;
+      if (candidate.subject !== row.frozen_payload.subject || !candidate.to.includes(row.frozen_payload.to[0])) continue;
+      if (++lookups > 10) throw new EmailError("Status search needs review in Resend logs. The attempt remains locked and no email was resent.", 409);
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const result = await provider.emails.get(candidate.id);
+      if (result.error || !result.data) throw new EmailError("Provider status lookup failed. The attempt remains locked; no email was resent.", 409);
+      const email = result.data;
+      const attempt = email.tags?.find(t => t.name === "workspace_attempt");
+      if (!email.tags?.some(t => t.name === "workspace_message" && t.value === id) || (attempt && attempt.value !== row.attempt_id)) continue;
+      const state = email.last_event === "delivered" ? "delivered" : email.last_event === "bounced" ? "bounced" : email.last_event === "complained" ? "complained" : ["failed", "suppressed", "canceled"].includes(email.last_event) ? "failed" : "accepted";
+      await emailDb.transaction(async tx => {
+        await tx.execute(query`UPDATE email_messages SET provider_id=${email.id},state=CASE WHEN state IN ('queued','draft','failed') THEN ${state} ELSE state END,accepted_at=COALESCE(accepted_at,now()),retry_safe=false,last_error=NULL,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard' AND provider_id IS NULL`);
+        if (["bounced", "complained", "suppressed"].includes(email.last_event))
+          for (const address of [...email.to, ...(email.cc || []), ...(email.bcc || [])])
+            await tx.execute(query`INSERT INTO email_suppressions (email,reason) VALUES (${address.toLowerCase()},${email.last_event}) ON CONFLICT (email) DO NOTHING`);
+      });
+      const current = await findMessage(id);
+      return { id, state: current?.state || state };
+    }
+    if (!listed.data.has_more || !listed.data.data.length || new Date(listed.data.data.at(-1)!.created_at).getTime() < since) break;
+    after = listed.data.data.at(-1)!.id;
+    await new Promise(resolve => setTimeout(resolve, 600));
+  }
+  throw new EmailError("Resend acceptance is still unconfirmed. No email was resent. Keep this attempt locked and check Resend logs or wait for its webhook before composing another email.", 409);
+}
+
 export async function createEstimateDraft(estimateId: string) {
   await requireEmailAccess();
   if (!UUID.test(estimateId)) throw new EmailError("Invalid estimate ID.");
@@ -233,7 +285,7 @@ export async function createEstimateDraft(estimateId: string) {
   if (!estimate) throw new EmailError("Estimate not found.", 404);
   const readiness = await emailReadiness();
   const subject = `Your estimate ${estimate.estimateNumber} — ${estimate.projectName}`;
-  const html = `<p>Hello ${escapeHtml(estimate.clientName || "{{customer_name}}")},</p><p>Attached is estimate ${escapeHtml(estimate.estimateNumber)} for ${escapeHtml(estimate.projectName || "{{project_name}}")}. Please review the scope and investment and let me know if you would like to discuss anything.</p>${readiness.signature}`;
+  const html = `<p>Hello${estimate.clientName ? ` ${escapeHtml(estimate.clientName)}` : ""},</p><p>Attached is estimate ${escapeHtml(estimate.estimateNumber)} for ${escapeHtml(estimate.projectName || "{{project_name}}")}. Please review the scope and investment and let me know if you would like to discuss anything.</p>${readiness.signature}`;
   const relatedLead = estimate.email
     ? await emailDb.execute(
         query`SELECT id FROM leads WHERE lower(email)=lower(${estimate.email}) ORDER BY created_at DESC LIMIT 1`,

@@ -24,11 +24,8 @@ export async function emailReadiness() {
     missing.push("Configured sender address");
   if (!replyTo || !EMAIL.test(replyTo))
     missing.push("Monitored Reply-To email in business profile");
-  if (!process.env.RESEND_WEBHOOK_SECRET) missing.push("RESEND_WEBHOOK_SECRET");
-  if (!process.env.RRD_EMAIL_BLOB_READ_WRITE_TOKEN)
-    missing.push(
-      "Separate private Blob store: RRD_EMAIL_BLOB_READ_WRITE_TOKEN",
-    );
+  const attachmentsReady = Boolean(process.env.RRD_EMAIL_BLOB_READ_WRITE_TOKEN);
+  const deliveryTrackingReady = Boolean(process.env.RESEND_WEBHOOK_SECRET);
   if (!settings.staffEmails.length)
     missing.push("Approved staff email addresses");
   let domainStatus = "not checked";
@@ -50,7 +47,7 @@ export async function emailReadiness() {
       const listed = await provider.domains.list();
       if (listed.error)
         throw new Error(
-          "Unable to inspect Resend domains. Use a Resend key with domain read access.",
+          "Domain verification could not be inspected. A sending-only key may still send; Resend enforces sender authorization on every send.",
         );
       const configured = listed.data.data.find(
         (d) => d.name.toLowerCase() === domain,
@@ -73,12 +70,12 @@ export async function emailReadiness() {
         )
           missing.push("Verified sending domain");
         if (result.data.open_tracking || result.data.click_tracking)
-          missing.push("Disable domain open/click tracking in Resend");
+          providerError = "Domain open/click tracking is enabled. Disable it in Resend for untracked client emails.";
       }
     } catch (error) {
       providerError =
         error instanceof Error ? error.message : "Provider inspection failed.";
-      missing.push("Provider verification check");
+      domainStatus = "verification unavailable";
     }
   }
   return {
@@ -87,6 +84,8 @@ export async function emailReadiness() {
     signature,
     missing,
     ready: missing.length === 0,
+    attachmentsReady,
+    deliveryTrackingReady,
     domainStatus,
     domainName,
     records,

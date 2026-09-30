@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       return new Response(new Uint8Array(bytes), {
         headers: {
           "Content-Type": file.content_type,
-          "Content-Disposition": `attachment; filename="${file.name.replace(/["\\]/g, "_")}"`,
+          "Content-Disposition": `${search.get("preview") === "1" && file.content_type === "application/pdf" ? "inline" : "attachment"}; filename="${file.name.replace(/["\\]/g, "_")}"`,
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
         },

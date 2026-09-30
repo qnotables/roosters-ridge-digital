@@ -20,6 +20,10 @@ export function customerEstimateFields(e: EstimateRecord) {
         `${i.label} (${i.quantity}): ${i.isIncluded ? "Included" : money(Math.max(0, i.quantity * (i.manualPriceOverride ?? i.unitPrice) - i.discount))}${i.description ? `\n${i.description}` : ""}${i.clientNote ? `\n${i.clientNote}` : ""}`,
     ),
     "INVESTMENT",
+    ...(e.customLabor > 0 ? [`Custom engineering and labor: ${money(e.customLabor)}`] : []),
+    ...(e.thirdPartySetupCost > 0 ? [`Third-party setup: ${money(e.thirdPartySetupCost)}`] : []),
+    ...(e.complexityAdjustment > 0 ? [`Architecture and integration scope: ${money(e.complexityAdjustment)}`] : []),
+    ...(e.contingency > 0 ? [`Project contingency: ${money(e.contingency)}`] : []),
     `Total project investment: ${money(e.totalPrice)}`,
     `Discount: ${money(e.discount)} | Tax: ${money(e.tax)}`,
     `Deposit: ${money(e.depositAmount)} | Remaining balance: ${money(e.remainingBalance)}`,
@@ -36,6 +40,8 @@ export function customerEstimateFields(e: EstimateRecord) {
     e.timeline,
     "NEXT STEPS",
     e.nextSteps,
+    "TERMS",
+    "This document is a project estimate, not a final tax invoice or binding contract. Final terms and scheduling are confirmed upon mutual agreement and deposit submission.",
   ].filter(Boolean);
 }
 export async function estimatePdf(e: EstimateRecord, contact: string) {

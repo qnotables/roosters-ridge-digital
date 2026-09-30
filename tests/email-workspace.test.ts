@@ -19,6 +19,10 @@ const state = vi.hoisted(() => ({
   allowed: true,
   staff: true,
   send: vi.fn(),
+  list: vi.fn(),
+  get: vi.fn(),
+  ready: true,
+  attachmentsReady: true,
   verify: vi.fn(),
   execute: vi.fn(),
   transaction: vi.fn(),
@@ -49,14 +53,15 @@ vi.mock("@/lib/email-workspace-db", async () => {
 });
 vi.mock("@/lib/email-workspace-provider", () => ({
   emailReadiness: async () => ({
-    ready: true,
+    ready: state.ready,
+    attachmentsReady: state.attachmentsReady,
     sender: "sender@example.test",
     replyTo: "reply@example.test",
     signature: "<p>RRD</p>",
     missing: [],
   }),
   emailProvider: () => ({
-    emails: { send: state.send },
+    emails: { send: state.send, list: state.list, get: state.get },
     webhooks: { verify: state.verify },
   }),
 }));
@@ -65,6 +70,7 @@ vi.mock("@vercel/blob", () => ({ put: vi.fn(), get: vi.fn(), del: vi.fn() }));
 import {
   saveEmailDraft,
   sendEmailDraft,
+  reconcileEmailDraft,
   createEstimateDraft,
   attachEstimate,
 } from "@/lib/email-workspace-service";
@@ -132,6 +138,9 @@ beforeEach(() => {
   state.allowed = true;
   state.staff = true;
   state.requests = 0;
+  state.ready = true;
+  state.attachmentsReady = true;
+  state.list.mockResolvedValue({ data: { data: [], has_more: false }, error: null });
   state.attachments = [];
   state.message = {
     id,
@@ -318,13 +327,62 @@ describe("protected persistence and reliable sending", () => {
     await sendEmailDraft(id);
     expect(state.send).toHaveBeenCalledTimes(1);
   });
-  it("retries uncertain acceptance with exactly the same key and payload", async () => {
+  it("reconciles uncertain acceptance without sending a second email", async () => {
     state.send.mockRejectedValueOnce(new Error("network"));
     await expect(sendEmailDraft(id)).rejects.toThrow(/uncertain/);
     expect(state.message.state).toBe("queued");
     await expect(saveEmailDraft({ ...draft, id })).rejects.toThrow(/locked/);
-    await sendEmailDraft(id);
-    expect(state.send.mock.calls[1]).toEqual(state.send.mock.calls[0]);
+    await expect(sendEmailDraft(id)).rejects.toThrow(/Check provider status/);
+    state.list.mockResolvedValue({ data: { data: [{ id: "provider-test", created_at: new Date().toISOString(), subject: draft.subject, to: draft.recipients.to }], has_more: false }, error: null });
+    state.get.mockResolvedValue({ data: { id: "provider-test", last_event: "sent", to: draft.recipients.to, tags: [{ name: "workspace_message", value: id }, { name: "workspace_attempt", value: state.message.attempt_id }] }, error: null });
+    expect(await reconcileEmailDraft(id)).toEqual({ id, state: "accepted" });
+    expect(state.send).toHaveBeenCalledTimes(1);
+  });
+  it("keeps an uncertain attempt locked when the provider cannot confirm it", async () => {
+    state.send.mockRejectedValueOnce(new Error("network"));
+    await expect(sendEmailDraft(id)).rejects.toThrow(/uncertain/);
+    await expect(reconcileEmailDraft(id)).rejects.toThrow(/still unconfirmed/);
+    expect(state.message.retry_safe).toBe(false);
+    expect(state.send).toHaveBeenCalledTimes(1);
+    state.list.mockResolvedValue({ data: null, error: { message: "read denied" } });
+    await expect(reconcileEmailDraft(id)).rejects.toThrow(/read permissions/);
+  });
+  it("blocks double-clicks while the original provider call is in flight", async () => {
+    let complete!: (value: any) => void;
+    state.send.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const pending = sendEmailDraft(id);
+    await vi.waitFor(() => expect(state.send).toHaveBeenCalledTimes(1));
+    await expect(sendEmailDraft(id)).rejects.toThrow(/in progress/);
+    complete({ data: { id: "provider-test" }, error: null });
+    await pending;
+    expect(state.send).toHaveBeenCalledTimes(1);
+  });
+  it("allows ordinary email without private storage but blocks attached email", async () => {
+    state.attachmentsReady = false;
+    expect(await sendEmailDraft(id)).toEqual({ id, state: "accepted" });
+    state.message.provider_id = null;
+    state.message.state = "draft";
+    state.message.frozen_payload = null;
+    state.attachments = [{ name: "quote.pdf", size: 10 }];
+    await expect(sendEmailDraft(id)).rejects.toThrow(/Private attachment storage/);
+    expect(state.send).toHaveBeenCalledTimes(1);
+  });
+  it("blocks missing sending configuration without contacting the provider", async () => {
+    state.ready = false;
+    await expect(sendEmailDraft(id)).rejects.toThrow(/Sending disabled/);
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it("keeps a draft editable when private attachment loading fails before sending", async () => {
+    state.attachments = [{ name: "quote.pdf", pathname: "private", size: 10 }];
+    vi.mocked(get).mockResolvedValueOnce(null);
+    await expect(sendEmailDraft(id)).rejects.toThrow(/Attachment unavailable/);
+    expect(state.message.state).toBe("draft");
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it("never reports acceptance when the provider omits its acceptance ID", async () => {
+    state.send.mockResolvedValueOnce({ data: null, error: null });
+    await expect(sendEmailDraft(id)).rejects.toThrow(/uncertain/);
+    expect(state.message.state).toBe("queued");
   });
   it("keeps a definitively rejected draft recoverable", async () => {
     state.send.mockResolvedValueOnce({
