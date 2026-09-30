@@ -12,9 +12,12 @@ export const auth = createNeonAuth({
   },
 })
 
-export async function getAuthSession() {
+export async function getAuthSession(fresh = false) {
   if (!process.env.NEON_AUTH_BASE_URL || !configuredCookieSecret || configuredCookieSecret.length < 32) return null
-  const { data } = await auth.getSession()
+  const { data, error } = await auth.getSession(
+    fresh ? { query: { disableCookieCache: 'true' } } : undefined,
+  )
+  if (fresh && error) throw new Error('Unable to check your staff session. Please try again.')
   return data
 }
 

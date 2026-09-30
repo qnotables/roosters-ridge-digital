@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import type { WorkspaceData } from "@/lib/email-workspace-types";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,12 +19,17 @@ import {
 export function EmailStaffAccess({
   refresh,
   staff,
+  staffAccount,
+  administratorEmail,
 }: {
   refresh: () => Promise<unknown>;
   staff: { name: string; email: string } | null;
+  staffAccount: WorkspaceData["staffAccount"];
+  administratorEmail?: string;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState(""),
+  const [feedback, setFeedback] = useState("");
+  const [email, setEmail] = useState(staffAccount?.email || administratorEmail || ""),
     [password, setPassword] = useState(""),
     [name, setName] = useState(""),
     [otp, setOtp] = useState(""),
@@ -30,17 +37,25 @@ export function EmailStaffAccess({
   async function run(
     task: () => Promise<{ error?: { message?: string } | null }>,
     success: string,
+    requireSession = false,
   ) {
     setBusy(true);
+    setFeedback("");
     try {
       const result = await task();
-      if (result.error) throw new Error(result.error.message);
-      toast.success(success);
+      if (result.error) throw new Error(result.error.message || "Staff authentication failed");
+      if (requireSession) {
+        const session = await authClient.getSession({ query: { disableCookieCache: true } });
+        if (session.error) throw new Error("Unable to check staff sign-in. Please try again.");
+        if (!session.data?.user) throw new Error("Sign-in did not persist. Open this preview in a new tab and sign in there so your browser can retain the staff session.");
+      }
       await refresh();
+      setFeedback(success);
+      toast.success(success);
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Staff authentication failed",
-      );
+      const message = e instanceof Error ? e.message : "Staff authentication failed";
+      setFeedback(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -54,7 +69,17 @@ export function EmailStaffAccess({
           registration alone does not grant email permission.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        {feedback && <p role="status" className="break-words text-sm">{feedback}</p>}
+        {!staff && <Alert>
+          <AlertTitle>{staffAccount ? "Staff account signed in" : "No staff account signed in"}</AlertTitle>
+          <AlertDescription>
+            {staffAccount
+              ? `${staffAccount.email} · ${staffAccount.emailVerified ? "Email verified" : "Email needs verification"} · ${staffAccount.approved ? "Approved for email" : "Not on the approved staff list"}.`
+              : "Email verification does not sign you in. Use your staff email and account password below; the dashboard key is not your staff password."}
+            {administratorEmail && ` To save sender settings, sign in as ${administratorEmail}.`}
+          </AlertDescription>
+        </Alert>}
         {staff ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm">
@@ -78,11 +103,12 @@ export function EmailStaffAccess({
                 run(
                   () =>
                     mode === "signin"
-                      ? authClient.signIn.email({ email, password })
-                      : authClient.signUp.email({ email, password, name }),
+                      ? authClient.signIn.email({ email: email.trim().toLowerCase(), password })
+                      : authClient.signUp.email({ email: email.trim().toLowerCase(), password, name }),
                   mode === "signin"
-                    ? "Account signed in. Verified approved accounts can send."
+                    ? "Staff session confirmed. Verified approved accounts can send once a sender address is saved."
                     : "Account created. Verify your email and ask the dashboard administrator to approve it.",
+                  mode === "signin",
                 );
               }}
             >
@@ -166,7 +192,7 @@ export function EmailStaffAccess({
                     run(
                       () =>
                         authClient.emailOtp.sendVerificationOtp({
-                          email,
+                          email: email.trim().toLowerCase(),
                           type: "email-verification",
                         }),
                       "Verification code sent to your staff email",
@@ -180,8 +206,14 @@ export function EmailStaffAccess({
                   disabled={busy || !email || !otp}
                   onClick={() =>
                     run(
-                      () => authClient.emailOtp.verifyEmail({ email, otp }),
-                      "Email verified",
+                      async () => {
+                        const normalizedEmail = email.trim().toLowerCase();
+                        const result = await authClient.emailOtp.verifyEmail({ email: normalizedEmail, otp: otp.trim() });
+                        if (result.error || !password) return result;
+                        return authClient.signIn.email({ email: normalizedEmail, password });
+                      },
+                      password ? "Email verified and staff session confirmed. Save your sender address to finish setup." : "Email verified. Enter your staff password and click Sign in staff account to start your session.",
+                      Boolean(password),
                     )
                   }
                 >

@@ -75,6 +75,7 @@ import {
   attachEstimate,
 } from "@/lib/email-workspace-service";
 import { getEstimateById } from "@/lib/pricing";
+import { getAuthSession } from "@/lib/auth";
 import { get, put } from "@vercel/blob";
 import {
   validateAttachment,
@@ -474,6 +475,24 @@ describe("private files and verified provider events", () => {
     expect(real.approvedEmailStaff(user, ["approved@example.test"]).id).toBe(
       "staff-1",
     );
+  });
+  it("checks the live staff session after verification instead of a stale cookie", async () => {
+    const real = await vi.importActual<any>("@/lib/email-workspace-db");
+    vi.mocked(getAuthSession).mockResolvedValue({ user: { id: "staff-1", name: "Staff", email: "approved@example.test", emailVerified: true } } as any);
+    const execute = vi.spyOn(real.emailDb, "execute").mockResolvedValue({ rows: [{ sender: "sender@example.test", staff_emails: ["approved@example.test"] }] } as any);
+    try {
+      const access = await real.emailStaffAccess();
+      expect(getAuthSession).toHaveBeenCalledWith(true);
+      expect(access.staff?.id).toBe("staff-1");
+      expect(access.staffAccount).toMatchObject({ emailVerified: true, approved: true });
+      vi.mocked(getAuthSession).mockResolvedValue({ user: { id: "staff-1", name: "Staff", email: "approved@example.test", emailVerified: false } } as any);
+      expect((await real.emailStaffAccess()).staff).toBeNull();
+      expect((await real.emailStaffAccess()).staffAccount).toMatchObject({ emailVerified: false, approved: true });
+      vi.mocked(getAuthSession).mockResolvedValue(null);
+      expect(await real.emailStaffAccess()).toEqual({ staff: null, staffAccount: null });
+    } finally {
+      execute.mockRestore();
+    }
   });
   it("rejects oversized or disguised attachments", () => {
     expect(() =>

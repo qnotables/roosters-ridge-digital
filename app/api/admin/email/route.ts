@@ -5,6 +5,7 @@ import {
   checkEmailOrigin,
   emailErrorResponse,
   currentStaff,
+  emailStaffAccess,
   emailSettings,
   EmailError,
 } from "@/lib/email-workspace-db";
@@ -40,13 +41,13 @@ export async function GET(request: Request) {
     const leads = await emailDb.execute(
       query`SELECT id,first_name,last_name,business_name,email FROM leads ORDER BY created_at DESC LIMIT 500`,
     );
-    const [setup, staff, templates] = await Promise.all([
+    const [setup, access, templates] = await Promise.all([
       emailReadiness(),
-      currentStaff(),
+      emailStaffAccess(),
       emailTemplates(),
     ]);
     return Response.json(
-      { messages: messages.rows, leads: leads.rows, setup, staff, templates },
+      { messages: messages.rows, leads: leads.rows, setup, ...access, templates },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
