@@ -12,6 +12,7 @@ import { emailReadiness } from "@/lib/email-workspace-provider";
 import {
   saveEmailDraft,
   sendEmailDraft,
+  reconcileEmailDraft,
   createEstimateDraft,
   emailTemplates,
   attachEstimate,
@@ -65,6 +66,8 @@ export async function POST(request: Request) {
       return Response.json({ id: await saveEmailDraft(body.draft) });
     if (body.action === "send")
       return Response.json(await sendEmailDraft(body.id));
+    if (body.action === "reconcile")
+      return Response.json(await reconcileEmailDraft(body.id));
     if (body.action === "estimate")
       return Response.json(await createEstimateDraft(body.estimateId));
     if (body.action === "attach-estimate") {

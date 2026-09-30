@@ -44,10 +44,6 @@ const addresses = (value: string) =>
     .split(/[;,]+/)
     .map((s) => s.trim())
     .filter(Boolean);
-const textFromHtml = (html: string) => {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  return doc.body.innerText || doc.body.textContent || "";
-};
 const escaped = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -80,19 +76,23 @@ export function EmailComposer({
   const [selectedLead, setSelectedLead] = useState(
     message?.lead_id || lead?.id || "",
   );
-  const [project, setProject] = useState(message?.project_name || "");
+  const [project] = useState(message?.project_name || "");
   const [subject, setSubject] = useState(message?.subject || "");
   const [html, setHtml] = useState(
     message?.html ||
-      `<p>Hello ${lead ? escaped(lead.first_name) : "{{customer_name}}"},</p><p></p>${data.setup.signature}`,
+      `<p>${lead ? `Hello ${escaped(lead.first_name)},` : "Hello,"}</p><p></p>${data.setup.signature}`,
   );
   const [plain, setPlain] = useState(message?.plain_text || "");
   const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [feedbackError, setFeedbackError] = useState(false);
+  const [attemptLocked, setAttemptLocked] = useState(false);
   const working = useRef(false);
   const [preview, setPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
   const locked = Boolean(
+    attemptLocked ||
     (message && !["draft", "failed"].includes(message.state)) ||
     (message?.state === "failed" && !message.retry_safe),
   );
@@ -109,12 +109,14 @@ export function EmailComposer({
     missing.length === 0 &&
     (!message?.estimate_id ||
       files.some((f) => f.estimate_id === message.estimate_id)) &&
-    (!locked || message?.state === "queued");
+    !locked;
   async function saved() {
     if (locked) return id;
+    const draftId = id || crypto.randomUUID();
+    setId(draftId);
     const result = await emailOperation("draft", {
       draft: {
-        id: id || undefined,
+        id: draftId,
         recipients: {
           to: addresses(to),
           cc: addresses(cc),
@@ -135,10 +137,15 @@ export function EmailComposer({
     if (working.current) return;
     working.current = true;
     setBusy(true);
+    setFeedbackError(false);
+    setFeedback("");
     try {
       await operation();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Email operation failed");
+      const detail = e instanceof Error ? e.message : "Email operation failed";
+      setFeedbackError(true);
+      setFeedback(detail);
+      toast.error(detail);
     } finally {
       working.current = false;
       setBusy(false);
@@ -148,28 +155,6 @@ export function EmailComposer({
     setSelectedLead(value);
     const chosen = data.leads.find((l) => l.id === value);
     if (chosen) setTo(chosen.email);
-  }
-  function useTemplate(templateId: string) {
-    const template = data.templates.find((t) => t.id === templateId);
-    if (!template) return;
-    const chosen = data.leads.find((l) => l.id === selectedLead);
-    const replacements: Record<string, string> = {
-      customer_name: chosen?.first_name || "",
-      company: chosen?.business_name || "",
-      project_name: project,
-    };
-    const fill = (source: string, rich: boolean) =>
-      source.replace(/\{\{([^{}]+)\}\}/g, (match, key) =>
-        replacements[key]
-          ? rich
-            ? escaped(replacements[key])
-            : replacements[key]
-          : match,
-      );
-    const newHtml = `${fill(template.html, true)}${data.setup.signature}`;
-    setSubject(fill(template.subject, false));
-    setHtml(newHtml);
-    setPlain(textFromHtml(newHtml));
   }
   function resolvePlaceholders() {
     const replace = (source: string, rich: boolean) =>
@@ -196,16 +181,21 @@ export function EmailComposer({
   }
   async function send() {
     await act(async () => {
+      const draftId = await saved();
+      setAttemptLocked(true);
+      setFeedback("Sending… Keep this message open until its status is confirmed.");
       try {
-        const result = await emailOperation("send", { id });
-        toast.success(
-          result.state === "accepted"
-            ? "Accepted by Resend. Delivery is not yet confirmed."
-            : `Message status: ${result.state}`,
-        );
+        const result = await emailOperation("send", { id: draftId });
+        const detail = result.state === "accepted"
+          ? "Accepted by Resend. Delivery is not yet confirmed."
+          : `Message status: ${result.state}`;
+        setFeedback(detail);
+        toast.success(detail);
         setPreview(false);
       } finally {
-        await refresh();
+        const latest = await refresh().catch(() => undefined);
+        const current = latest?.messages.find(m => m.id === draftId);
+        setAttemptLocked(!current || !(current.state === "draft" || (current.state === "failed" && current.retry_safe)));
       }
     });
   }
@@ -245,7 +235,7 @@ export function EmailComposer({
           <Alert>
             <AlertTitle>Drafts are available · sending is disabled</AlertTitle>
             <AlertDescription>
-              Complete sender verification and webhook setup in Email settings.
+              {data.setup.missing.join("; ")}. Open Settings & staff to configure sending. Attachments and delivery tracking are optional for ordinary emails.
             </AlertDescription>
           </Alert>
         )}
@@ -253,11 +243,12 @@ export function EmailComposer({
           <Alert>
             <AlertTitle>Individual staff sign-in required to send</AlertTitle>
             <AlertDescription>
-              Use Staff access to sign in with a verified, approved account.
+              Open Settings & staff to sign in with a verified, approved account.
               Dashboard access alone cannot send.
             </AlertDescription>
           </Alert>
         )}
+        {feedback && <Alert variant={feedbackError ? "destructive" : "default"} aria-live="polite"><AlertTitle>{feedbackError ? "Message not confirmed as sent" : "Email status"}</AlertTitle><AlertDescription>{feedback}</AlertDescription></Alert>}
         {message?.last_error && (
           <Alert variant="destructive">
             <AlertTitle>Send attempt needs attention</AlertTitle>
@@ -268,7 +259,7 @@ export function EmailComposer({
           <p className="text-sm text-muted-foreground">
             Message content is locked to preserve the sending record.{" "}
             {message?.state === "queued"
-              ? "Retry only this unchanged attempt within 23 hours."
+              ? "Check provider status before any retry. Do not create a duplicate email."
               : "Create a new draft for another email."}
           </p>
         )}
@@ -281,7 +272,7 @@ export function EmailComposer({
               id="email-lead"
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               value={selectedLead}
-              disabled={locked}
+              disabled={locked || busy}
               onChange={(e) => chooseLead(e.target.value)}
             >
               <option value="">Enter recipient manually</option>
@@ -303,18 +294,19 @@ export function EmailComposer({
               type="email"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              disabled={locked}
+              disabled={locked || busy}
               placeholder="Customer email address"
             />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <details><summary className="cursor-pointer text-sm font-medium">Optional copy recipients</summary>
+          <FieldGroup className="mt-3">
             <Field>
               <FieldLabel htmlFor="email-cc">CC</FieldLabel>
               <Input
                 id="email-cc"
                 value={cc}
                 onChange={(e) => setCc(e.target.value)}
-                disabled={locked}
+                disabled={locked || busy}
                 placeholder="Optional · comma separated"
               />
             </Field>
@@ -324,50 +316,18 @@ export function EmailComposer({
                 id="email-bcc"
                 value={bcc}
                 onChange={(e) => setBcc(e.target.value)}
-                disabled={locked}
+                disabled={locked || busy}
                 placeholder="Optional · comma separated"
               />
             </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="email-project">
-                Related project name
-              </FieldLabel>
-              <Input
-                id="email-project"
-                value={project}
-                disabled={locked}
-                onChange={(e) => setProject(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="email-template">
-                Start from a template
-              </FieldLabel>
-              <select
-                id="email-template"
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue=""
-                disabled={locked}
-                onChange={(e) => useTemplate(e.target.value)}
-              >
-                <option value="">Choose a template</option>
-                {data.templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
+          </FieldGroup></details>
           <Field>
             <FieldLabel htmlFor="email-subject">Subject</FieldLabel>
             <Input
               id="email-subject"
               maxLength={200}
               value={subject}
-              disabled={locked}
+              disabled={locked || busy}
               onChange={(e) => setSubject(e.target.value)}
             />
           </Field>
@@ -375,7 +335,7 @@ export function EmailComposer({
             <FieldLabel>Message & RRD signature</FieldLabel>
             <EmailEditor
               html={html}
-              disabled={locked}
+              disabled={locked || busy}
               onChange={(h, t) => {
                 setHtml(h);
                 setPlain(t);
@@ -396,7 +356,7 @@ export function EmailComposer({
                 id="email-plain"
                 rows={7}
                 value={plain}
-                disabled={locked}
+                disabled={locked || busy}
                 onChange={(e) => setPlain(e.target.value)}
                 placeholder="Generated from the rich-text message when saved if left empty."
               />
@@ -441,13 +401,17 @@ export function EmailComposer({
             Private files only · PDF, PNG, JPEG, TXT · 3 MB per file · 9 MB
             total
           </p>
+          {!data.setup.attachmentsReady && <p className="text-sm text-muted-foreground">Attachments and quote PDFs are unavailable until private email storage is configured. Ordinary emails can still be sent.</p>}
           {files.map((f) => (
             <div
               key={f.id}
               className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
             >
               <a
-                href={`/api/admin/email/attachments?id=${f.id}`}
+                href={`/api/admin/email/attachments?id=${f.id}${f.content_type === "application/pdf" ? "&preview=1" : ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Preview ${f.name} in a new tab`}
                 className="flex min-w-0 items-center gap-2 text-sm underline underline-offset-4"
               >
                 <FileText className="size-4 shrink-0" />
@@ -489,7 +453,7 @@ export function EmailComposer({
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={busy || locked}
+                    disabled={busy || locked || !data.setup.attachmentsReady}
                     onClick={() =>
                       act(async () => {
                         await emailOperation("attach-estimate", { id });
@@ -512,7 +476,7 @@ export function EmailComposer({
                 id="email-file"
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.txt"
-                disabled={busy}
+                disabled={busy || !data.setup.attachmentsReady}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) upload(file);
@@ -540,6 +504,7 @@ export function EmailComposer({
                 act(async () => {
                   await saved();
                   await refresh();
+                  setFeedback("Draft saved. Reopen it from Saved drafts on Compose.");
                   toast.success("Draft saved securely");
                 })
               }
@@ -552,12 +517,10 @@ export function EmailComposer({
             <Eye data-icon="inline-start" />
             Preview
           </Button>
-          <Button disabled={busy || !canSend} onClick={showPreview}>
-            <Send data-icon="inline-start" />
-            {message?.state === "queued"
-              ? "Review unchanged retry"
-              : "Review & send"}
-          </Button>
+          {(message?.state === "queued" || (attemptLocked && !message?.provider_id)) ? <Button disabled={busy || !data.staff} onClick={() => act(async () => {
+            try { const result = await emailOperation("reconcile", { id }); setFeedback(`Provider status: ${result.state}. No new email was sent.`); }
+            finally { await refresh(); }
+          })}>{busy ? "Checking…" : "Check provider status"}</Button> : <Button disabled={busy || !canSend} onClick={send}><Send data-icon="inline-start" />{busy ? "Sending…" : "Send"}</Button>}
         </div>
       </CardFooter>
       <Dialog open={preview} onOpenChange={setPreview}>
@@ -613,11 +576,7 @@ export function EmailComposer({
             </Button>
             <Button disabled={busy || !canSend} onClick={send}>
               <Send data-icon="inline-start" />
-              {busy
-                ? "Sending…"
-                : message?.state === "queued"
-                  ? "Retry same send attempt"
-                  : "Send email"}
+              {busy ? "Sending…" : "Send email"}
             </Button>
           </DialogFooter>
         </DialogContent>

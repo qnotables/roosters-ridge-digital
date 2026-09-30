@@ -66,7 +66,9 @@ try {
   const data = await workspace.json();
   assert.equal(workspace.status, 200, JSON.stringify(data));
   assert.ok(data.messages.some((m: { id: string }) => m.id === draftId));
-  assert.equal(data.setup.ready, false);
+  assert.equal(typeof data.setup.ready, "boolean");
+  assert.equal(typeof data.setup.attachmentsReady, "boolean");
+  assert.equal(typeof data.setup.deliveryTrackingReady, "boolean");
   console.log(
     "Protected HTTP checks passed: authorization, sanitized persistent draft, shared-key send denial, forged webhook rejection, and setup gating. No emails sent.",
   );

@@ -26,7 +26,7 @@ export function EmailEstimateButton({ estimateId }: { estimateId: string }) {
   return (
     <Button size="sm" variant="outline" onClick={open} disabled={busy}>
       <Mail data-icon="inline-start" />
-      {busy ? "Preparing draft…" : "Email estimate"}
+      {busy ? "Preparing draft…" : "Email Quote"}
     </Button>
   );
 }

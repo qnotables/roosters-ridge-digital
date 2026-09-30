@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { EmailEstimateButton } from '@/components/admin/email-estimate-button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -305,6 +306,7 @@ export function EstimatesManager({
 
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <EmailEstimateButton estimateId={est.id} />
                         <Button
                           variant="ghost"
                           size="icon"
