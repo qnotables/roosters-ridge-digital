@@ -37,7 +37,7 @@ export function EmailWorkspace({ draftId, leadId }: { draftId?: string; leadId?:
       <TabsContent value="compose" keepMounted className="data-[hidden]:hidden">
         <div className="flex flex-col gap-4 pt-4">
           <Field><FieldLabel htmlFor="saved-email-draft">Saved drafts ({drafts.length})</FieldLabel><select id="saved-email-draft" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={drafts.some(m => m.id === selected) ? selected : ""} onChange={e => openMessage(e.target.value)}><option value="">New message / choose a draft</option>{drafts.map(m => <option key={m.id} value={m.id}>{m.subject || "Untitled draft"} · {m.recipients.to.join(", ") || "No recipient"}{m.state === "failed" ? " · Send failed" : ""}</option>)}</select></Field>
-          <EmailComposer key={composerKey} data={data} message={data.messages.find(m => m.id === selected)} leadId={leadId} refresh={mutate} onSaved={setSelected} />
+          <EmailComposer key={composerKey} data={data} message={data.messages.find(m => m.id === selected)} leadId={leadId} refresh={mutate} onSaved={setSelected} onOpenSettings={() => setSettingsOpen(true)} />
         </div>
       </TabsContent>
       <TabsContent value="sent"><Card className="mt-4"><CardHeader><CardTitle>Sent & send attempts</CardTitle><CardDescription>Accepted means Resend accepted the request, not delivered. {data.setup.deliveryTrackingReady ? "Verified provider events confirm delivery." : "Delivery webhooks are not configured; delivery tracking is unavailable."}</CardDescription></CardHeader><CardContent className="flex flex-col gap-4">

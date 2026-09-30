@@ -59,12 +59,14 @@ export function EmailComposer({
   leadId,
   refresh,
   onSaved,
+  onOpenSettings,
 }: {
   data: WorkspaceData;
   message?: EmailMessage;
   leadId?: string;
   refresh: () => Promise<WorkspaceData | undefined>;
   onSaved: (id: string) => void;
+  onOpenSettings: () => void;
 }) {
   const lead = data.leads.find((l) => l.id === (message?.lead_id || leadId));
   const [id, setId] = useState(message?.id || "");
@@ -235,7 +237,9 @@ export function EmailComposer({
           <Alert>
             <AlertTitle>Drafts are available · sending is disabled</AlertTitle>
             <AlertDescription>
-              {data.setup.missing.join("; ")}. Open Settings & staff to configure sending. Attachments and delivery tracking are optional for ordinary emails.
+              <p>{data.setup.missing.join("; ")}. {data.staff ? "Staff sign-in is complete, but email sending still needs the configuration above." : "Email configuration and individual staff sign-in are separate requirements."}</p>
+              <p>Enter and save an authorized sender address in Settings & staff. Attachments and delivery tracking are optional for ordinary emails.</p>
+              <Button type="button" variant="outline" onClick={onOpenSettings}>Configure sending</Button>
             </AlertDescription>
           </Alert>
         )}
