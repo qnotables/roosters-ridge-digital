@@ -71,6 +71,21 @@
   --radius: 0.25rem;
 }
 
+.industry-demo-light-surface {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #e2e8f0;
+  --muted-foreground: #475569;
+  --primary: #c2410c;
+  --primary-foreground: #ffffff;
+  --border: #64748b;
+  --input: #64748b;
+  --ring: #c2410c;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
