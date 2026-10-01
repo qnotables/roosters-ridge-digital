@@ -29,7 +29,7 @@ export function classifyPlatform(originalUrl: string, observations: HostObservat
   if (candidates.length > 1) evidence.push('Multiple supported platforms detected; classification remains unknown')
   evidence.push(...observations.filter((observation) => observation.error).map((observation) => `${observation.host}: ${observation.error}`))
   if (!evidence.length) evidence.push('No supported platform identifiers detected; this does not establish a different platform')
-  return { platform, confidence, evidence, originalUrl, finalUrl: observations[0]?.page?.finalUrl || observations[0]?.finalUrl || null, checkedAt: new Date().toISOString(), ruleVersion: PLATFORM_RULE_VERSION }
+  return { platform, confidence, evidence, status: failed ? (platform === 'Unknown' && !observations.some((item) => item.page) ? 'failed' : 'partial') : 'completed', originalUrl, finalUrl: observations[0]?.page?.finalUrl || observations[0]?.finalUrl || null, checkedAt: new Date().toISOString(), ruleVersion: PLATFORM_RULE_VERSION }
 }
 export async function detectPlatform(input: string, dependencies = { fetchPage: fetchPublicPage, dns: resolver }) {
   const originalUrl = normalizeWebsiteUrl(input)

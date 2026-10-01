@@ -23,7 +23,7 @@ import {
 } from '@/lib/leads-report-types'
 
 import { PlatformScanner } from '@/components/admin/platform-scanner'
-import { isWixMatch, platformCheckForUrl, type PlatformCheck, type PlatformProspect } from '@/lib/platform-types'
+import { isWixMatch, platformCheckForUrl, type PlatformAttempt, type PlatformCheck, type PlatformProspect } from '@/lib/platform-types'
 
 type Filter = 'all' | 'quote' | 'checkup'
 
@@ -31,7 +31,7 @@ function valueOrDash(value: string | null) {
   return value || '—'
 }
 
-export function LeadsReport({ leads, platformData }: { leads: LeadReportRow[]; platformData: { checks: Record<string, PlatformCheck>; prospects: PlatformProspect[] } }) {
+export function LeadsReport({ leads, platformData }: { leads: LeadReportRow[]; platformData: { checks: Record<string, PlatformCheck>; prospects: PlatformProspect[]; attempts?: Record<string, PlatformAttempt> } }) {
   const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
@@ -80,8 +80,8 @@ export function LeadsReport({ leads, platformData }: { leads: LeadReportRow[]; p
         <header className="flex flex-col justify-between gap-5 border-b border-border pb-6 lg:flex-row lg:items-end">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Admin dashboard</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">Lead report</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review every quote request and free checkup submission in one place.</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">Prospect Finder</h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Find businesses and identify websites built on Wix.</p>
           </div>
           <nav aria-label="Dashboard navigation" className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link href="/admin/profile" />}>Profile</Button>
@@ -96,7 +96,7 @@ export function LeadsReport({ leads, platformData }: { leads: LeadReportRow[]; p
           <SummaryCard label="Free checkups" value={checkupCount} icon={<ClipboardCheck aria-hidden="true" />} />
         </section>
 
-        <PlatformScanner leads={leads} prospects={platformData.prospects} checks={platformData.checks} />
+        <PlatformScanner leads={leads} prospects={platformData.prospects} checks={platformData.checks} attempts={platformData.attempts} />
 
         <section className="mt-8 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
