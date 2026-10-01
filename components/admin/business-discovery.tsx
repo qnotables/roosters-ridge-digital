@@ -24,7 +24,13 @@ export function BusinessDiscovery({ busy, onCheck }: { busy: boolean; onCheck: (
   const candidates = result?.businesses.filter((row) => row.originalUrl) || []
   const chosen = candidates.filter((row) => selected.has(row.id))
   return <div className="flex flex-col gap-4">
-    <form onSubmit={(event) => { event.preventDefault(); setError(''); setResult(null); setSelected(new Set()); startTransition(async () => { try { setResult(await findBusinesses({ industry, city, state, maxResults: maximum })) } catch (error) { setError(error instanceof Error ? error.message : 'Business search failed') } }) }}>
+    <form onSubmit={(event) => { event.preventDefault(); setError(''); setResult(null); setSelected(new Set()); startTransition(async () => { try {
+        const response = await findBusinesses({ industry, city, state, maxResults: maximum })
+        if (response.ok) setResult(response.data)
+        else setError(response.error)
+      } catch {
+        setError('Could not connect to the business search. Refresh the page and try again, or use Import Websites.')
+      } }) }}>
       <FieldGroup className="gap-4 sm:flex-row sm:flex-wrap sm:items-end">
         <Field className="sm:min-w-40 sm:flex-1"><FieldLabel htmlFor="business-industry">Industry</FieldLabel><Input id="business-industry" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Solar, Roofing, HVAC…" required maxLength={80} disabled={disabled} /></Field>
         <Field className="sm:min-w-32 sm:flex-1"><FieldLabel htmlFor="business-city">City</FieldLabel><Input id="business-city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Austin" required maxLength={80} disabled={disabled} /></Field>
