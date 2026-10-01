@@ -25,6 +25,7 @@ import {
   storeAttachment,
 } from "@/lib/email-workspace-attachments";
 import { getEstimateById } from "@/lib/pricing";
+import { outboundThreadHeaders } from "@/lib/email-inbox-shared";
 import {
   customerEstimateFields,
   customerEstimatePdf,
@@ -122,7 +123,7 @@ export async function sendEmailDraft(id: string) {
       )
         throw new EmailError("Attachment limits exceeded.");
       if (
-        row.estimate_id &&
+        row.estimate_id && !row.reply_to_message_id &&
         !attachments.some((f) => f.estimate_id === row.estimate_id)
       )
         throw new EmailError(
@@ -137,6 +138,7 @@ export async function sendEmailDraft(id: string) {
         html: valid.html,
         text: valid.plainText,
         replyTo: readiness.replyTo,
+        headers: outboundThreadHeaders(id, readiness.sender, row.in_reply_to, row.reference_ids),
         files: attachments,
       };
     }
@@ -185,6 +187,7 @@ export async function sendEmailDraft(id: string) {
         html: payload.html,
         text: payload.text,
         replyTo: payload.replyTo,
+        ...(payload.headers ? { headers: payload.headers } : {}),
         attachments: files,
         tags: [{ name: "workspace_message", value: id }, { name: "workspace_attempt", value: prepared.attemptId! }],
       },
@@ -209,7 +212,7 @@ export async function sendEmailDraft(id: string) {
     }
     if (!data?.id) throw new Error("Provider acceptance ID missing");
     await emailDb.execute(
-      query`UPDATE email_messages SET provider_id=${data.id},state=CASE WHEN state IN ('queued','draft','failed') THEN 'accepted' ELSE state END,accepted_at=COALESCE(accepted_at,now()),last_error=NULL,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard'`,
+      query`UPDATE email_messages SET provider_id=${data.id},rfc_message_id=COALESCE(rfc_message_id,${payload.headers?.["Message-ID"] || null}),state=CASE WHEN state IN ('queued','draft','failed') THEN 'accepted' ELSE state END,accepted_at=COALESCE(accepted_at,now()),last_error=NULL,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard'`,
     );
     return { id, state: "accepted" };
   } catch (error) {
@@ -258,7 +261,7 @@ export async function reconcileEmailDraft(id: string) {
       if (!email.tags?.some(t => t.name === "workspace_message" && t.value === id) || (attempt && attempt.value !== row.attempt_id)) continue;
       const state = email.last_event === "delivered" ? "delivered" : email.last_event === "bounced" ? "bounced" : email.last_event === "complained" ? "complained" : ["failed", "suppressed", "canceled"].includes(email.last_event) ? "failed" : "accepted";
       await emailDb.transaction(async tx => {
-        await tx.execute(query`UPDATE email_messages SET provider_id=${email.id},state=CASE WHEN state IN ('queued','draft','failed') THEN ${state} ELSE state END,accepted_at=COALESCE(accepted_at,now()),retry_safe=false,last_error=NULL,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard' AND provider_id IS NULL`);
+        await tx.execute(query`UPDATE email_messages SET provider_id=${email.id},rfc_message_id=COALESCE(rfc_message_id,${row.frozen_payload?.headers?.["Message-ID"] || null}),state=CASE WHEN state IN ('queued','draft','failed') THEN ${state} ELSE state END,accepted_at=COALESCE(accepted_at,now()),retry_safe=false,last_error=NULL,updated_at=now() WHERE id=${id}::uuid AND user_id='dashboard' AND provider_id IS NULL`);
         if (["bounced", "complained", "suppressed"].includes(email.last_event))
           for (const address of [...email.to, ...(email.cc || []), ...(email.bcc || [])])
             await tx.execute(query`INSERT INTO email_suppressions (email,reason) VALUES (${address.toLowerCase()},${email.last_event}) ON CONFLICT (email) DO NOTHING`);

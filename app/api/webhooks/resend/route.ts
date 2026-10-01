@@ -1,6 +1,8 @@
 import { emailProvider } from "@/lib/email-workspace-provider";
 import { emailDb, query, type MessageRow } from "@/lib/email-workspace-db";
 import { nextDeliveryState } from "@/lib/email-workspace-shared";
+import { ingestReceivedEmail } from "@/lib/email-inbox-ingest";
+import { canonicalMessageId } from "@/lib/email-inbox-shared";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -32,6 +34,15 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   }
+  if (event.type === "email.received") {
+    if (!event.data.email_id || !id) return Response.json({ error: "Invalid received event." }, { status: 400 });
+    try {
+      const result = await ingestReceivedEmail(event.data.email_id, id);
+      return Response.json({ ok: true, result });
+    } catch {
+      return Response.json({ error: "Incoming message storage unavailable; retry after checking receiving configuration." }, { status: 503 });
+    }
+  }
   if (
     ![
       "email.sent",
@@ -46,6 +57,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   const data = event.data as {
     email_id?: string;
+    message_id?: string;
     to?: string[];
     bounce?: { type?: string };
   };
@@ -54,6 +66,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid event." }, { status: 400 });
   try {
     const result = await emailDb.transaction(async (tx) => {
+      await tx.execute(query`SELECT pg_advisory_xact_lock(hashtext('email-inbox-threading'))`);
       const messages = await tx.execute(
         query`SELECT * FROM email_messages WHERE provider_id=${data.email_id} AND user_id='dashboard' FOR UPDATE`,
       );
@@ -64,6 +77,11 @@ export async function POST(request: Request) {
           query`SELECT id FROM email_messages WHERE user_id='dashboard' AND state='queued' AND provider_id IS NULL LIMIT 1`,
         );
         return pending.rows.length ? "retry" : "unrelated";
+      }
+      const rfcId = canonicalMessageId(data.message_id);
+      if (rfcId) {
+        await tx.execute(query`UPDATE email_messages SET rfc_message_id=${rfcId} WHERE id=${message.id}::uuid AND user_id='dashboard'`);
+        await tx.execute(query`UPDATE email_messages SET conversation_id=${message.conversation_id}::uuid WHERE user_id='dashboard' AND conversation_id IN (SELECT conversation_id FROM email_messages WHERE user_id='dashboard' AND (in_reply_to=${rfcId} OR reference_ids @> ${JSON.stringify([rfcId])}::jsonb))`);
       }
       const inserted = await tx.execute(
         query`INSERT INTO email_events (id,message_id,type,occurred_at) VALUES (${id},${message.id}::uuid,${event.type},${occurred}) ON CONFLICT (id) DO NOTHING RETURNING id`,

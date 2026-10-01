@@ -14,9 +14,11 @@ export async function emailReadiness() {
     query`SELECT founder_name, founder_title, email, phone, show_phone FROM business_profile WHERE id=1`,
   );
   const profile = profileRows.rows[0];
-  const replyTo = String(profile?.email || "").trim();
+  const businessReplyTo = String(profile?.email || "").trim();
+  const receivingVerified = Boolean(settings.incomingAddress && settings.lastReceivedAt && process.env.RESEND_WEBHOOK_SECRET);
+  const replyTo = receivingVerified ? settings.incomingAddress : businessReplyTo;
   const signature = profile
-    ? `<p><strong>${escapeHtml(String(profile.founder_name))}</strong><br>${escapeHtml(String(profile.founder_title))}<br>Rooster’s Ridge Digital<br>${escapeHtml(replyTo)}${profile.show_phone && profile.phone ? `<br>${escapeHtml(String(profile.phone))}` : ""}</p>`
+    ? `<p><strong>${escapeHtml(String(profile.founder_name))}</strong><br>${escapeHtml(String(profile.founder_title))}<br>Rooster’s Ridge Digital<br>${escapeHtml(businessReplyTo)}${profile.show_phone && profile.phone ? `<br>${escapeHtml(String(profile.phone))}` : ""}</p>`
     : "";
   const missing: string[] = [];
   if (!process.env.RESEND_API_KEY) missing.push("RESEND_API_KEY");
@@ -79,6 +81,8 @@ export async function emailReadiness() {
   return {
     ...settings,
     replyTo,
+    businessReplyTo,
+    receivingVerified,
     signature,
     missing,
     ready: missing.length === 0,
