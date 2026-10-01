@@ -13,6 +13,7 @@ const navigation = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/leads', label: 'Leads', icon: FileText },
   { href: '/admin/email', label: 'Email', icon: Mail },
+  { href: '/admin/inbox', label: 'Inbox', icon: Mail },
   { href: '/admin/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
   { href: '/admin/estimating', label: 'Estimates', icon: FileText },
   { href: '/admin/pricing', label: 'Pricing library', icon: Calculator },

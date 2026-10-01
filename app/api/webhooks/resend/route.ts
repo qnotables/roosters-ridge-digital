@@ -1,5 +1,5 @@
 import { emailProvider } from "@/lib/email-workspace-provider";
-import { emailDb, query, type MessageRow } from "@/lib/email-workspace-db";
+import { emailDb, query, emailSettings, type MessageRow } from "@/lib/email-workspace-db";
 import { nextDeliveryState } from "@/lib/email-workspace-shared";
 
 export const runtime = "nodejs";
@@ -31,6 +31,34 @@ export async function POST(request: Request) {
       { error: "Invalid webhook signature." },
       { status: 401 },
     );
+  }
+  if (event.type === "email.received") {
+    const data = event.data as { email_id?: string; from?: string; to?: string[]; subject?: string };
+    const receivedAt = new Date(event.created_at);
+    if (!id || !data.email_id || !data.from || !Array.isArray(data.to) || Number.isNaN(receivedAt.getTime()))
+      return Response.json({ error: "Invalid inbound email event." }, { status: 400 });
+    const safeFrom = data.from.replace(/[\r\n]+/g, " ").slice(0, 320);
+    const safeSubject = (data.subject || "").replace(/[\r\n]+/g, " ").slice(0, 500);
+    if (!safeFrom) return Response.json({ error: "Invalid inbound email event." }, { status: 400 });
+    try {
+      const stored = await emailDb.execute(
+        query`INSERT INTO inbound_emails (event_id,provider_email_id,from_address,recipient_addresses,subject,received_at) VALUES (${id},${data.email_id},${safeFrom},${JSON.stringify(data.to)}::jsonb,${safeSubject},${receivedAt}) ON CONFLICT DO NOTHING RETURNING event_id`,
+      );
+      if (!stored.rows.length) return Response.json({ ok: true });
+      const [settings] = await Promise.all([emailSettings()]);
+      const subject = `New email from ${safeFrom}: ${safeSubject || "(No subject)"}`;
+      const text = `New email received\n\nFrom: ${safeFrom}\nTo: ${data.to.join(", ")}\nSubject: ${safeSubject || "(No subject)"}\nReceived: ${receivedAt.toISOString()}`;
+      const notifications: Promise<unknown>[] = [];
+      if (process.env.INBOUND_ALERT_EMAIL && settings.sender)
+        notifications.push(emailProvider().emails.send({ from: settings.sender, to: process.env.INBOUND_ALERT_EMAIL, subject, text }));
+      const slackWebhook = process.env.SLACK_INBOUND_EMAIL_WEBHOOK_URL;
+      if (slackWebhook && new URL(slackWebhook).protocol === "https:" && new URL(slackWebhook).hostname === "hooks.slack.com")
+        notifications.push(fetch(slackWebhook, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: `${subject}\n${text}`, mrkdwn: false }) }));
+      await Promise.allSettled(notifications);
+      return Response.json({ ok: true });
+    } catch {
+      return Response.json({ error: "Inbound email storage unavailable; retry." }, { status: 503 });
+    }
   }
   if (
     ![
