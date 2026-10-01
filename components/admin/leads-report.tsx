@@ -22,16 +22,20 @@ import {
   type LeadReportRow,
 } from '@/lib/leads-report-types'
 
+import { PlatformScanner } from '@/components/admin/platform-scanner'
+import { isWixMatch, platformCheckForUrl, type PlatformCheck, type PlatformProspect } from '@/lib/platform-types'
+
 type Filter = 'all' | 'quote' | 'checkup'
 
 function valueOrDash(value: string | null) {
   return value || '—'
 }
 
-export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
+export function LeadsReport({ leads, platformData }: { leads: LeadReportRow[]; platformData: { checks: Record<string, PlatformCheck>; prospects: PlatformProspect[] } }) {
   const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
+  const [wixOnly, setWixOnly] = useState(false)
   const [openId, setOpenId] = useState<string | number | null>(null)
   const [isDeleting, startDelete] = useTransition()
 
@@ -57,6 +61,7 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
     const normalizedQuery = query.trim().toLowerCase()
     return leads.filter((lead) => {
       if (filter !== 'all' && lead.lead_type !== filter) return false
+      if (wixOnly && !isWixMatch(platformCheckForUrl(platformData.checks, lead.website_url || ''))) return false
       if (!normalizedQuery) return true
       return [
         leadDisplayName(lead),
@@ -67,7 +72,7 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
         lead.project_description,
       ].some((value) => value?.toLowerCase().includes(normalizedQuery))
     })
-  }, [filter, leads, query])
+  }, [filter, leads, query, wixOnly, platformData.checks])
 
   return (
     <main className="min-h-dvh bg-muted/20 px-4 py-10 sm:px-6">
@@ -91,6 +96,8 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
           <SummaryCard label="Free checkups" value={checkupCount} icon={<ClipboardCheck aria-hidden="true" />} />
         </section>
 
+        <PlatformScanner leads={leads} prospects={platformData.prospects} checks={platformData.checks} />
+
         <section className="mt-8 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -102,6 +109,7 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search leads" aria-label="Search leads" className="pl-10" />
               </div>
+              <Button variant={wixOnly ? 'secondary' : 'outline'} aria-pressed={wixOnly} onClick={() => setWixOnly(!wixOnly)}>Platform: Wix</Button>
               <div className="flex rounded-md border border-border p-1" role="group" aria-label="Filter leads">
                 {(['all', 'quote', 'checkup'] as Filter[]).map((item) => (
                   <button key={item} type="button" onClick={() => setFilter(item)} aria-pressed={filter === item} className={`rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${filter === item ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
@@ -136,7 +144,7 @@ export function LeadsReport({ leads }: { leads: LeadReportRow[] }) {
                               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-primary">{leadInitials(lead)}</div>
                               <div className="min-w-0"><p className="truncate font-medium">{leadDisplayName(lead)}</p><p className="truncate text-xs text-muted-foreground">{valueOrDash(lead.business_name)} · {lead.email}</p></div>
                             </div>
-                            <div className="px-5 py-4"><Badge variant={lead.lead_type === 'quote' ? 'default' : 'secondary'}>{leadTypeLabel(lead.lead_type)}</Badge></div>
+                            <div className="flex flex-col items-start gap-2 px-5 py-4"><Badge variant={lead.lead_type === 'quote' ? 'default' : 'secondary'}>{leadTypeLabel(lead.lead_type)}</Badge>{isWixMatch(platformCheckForUrl(platformData.checks, lead.website_url || '')) && <Badge variant="outline">Wix · {platformCheckForUrl(platformData.checks, lead.website_url || '')?.confidence}</Badge>}</div>
                             <div className="px-5 py-4 text-sm text-muted-foreground">{leadSourceLabel(lead.source_page)}</div>
                             <div className="px-5 py-4 text-sm text-muted-foreground">{formatLeadDate(lead.created_at)}</div>
                             <div className="px-5 py-4 text-right"><Button variant="ghost" size="sm" onClick={() => setOpenId(isOpen ? null : lead.id)} aria-expanded={isOpen}>{isOpen ? 'Hide' : 'View'}</Button></div>

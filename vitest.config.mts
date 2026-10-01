@@ -10,5 +10,5 @@ export default defineConfig({
       ),
     },
   },
-  test: { include: ["tests/email-*.test.ts"], environment: "node" },
+  test: { include: ["tests/email-*.test.ts", "tests/platform-*.test.ts"], environment: "node" },
 });
