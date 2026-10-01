@@ -25,3 +25,21 @@ CREATE TABLE IF NOT EXISTS public.platform_prospects (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, original_url)
 );
+
+ALTER TABLE public.platform_prospects
+  ADD COLUMN IF NOT EXISTS location text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS source_url text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS saved_at timestamptz;
+
+ALTER TABLE public.platform_checks
+  ADD COLUMN IF NOT EXISTS last_error text,
+  ADD COLUMN IF NOT EXISTS attempted_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS public.platform_discovery_cache (
+  user_id text NOT NULL,
+  query_key text NOT NULL,
+  result jsonb,
+  searched_at timestamptz,
+  lease_until timestamptz,
+  PRIMARY KEY (user_id, query_key)
+);

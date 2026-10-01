@@ -6,7 +6,7 @@ import { LeadsReport } from '@/components/admin/leads-report'
 import { AdminShell } from '@/components/admin/admin-shell'
 import { getPlatformData } from '@/lib/platform-store'
 
-export const metadata: Metadata = { title: 'Leads & prospect qualification | RRD', description: 'Internal lead review and evidence-based website platform qualification.', robots: { index: false, follow: false } }
+export const metadata: Metadata = { title: 'Prospect Finder | RRD', description: 'Find businesses and identify websites built on Wix.', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
