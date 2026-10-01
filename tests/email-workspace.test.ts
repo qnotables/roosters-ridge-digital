@@ -341,6 +341,23 @@ describe("protected persistence and reliable sending", () => {
     expect(state.send.mock.calls[0][0].replyTo).toBe("reply@example.test");
     expect(state.message.state).not.toBe("delivered");
   });
+  it("sends quote follow-ups through the authorized sender with frozen threading headers and without requiring the original PDF", async () => {
+    state.message.conversation_id = "22222222-2222-4222-8222-222222222222";
+    state.message.reply_to_message_id = "33333333-3333-4333-8333-333333333333";
+    state.message.in_reply_to = "<parent@example.test>";
+    state.message.reference_ids = ["<ancestor@example.test>"];
+    state.message.estimate_id = fixture.id;
+    const result = await sendEmailDraft(id);
+    expect(result.state).toBe("accepted");
+    const payload = state.send.mock.calls[0][0];
+    expect(payload.from).toBe("sender@example.test");
+    expect(payload.headers["In-Reply-To"]).toBe("<parent@example.test>");
+    expect(payload.headers.References).toBe("<ancestor@example.test> <parent@example.test>");
+    expect(payload.headers["Message-ID"]).toBe(`<rrd-${id}@example.test>`);
+    expect(state.message.conversation_id).toBe("22222222-2222-4222-8222-222222222222");
+    expect(state.message.frozen_payload.headers).toEqual(payload.headers);
+    expect(state.send.mock.calls[0][1].idempotencyKey).toMatch(/^rrd-email\//);
+  });
   it("binds suppression recipients as one JSON parameter, not an expanded SQL array", async () => {
     state.message.recipients = { to: ["delivered@resend.dev"], cc: ["copy@example.test"], bcc: ["private@example.test"] };
     await sendEmailDraft(id);
@@ -434,6 +451,20 @@ describe("protected persistence and reliable sending", () => {
     state.message.attempt_at = "2020-01-01";
     await expect(sendEmailDraft(id)).rejects.toThrow(/window/);
     expect(state.send).not.toHaveBeenCalled();
+  });
+  it("preserves Email Quote PDF sending through provider acceptance with threading headers", async () => {
+    vi.mocked(getEstimateById).mockResolvedValue(fixture);
+    vi.mocked(put).mockResolvedValue({ pathname: "private-test-quote" } as any);
+    const draft = await createEstimateDraft(fixture.id);
+    const pdf = vi.mocked(put).mock.calls[0][1] as Buffer;
+    vi.mocked(get).mockResolvedValue({ statusCode: 200, blob: { size: pdf.length }, stream: new Response(new Uint8Array(pdf)).body } as any);
+    expect(await sendEmailDraft(draft.id)).toEqual({ id: draft.id, state: "accepted" });
+    const payload = state.send.mock.calls[0][0];
+    expect(payload.to).toEqual(["delivered@resend.dev"]);
+    expect(payload.attachments[0].filename).toBe("RRD-TEST.pdf");
+    expect(Buffer.from(payload.attachments[0].content).subarray(0, 5).toString()).toBe("%PDF-");
+    expect(payload.headers["Message-ID"]).toContain(draft.id);
+    expect(JSON.stringify(state.message.estimate_snapshot)).not.toMatch(/PRIVATE_/);
   });
   it("freezes only customer estimate fields and never sends while generating PDF", async () => {
     vi.mocked(getEstimateById).mockResolvedValue(fixture);

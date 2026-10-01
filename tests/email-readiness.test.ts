@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ sender: "sender@example.test", staffEmails: ["staff@example.test"], replyTo: "reply@example.test", list: vi.fn(), get: vi.fn() }));
+const state = vi.hoisted(() => ({ incomingAddress: "", lastReceivedAt: null as string | null, sender: "sender@example.test", staffEmails: ["staff@example.test"], replyTo: "reply@example.test", list: vi.fn(), get: vi.fn() }));
 vi.mock("@/lib/email-workspace-db", async () => {
   const { sql } = await import("drizzle-orm");
-  return { query: sql, emailSettings: async () => ({ sender: state.sender, staffEmails: state.staffEmails }), emailDb: { execute: async () => ({ rows: [{ founder_name: "Staff", founder_title: "Founder", email: state.replyTo }] }) } };
+  return { query: sql, emailSettings: async () => ({ sender: state.sender, staffEmails: state.staffEmails, incomingAddress: state.incomingAddress, lastReceivedAt: state.lastReceivedAt }), emailDb: { execute: async () => ({ rows: [{ founder_name: "Staff", founder_title: "Founder", email: state.replyTo }] }) } };
 });
 vi.mock("resend", () => ({ Resend: class { domains = { list: state.list, get: state.get }; } }));
 import { emailReadiness } from "@/lib/email-workspace-provider";
@@ -13,6 +13,8 @@ beforeEach(() => {
   vi.stubEnv("RESEND_API_KEY", "test-only");
   vi.stubEnv("RESEND_WEBHOOK_SECRET", "");
   vi.stubEnv("RRD_EMAIL_BLOB_READ_WRITE_TOKEN", "");
+  state.incomingAddress = "";
+  state.lastReceivedAt = null;
   state.sender = "sender@example.test";
   state.replyTo = "reply@example.test";
   state.staffEmails = ["staff@example.test"];
@@ -21,6 +23,18 @@ beforeEach(() => {
 });
 
 describe("independent email setup requirements", () => {
+  it("preserves business Reply-To until a signed incoming message verifies the inbox", async () => {
+    state.incomingAddress = "inbox@example.test";
+    vi.stubEnv("RESEND_WEBHOOK_SECRET", "test-secret");
+    expect((await emailReadiness()).replyTo).toBe("reply@example.test");
+    expect((await emailReadiness()).receivingVerified).toBe(false);
+    state.lastReceivedAt = "2026-09-30T12:00:00Z";
+    const readiness = await emailReadiness();
+    expect(readiness.replyTo).toBe("inbox@example.test");
+    expect(readiness.receivingVerified).toBe(true);
+    expect(readiness.signature).toContain("reply@example.test");
+    expect(readiness.signature).not.toContain("inbox@example.test");
+  });
   it("allows ordinary sends without attachment storage or delivery webhooks", async () => {
     const ready = await emailReadiness();
     expect(ready.ready).toBe(true);

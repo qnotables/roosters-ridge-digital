@@ -19,6 +19,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
 try {
   for (const path of [
     "/api/admin/email",
+    "/api/admin/email/inbox",
+    "/api/admin/email/inbox?folder=sent",
+    "/api/admin/email/inbox/attachments?id=11111111-1111-4111-8111-111111111111",
     "/api/admin/email/attachments?id=11111111-1111-4111-8111-111111111111",
   ])
     assert.equal((await fetch(`${base}${path}`)).status, 401);
@@ -45,10 +48,10 @@ try {
   assert.equal(row.rows[0].state, "draft");
   const denied = await fetch(`${base}/api/admin/email`, {
     method: "POST",
-    headers,
+    headers: { Origin: base, "Content-Type": "application/json" },
     body: JSON.stringify({ action: "send", id: draftId }),
   });
-  assert.equal(denied.status, 403);
+  assert.equal(denied.status, 401);
   const forged = await fetch(`${base}/api/webhooks/resend`, {
     method: "POST",
     headers: {
@@ -70,7 +73,7 @@ try {
   assert.equal(typeof data.setup.attachmentsReady, "boolean");
   assert.equal(typeof data.setup.deliveryTrackingReady, "boolean");
   console.log(
-    "Protected HTTP checks passed: authorization, sanitized persistent draft, shared-key send denial, forged webhook rejection, and setup gating. No emails sent.",
+    "Protected HTTP checks passed: inbox/attachment authorization, sanitized persistent draft, unauthorized send denial, forged webhook rejection, and setup gating. No emails sent.",
   );
 } finally {
   if (draftId)

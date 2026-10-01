@@ -22,11 +22,11 @@ export async function requireEmailAccess() {
 }
 export async function emailSettings() {
   const result = await emailDb.execute(
-    sql`SELECT sender, staff_emails FROM email_settings WHERE id=1`,
+    sql`SELECT sender, staff_emails, incoming_address, last_received_at FROM email_settings WHERE id=1`,
   );
   const row = result.rows[0] as
-    { sender: string; staff_emails: string[] } | undefined;
-  return { sender: row?.sender || "", staffEmails: row?.staff_emails || [] };
+    { sender: string; staff_emails: string[]; incoming_address: string; last_received_at: string | null } | undefined;
+  return { sender: row?.sender || "", staffEmails: row?.staff_emails || [], incomingAddress: row?.incoming_address || "", lastReceivedAt: row?.last_received_at || null };
 }
 export function approvedEmailStaff(
   user:
@@ -117,6 +117,16 @@ export type MessageRow = {
   created_at: string;
   accepted_at: string | null;
   event_at: string | null;
+  direction: "inbound" | "outbound";
+  conversation_id: string;
+  rfc_message_id: string | null;
+  in_reply_to: string | null;
+  reference_ids: string[];
+  reply_address: string | null;
+  reply_to_message_id: string | null;
+  received_at: string | null;
+  read_at: string | null;
+  archived: boolean;
 };
 export type AttachmentRow = {
   id: string;
@@ -136,6 +146,7 @@ export type FrozenPayload = {
   html: string;
   text: string;
   replyTo: string;
+  headers?: Record<string, string>;
   files: AttachmentRow[];
 };
 export async function findMessage(id: string) {

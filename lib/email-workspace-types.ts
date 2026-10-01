@@ -1,5 +1,9 @@
 export type EmailMessage = {
   id: string;
+  direction?: "inbound" | "outbound";
+  conversation_id?: string;
+  rfc_message_id?: string | null;
+  reply_to_message_id?: string | null;
   recipients: { to: string[]; cc: string[]; bcc: string[] };
   subject: string;
   html: string;
@@ -40,6 +44,10 @@ export type EmailSetup = {
   sender: string;
   staffEmails: string[];
   replyTo: string;
+  businessReplyTo: string;
+  incomingAddress: string;
+  lastReceivedAt: string | null;
+  receivingVerified: boolean;
   signature: string;
   ready: boolean;
   attachmentsReady: boolean;

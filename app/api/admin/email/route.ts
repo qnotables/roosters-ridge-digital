@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const leadId = new URL(request.url).searchParams.get("leadId");
     if (leadId && !UUID.test(leadId)) throw new EmailError("Invalid lead ID.");
     const messages = await emailDb.execute(
-      query`SELECT id,recipients,subject,html,plain_text,lead_id,estimate_id,project_name,state,sender_email,provider_id,last_error,retry_safe,attempt_at,accepted_at,created_at FROM email_messages WHERE user_id='dashboard' AND (${leadId}::uuid IS NULL OR lead_id=${leadId}::uuid) ORDER BY created_at DESC LIMIT 200`,
+      query`SELECT id,recipients,subject,html,plain_text,lead_id,estimate_id,project_name,state,sender_email,provider_id,last_error,retry_safe,attempt_at,accepted_at,created_at,conversation_id,direction,rfc_message_id,reply_to_message_id FROM email_messages WHERE user_id='dashboard' AND direction='outbound' AND (${leadId}::uuid IS NULL OR lead_id=${leadId}::uuid) ORDER BY created_at DESC LIMIT 200`,
     );
     if (leadId) {
       const events = await emailDb.execute(

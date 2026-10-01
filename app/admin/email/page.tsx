@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Email workspace | RRD Admin",
   description:
-    "Protected customer email drafts, sending, and delivery history.",
+    "Protected client conversations, inbox, sent email, drafts, and quote follow-ups.",
   robots: { index: false, follow: false },
 };
 export default async function EmailPage({

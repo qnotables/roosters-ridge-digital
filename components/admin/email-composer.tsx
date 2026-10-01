@@ -108,7 +108,7 @@ export function EmailComposer({
   const canSend =
     data.setup.ready &&
     missing.length === 0 &&
-    (!message?.estimate_id ||
+    (!message?.estimate_id || message.reply_to_message_id ||
       files.some((f) => f.estimate_id === message.estimate_id)) &&
     !locked;
   async function saved() {
@@ -437,7 +437,7 @@ export function EmailComposer({
               )}
             </div>
           ))}
-          {message?.estimate_id &&
+          {message?.estimate_id && !message.reply_to_message_id &&
             !files.some((f) => f.estimate_id === message.estimate_id) && (
               <Alert variant="destructive">
                 <AlertTitle>Customer estimate PDF is missing</AlertTitle>
