@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { CheckCircle2 } from 'lucide-react'
 import { QuoteForm } from '@/components/forms/quote-form'
+import { MetaPixel } from '@/components/meta-pixel'
 import { Card, CardContent } from '@/components/ui/card'
 import { ogMetadata, twitterImage } from '@/lib/og-metadata'
 import { services, siteConfig, siteUrl } from '@/lib/site-config'
@@ -43,6 +44,7 @@ export default async function QuotePage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
+      <MetaPixel />
       <div className="grid gap-12 lg:grid-cols-[1fr_1.4fr]">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-3">
