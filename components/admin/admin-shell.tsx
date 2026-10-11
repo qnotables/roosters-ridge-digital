@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BarChart3, BriefcaseBusiness, Calculator, ExternalLink, FileText, LogOut, Mail, Menu, Settings2, X } from 'lucide-react'
+import { BarChart3, BriefcaseBusiness, CalendarDays, Calculator, ExternalLink, FileText, LogOut, Mail, Menu, Settings2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ const navigation = [
   { href: '/admin', label: 'Overview', icon: BarChart3 },
   { href: '/admin/leads', label: 'Prospect Finder', icon: FileText },
   { href: '/admin/email', label: 'Email', icon: Mail },
+  { href: '/admin/scheduling', label: 'Scheduling', icon: CalendarDays },
   { href: '/admin/portfolio', label: 'Portfolio', icon: BriefcaseBusiness },
   { href: '/admin/estimating', label: 'Estimates', icon: FileText },
   { href: '/admin/pricing', label: 'Pricing library', icon: Calculator },
@@ -55,7 +56,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className={cn('border-t border-border md:block', open ? 'block' : 'hidden')}>
-          <nav aria-label="Admin dashboard navigation" className="mx-auto flex max-w-[1400px] flex-col gap-1 px-4 py-3 sm:px-6 md:flex-row md:items-center md:gap-1 md:py-2">
+          <nav aria-label="Admin dashboard navigation" className="mx-auto flex max-w-[1400px] flex-col gap-1 px-4 py-3 sm:px-6 md:flex-row md:flex-wrap md:items-center md:gap-1 md:py-2">
             {navigation.map(({ href, label, icon: Icon }) => {
               const active = href === '/admin' ? pathname === href : pathname.startsWith(href)
               return <Link key={href} href={href} onClick={() => setOpen(false)} className={cn('flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon className="size-4" />{label}</Link>

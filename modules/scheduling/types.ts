@@ -1,4 +1,4 @@
-export type BookingStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
 export type MeetingMode = 'online' | 'phone_or_online'
 export type Scope = { tenantId: string; hostId: string }
 export type TimeWindow = { startMinute: number; endMinute: number }
@@ -18,6 +18,7 @@ export type AppointmentType = {
   meetingMode: MeetingMode
 }
 export type Reservation = {
+  kind?: 'booking' | 'block'
   id: string
   start: string
   end: string

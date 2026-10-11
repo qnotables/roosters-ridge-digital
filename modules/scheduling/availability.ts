@@ -33,7 +33,7 @@ export function availableSlots(context: AvailabilityContext, date: string, now =
   const day = Temporal.PlainDate.from(date)
   if (Temporal.PlainDate.compare(day, today) < 0 || Temporal.PlainDate.compare(day, today.add({ days: context.appointmentType.maximumHorizonDays })) > 0) return []
   const reservations = context.reservations.filter(value => value.status !== 'cancelled')
-  if (reservations.filter(value => localDate(value.start, context.timeZone) === date).length >= context.dailyLimit) return []
+  if (reservations.filter(value => value.kind !== 'block' && localDate(value.start, context.timeZone) === date).length >= context.dailyLimit) return []
   const exceptions = context.exceptions.filter(value => value.date === date)
   if (exceptions.length > 1) throw new SchedulingError('invalid', 'Duplicate availability exception.')
   const exception = exceptions[0]
