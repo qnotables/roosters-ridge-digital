@@ -7,10 +7,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:email": "vitest run"
+    "test:email": "vitest run",
+    "test:scheduling": "vitest run tests/scheduling*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@js-temporal/polyfill": "^0.5.1",
     "@neondatabase/auth": "0.5.0-beta",
     "@neondatabase/serverless": "^1.1.0",
     "@tiptap/extension-link": "^3.31.3",
