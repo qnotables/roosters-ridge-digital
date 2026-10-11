@@ -45,6 +45,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
+      <head>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18506972045" />
+        <script
+          id="google-tag-config"
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'AW-18506972045');`,
+          }}
+        />
+      </head>
       <body className="min-h-dvh antialiased font-sans">
         <script
           type="application/ld+json"
