@@ -37,6 +37,8 @@ export type CalendarBlock = {
 export type AdminCatalog = {
   timeZone: string;
   enabled: boolean;
+  configuration?: { version: number; policies: import('./configuration').BookingPolicies };
+  typeDetails?: Record<string, import('./configuration').TypeDetails>;
   hosts: Host[];
   types: (AppointmentType & { active: boolean })[];
   weekly: (WeeklyWindow & { hostId: string })[];

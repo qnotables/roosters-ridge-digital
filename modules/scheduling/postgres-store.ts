@@ -13,6 +13,13 @@ import {
 import { validateDate } from "./validation";
 
 type Executor = Pick<NodePgDatabase, "execute">;
+async function readPolicies(db: Executor, tenantId: string) {
+  const installed = await db.execute(sql`SELECT to_regclass('rrd_scheduling.configuration') IS NOT NULL AS ready`);
+  if (!installed.rows[0]?.ready) return undefined;
+  const result = await db.execute(sql`SELECT policies FROM rrd_scheduling.configuration WHERE tenant_id=${tenantId}`);
+  if (!result.rows[0]) throw new SchedulingError('unavailable', 'Booking policies are not configured.');
+  return result.rows[0].policies as import('./configuration').BookingPolicies;
+}
 const appointmentJson = sql`json_build_object('id',a.id,'slug',a.slug,'name',a.name,'durationMinutes',a.duration_minutes,
   'bufferBeforeMinutes',a.buffer_before_minutes,'bufferAfterMinutes',a.buffer_after_minutes,'minimumNoticeMinutes',a.minimum_notice_minutes,
   'maximumHorizonDays',a.maximum_horizon_days,'slotIntervalMinutes',a.slot_interval_minutes,'priceCents',a.price_cents,'meetingMode',a.meeting_mode)`;
@@ -103,6 +110,7 @@ async function contextWithConfiguration(
     timeZone: link.time_zone,
     dailyLimit: link.daily_limit,
     appointmentType: link.appointment,
+    policies: await readPolicies(db, scope.tenantId),
     weekly: weekly.rows as AvailabilityContext["weekly"],
     exceptions: exceptions.rows as AvailabilityContext["exceptions"],
     reservations: [
@@ -195,15 +203,22 @@ export function createPostgresSchedulingStore(
                     "forbidden",
                     "Invalid booking scope.",
                   );
-                await tx.execute(sql`INSERT INTO rrd_scheduling.bookings (tenant_id,host_id,id,appointment_type_id,reference,customer_name,customer_email,customer_phone,time_zone,start_time,end_time,occupied_from,occupied_to)
-                VALUES (${scope.tenantId},${scope.hostId},${booking.id},${booking.appointmentTypeId},${booking.reference},${booking.name},${booking.email},${booking.phone},${booking.timeZone},${booking.start}::timestamptz,${booking.end}::timestamptz,${booking.occupiedStart}::timestamptz,${booking.occupiedEnd}::timestamptz)`);
+                const policies = await readPolicies(tx, scope.tenantId);
+                if (policies && !policies.allowMultiple) {
+                  const email = booking.email.toLowerCase();
+                  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${scope.tenantId + ':' + email},0))`);
+                  const existing = await tx.execute(sql`SELECT id FROM rrd_scheduling.bookings WHERE tenant_id=${scope.tenantId} AND lower(customer_email)=${email} AND status IN ('pending','confirmed') AND end_time > now() LIMIT 1`);
+                  if (existing.rows.length) throw new SchedulingError('unavailable','Only one upcoming appointment per customer email is allowed.');
+                }
+                await tx.execute(sql`INSERT INTO rrd_scheduling.bookings (tenant_id,host_id,id,appointment_type_id,reference,customer_name,customer_email,customer_phone,time_zone,start_time,end_time,occupied_from,occupied_to,status)
+                VALUES (${scope.tenantId},${scope.hostId},${booking.id},${booking.appointmentTypeId},${booking.reference},${booking.name},${booking.email},${booking.phone},${booking.timeZone},${booking.start}::timestamptz,${booking.end}::timestamptz,${booking.occupiedStart}::timestamptz,${booking.occupiedEnd}::timestamptz,${booking.status})`);
                 await tx.execute(
                   sql`INSERT INTO rrd_scheduling.management_tokens (tenant_id,host_id,booking_id,token_hash,expires_at) VALUES (${scope.tenantId},${scope.hostId},${booking.id},${booking.tokenHash},${booking.tokenExpiresAt}::timestamptz)`,
                 );
                 await tx.execute(
-                  sql`INSERT INTO rrd_scheduling.booking_changes (tenant_id,booking_id,next_status) VALUES (${scope.tenantId},${booking.id},'confirmed')`,
+                  sql`INSERT INTO rrd_scheduling.booking_changes (tenant_id,booking_id,next_status) VALUES (${scope.tenantId},${booking.id},${booking.status})`,
                 );
-                await enqueue(tx, scope, booking.id, "confirmed");
+                if (booking.status === 'confirmed') await enqueue(tx, scope, booking.id, "confirmed");
               },
               async getManagedBooking(hash) {
                 const result =
@@ -222,13 +237,16 @@ export function createPostgresSchedulingStore(
                       occupiedEnd: iso(row.occupied_to),
                       status: row.status as ManagedBooking["status"],
                       tokenExpiresAt: iso(row.expires_at),
+                      cancellationMinutes: (await readPolicies(tx, scope.tenantId))?.cancellationMinutes,
                     }
                   : null;
               },
               async cancelBooking(id, hash) {
+                const policies = await readPolicies(tx, scope.tenantId);
+                const previous = await tx.execute(sql`SELECT status FROM rrd_scheduling.bookings WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND id=${id} FOR UPDATE`);
                 const result =
-                  await tx.execute(sql`UPDATE rrd_scheduling.bookings b SET status='cancelled',updated_at=now()
-                WHERE b.tenant_id=${scope.tenantId} AND b.host_id=${scope.hostId} AND b.id=${id} AND b.status='confirmed' AND b.start_time > now()
+                  await tx.execute(sql`UPDATE rrd_scheduling.bookings b SET status='cancelled',${policies ? sql`version=b.version+1,` : sql``}updated_at=now()
+                WHERE b.tenant_id=${scope.tenantId} AND b.host_id=${scope.hostId} AND b.id=${id} AND b.status IN ('pending','confirmed') AND b.start_time > now() AND b.start_time >= now() + ${policies?.cancellationMinutes ?? 0} * interval '1 minute'
                 AND EXISTS (SELECT 1 FROM rrd_scheduling.management_tokens m WHERE m.tenant_id=b.tenant_id AND m.host_id=b.host_id AND m.booking_id=b.id AND m.token_hash=${hash} AND m.used_at IS NULL AND m.expires_at > now()) RETURNING b.id`);
                 if (!result.rows.length)
                   throw new SchedulingError(
@@ -239,7 +257,7 @@ export function createPostgresSchedulingStore(
                   sql`UPDATE rrd_scheduling.management_tokens SET used_at=now() WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND booking_id=${id} AND used_at IS NULL`,
                 );
                 await tx.execute(
-                  sql`INSERT INTO rrd_scheduling.booking_changes (tenant_id,booking_id,previous_status,next_status) VALUES (${scope.tenantId},${id},'confirmed','cancelled')`,
+                  sql`INSERT INTO rrd_scheduling.booking_changes (tenant_id,booking_id,previous_status,next_status) VALUES (${scope.tenantId},${id},${previous.rows[0]?.status ?? 'confirmed'},'cancelled')`,
                 );
                 await enqueue(tx, scope, id, "cancelled");
               },

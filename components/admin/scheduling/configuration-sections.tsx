@@ -1,3 +1,6 @@
+import { AvailabilityEditor } from './availability-editor';
+import { TypeEditor } from './type-editor';
+import { PolicyEditor } from './policy-editor';
 import {
   Card,
   CardHeader,
@@ -10,10 +13,18 @@ import type { AdminCatalog } from "@/modules/scheduling/admin-types";
 export function ConfigurationSection({
   section,
   catalog,
+  onSuccess,
 }: {
   section: string;
   catalog: AdminCatalog | null;
+  onSuccess: () => void;
 }) {
+  if (catalog?.configuration) {
+    const key = catalog.configuration.version;
+    if (section === 'availability') return <div className="flex flex-col gap-4">{catalog.hosts.map(host => <AvailabilityEditor key={`${host.id}-${key}`} catalog={catalog} host={host} onSuccess={onSuccess}/>)}</div>;
+    if (section === 'types') return <div className="flex flex-col gap-4">{catalog.types.map(type => <TypeEditor key={`${type.id}-${key}`} catalog={catalog} type={type} onSuccess={onSuccess}/>)}<TypeEditor key={`new-${key}`} catalog={catalog} onSuccess={onSuccess}/></div>;
+    return <PolicyEditor key={key} catalog={catalog} onSuccess={onSuccess}/>;
+  }
   if (!catalog)
     return (
       <Card>
@@ -145,8 +156,7 @@ export function ConfigurationSection({
           </Card>
         ))}
         <p className="text-sm text-muted-foreground">
-          Availability is read-only in Phase 2A. Use Block time on the calendar
-          to reserve inventory.
+          Editing requires the approved Phase 2B configuration migration. Use Block time on the calendar to reserve inventory after Phase 2A activation.
         </p>
       </div>
     );
@@ -169,7 +179,7 @@ export function ConfigurationSection({
           <dt className="text-muted-foreground">Email delivery</dt>
           <dd>No scheduling email worker activated</dd>
           <dt className="text-muted-foreground">Policy changes</dt>
-          <dd>Approval required; read-only in this phase</dd>
+          <dd>Phase 2B migration approval required before editing</dd>
         </dl>
       </CardContent>
     </Card>

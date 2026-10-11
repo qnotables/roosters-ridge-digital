@@ -404,7 +404,7 @@ export function SchedulingDashboard({
               </div>
             </>
           ) : (
-            <ConfigurationSection section={section} catalog={catalog} />
+            <ConfigurationSection section={section} catalog={catalog} onSuccess={refresh} />
           )}
         </div>
       </div>

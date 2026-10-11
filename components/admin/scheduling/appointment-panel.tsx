@@ -46,10 +46,14 @@ export function SchedulingSelect({
   onChange,
   children,
   disabled = false,
+  name,
+  defaultValue,
 }: {
   id: string;
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
+  name?: string;
+  defaultValue?: string;
   children: React.ReactNode;
   disabled?: boolean;
 }) {
@@ -57,7 +61,9 @@ export function SchedulingSelect({
     <select
       id={id}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      name={name}
+      defaultValue={defaultValue}
+      onChange={(event) => onChange?.(event.target.value)}
       disabled={disabled}
       className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
     >

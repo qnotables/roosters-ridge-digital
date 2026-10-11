@@ -56,7 +56,18 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
     const exceptions = await db.execute(
       sql`SELECT host_id AS "hostId",date::text,closed,windows FROM rrd_scheduling.availability_exceptions WHERE tenant_id=${scope.tenantId} ORDER BY date`,
     );
+    const installed = await db.execute(sql`SELECT to_regclass('rrd_scheduling.configuration') IS NOT NULL AS ready`);
+    let configuration: AdminCatalog['configuration'];
+    let typeDetails: AdminCatalog['typeDetails'];
+    if (installed.rows[0]?.ready) {
+      const config = await db.execute(sql`SELECT version,policies FROM rrd_scheduling.configuration WHERE tenant_id=${scope.tenantId}`);
+      configuration = config.rows[0] as AdminCatalog['configuration'];
+      const details = await db.execute(sql`SELECT a.id,a.description,a.location,a.archived,a.intake_questions AS "intakeQuestions",EXISTS (SELECT 1 FROM rrd_scheduling.public_links l WHERE l.tenant_id=a.tenant_id AND l.appointment_type_id=a.id AND l.enabled) AS "publicBookingsEnabled" FROM rrd_scheduling.appointment_types a WHERE a.tenant_id=${scope.tenantId}`);
+      typeDetails = Object.fromEntries(details.rows.map(row => [String(row.id), row])) as AdminCatalog['typeDetails'];
+    }
     return {
+      configuration,
+      typeDetails,
       timeZone: String(tenant.rows[0].time_zone),
       enabled: Boolean(tenant.rows[0].enabled),
       hosts: hosts.rows as AdminCatalog["hosts"],
