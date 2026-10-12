@@ -65,6 +65,9 @@ export async function POST(request: Request) {
   if (!data.email_id || !id || Number.isNaN(occurred.getTime()))
     return Response.json({ error: "Invalid event." }, { status: 400 });
   try {
+    const { recordSchedulingDelivery } = await import('@/modules/scheduling/notification-webhook');
+    const schedulingDelivery = await recordSchedulingDelivery(emailDb, { id, providerId: data.email_id, type: event.type, occurred, recipients: data.to, hardBounce: event.type === 'email.bounced' && ['Permanent', 'hard'].includes(data.bounce?.type || '') });
+    if (schedulingDelivery === true) return Response.json({ok:true});
     const result = await emailDb.transaction(async (tx) => {
       await tx.execute(query`SELECT pg_advisory_xact_lock(hashtext('email-inbox-threading'))`);
       const messages = await tx.execute(
@@ -123,9 +126,10 @@ export async function POST(request: Request) {
       }
       return "processed";
     });
+    const retry = result === 'retry' || (result === 'unrelated' && schedulingDelivery === 'retry');
     return Response.json(
-      { ok: result !== "retry" },
-      { status: result === "retry" ? 503 : 200 },
+      { ok: !retry },
+      { status: retry ? 503 : 200 },
     );
   } catch {
     return Response.json(

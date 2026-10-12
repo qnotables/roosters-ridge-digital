@@ -132,11 +132,13 @@ export function ConfirmCalendarAction({
 export function AppointmentPanel({
   booking,
   catalog,
+  prefill,
   onClose,
   onSuccess,
 }: {
   booking: AdminBooking | "new" | null;
   catalog: AdminCatalog;
+  prefill?: import('@/modules/scheduling/notifications').LeadPrefill;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -379,12 +381,13 @@ export function AppointmentPanel({
                       type={inputType}
                       maxLength={max}
                       required={name === "name" || name === "email"}
-                      defaultValue={row?.[name] ?? ""}
+                      defaultValue={row?.[name] ?? prefill?.[name] ?? ""}
                     />
                     {name === "relatedContact" && (
                       <FieldDescription>
-                        Optional reference only; no cross-tenant contact records
-                        are fetched.
+                        A selected lead UUID links only when its email matches.
+                        Otherwise, a unique RRD lead email match is linked automatically.
+                        No customer record is created.
                       </FieldDescription>
                     )}
                   </Field>

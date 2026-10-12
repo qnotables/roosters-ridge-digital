@@ -12,6 +12,8 @@ import { assertBlockClear } from "./admin-service";
 import { utcDateRange } from "./calendar";
 import { readAdminContext } from "./postgres-store";
 import { SchedulingError } from "./types";
+import { validLeadId } from './notifications';
+import { findSchedulingLead } from './integration-postgres';
 
 type Executor = Pick<NodePgDatabase, "execute">;
 const iso = (value: unknown) => new Date(String(value)).toISOString();
@@ -131,6 +133,11 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
               async save(row, previous, actor) {
                 if (row.hostId !== hostId || actor !== scope.userId)
                   throw new SchedulingError("forbidden", "Invalid scope.");
+                if (validLeadId(row.relatedContact)) {
+                  const lead = await findSchedulingLead(tx, scope, row.relatedContact);
+                  if (lead.email.trim().toLowerCase() !== row.email.trim().toLowerCase())
+                    throw new SchedulingError('invalid', 'Selected lead email must match the appointment customer.');
+                }
                 if (previous) {
                   const result =
                     await tx.execute(sql`UPDATE rrd_scheduling.bookings SET customer_name=${row.name},customer_email=${row.email},customer_phone=${row.phone},business_name=${row.businessName},private_notes=${row.customerNotes},internal_notes=${row.internalNotes},related_contact=${row.relatedContact},start_time=${row.start}::timestamptz,end_time=${row.end}::timestamptz,occupied_from=${row.occupiedStart}::timestamptz,occupied_to=${row.occupiedEnd}::timestamptz,time_zone=${row.timeZone},status=${row.status},version=${row.version},updated_at=now()

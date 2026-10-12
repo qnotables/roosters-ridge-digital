@@ -1,8 +1,7 @@
 "use server";
 import { sql } from "drizzle-orm";
 import { emailDb } from "@/lib/email-workspace-db";
-import { hasDashboardAccess } from "@/lib/admin-auth";
-import { requireSchedulingAdmin } from "@/modules/scheduling/rrd-adapter";
+import { authorizeScheduling } from "@/modules/scheduling/admin-authorization";
 import { createAdminPostgresStore } from "@/modules/scheduling/admin-postgres";
 import { createAdminSchedulingService } from "@/modules/scheduling/admin-service";
 import type {
@@ -11,19 +10,7 @@ import type {
 } from "@/modules/scheduling/admin-types";
 import { SchedulingError } from "@/modules/scheduling/types";
 
-async function authorize() {
-  if (!(await hasDashboardAccess()))
-    throw new SchedulingError("forbidden", "Administrator access required.");
-  const installed = await emailDb.execute(
-    sql`SELECT to_regclass('rrd_scheduling.admin_audit') IS NOT NULL AS ready`,
-  );
-  if (!installed.rows[0]?.ready) throw new Error("SCHEDULING_SETUP_REQUIRED");
-  const tenant = await emailDb.execute(
-    sql`SELECT id FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`,
-  );
-  if (!tenant.rows[0]) throw new Error("SCHEDULING_SETUP_REQUIRED");
-  return requireSchedulingAdmin(String(tenant.rows[0].id));
-}
+const authorize = authorizeScheduling;
 export async function updateSchedulingConfiguration(input: unknown, version: number): Promise<{ok: boolean; message: string}> {
   try {
     const scope = await authorize();

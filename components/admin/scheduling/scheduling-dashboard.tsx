@@ -46,15 +46,22 @@ const sections = [
   { key: "availability", label: "Availability", icon: Clock3 },
   { key: "types", label: "Appointment Types", icon: Shapes },
   { key: "settings", label: "Scheduling Settings", icon: Settings2 },
+  { key: "notifications", label: "Notifications", icon: ShieldCheck },
 ];
 export function SchedulingDashboard({
   initial,
   initialDate,
   section: requested,
+  create = false,
+  initialStatus = 'all',
+  leadPrefill,
 }: {
   initial: DashboardResult;
   initialDate: string;
   section: string;
+  create?: boolean;
+  initialStatus?: string;
+  leadPrefill?: import('@/modules/scheduling/notifications').LeadPrefill;
 }) {
   const section = sections.some((item) => item.key === requested)
     ? requested
@@ -62,10 +69,10 @@ export function SchedulingDashboard({
   const [date, setDate] = useState(initialDate);
   const [view, setView] = useState<CalendarView>("month");
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState(initialStatus);
   const [host, setHost] = useState("all");
   const [type, setType] = useState("all");
-  const [selected, setSelected] = useState<AdminBooking | "new" | null>(null);
+  const [selected, setSelected] = useState<AdminBooking | "new" | null>(create ? 'new' : null);
   const [block, setBlock] = useState<CalendarBlock | "new" | null>(null);
   const effectiveView = section === "appointments" ? "agenda" : view;
   const range = calendarRange(date, effectiveView);
@@ -144,7 +151,7 @@ export function SchedulingDashboard({
               <Link
                 key={key}
                 href={
-                  key === "calendar"
+                  key === "notifications" ? "/admin/scheduling/notifications" : key === "calendar"
                     ? "/admin/scheduling"
                     : `/admin/scheduling?section=${key}`
                 }
@@ -415,6 +422,7 @@ export function SchedulingDashboard({
           }
           booking={selected}
           catalog={catalog}
+          prefill={leadPrefill}
           onClose={() => setSelected(null)}
           onSuccess={refresh}
         />
