@@ -1,5 +1,5 @@
-export type BookingStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show'
-export type MeetingMode = 'online' | 'phone_or_online'
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+export type MeetingMode = 'online' | 'phone_or_online' | 'phone' | 'in_person'
 export type Scope = { tenantId: string; hostId: string }
 export type TimeWindow = { startMinute: number; endMinute: number }
 export type WeeklyWindow = TimeWindow & { weekday: number }
@@ -18,6 +18,7 @@ export type AppointmentType = {
   meetingMode: MeetingMode
 }
 export type Reservation = {
+  kind?: 'booking' | 'block'
   id: string
   start: string
   end: string
@@ -32,9 +33,11 @@ export type AvailabilityContext = Scope & {
   weekly: WeeklyWindow[]
   exceptions: AvailabilityException[]
   reservations: Reservation[]
+  policies?: import('./configuration').BookingPolicies
 }
 export type Slot = { start: string; end: string }
-export type BookingRequest = { start: string; name: string; email: string; phone: string; website: string }
+export type CustomerIntake = { businessName: string; websiteUrl: string; reason: string; notes: string; customerTimeZone: string }
+export type BookingRequest = { start: string; name: string; email: string; phone: string; website: string; intake?: CustomerIntake }
 export type NewBooking = Reservation & Scope & {
   appointmentTypeId: string
   reference: string
@@ -44,8 +47,9 @@ export type NewBooking = Reservation & Scope & {
   timeZone: string
   tokenHash: string
   tokenExpiresAt: string
+  intake?: CustomerIntake
 }
-export type ManagedBooking = Reservation & Scope & { reference: string; tokenExpiresAt: string }
+export type ManagedBooking = Reservation & Scope & { reference: string; tokenExpiresAt: string; cancellationMinutes?: number }
 export type BookingTransaction = {
   loadContext(linkSlug: string, date: string): Promise<AvailabilityContext | null>
   insertBooking(booking: NewBooking): Promise<void>

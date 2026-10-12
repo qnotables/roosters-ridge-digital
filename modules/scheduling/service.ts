@@ -50,10 +50,11 @@ export function createSchedulingService(store: SchedulingStore, clock = () => ne
           appointmentTypeId: context.appointmentType.id, reference,
           ...slot, occupiedStart: new Date(Date.parse(slot.start) - context.appointmentType.bufferBeforeMinutes * 60000).toISOString(),
           occupiedEnd: new Date(Date.parse(slot.end) + context.appointmentType.bufferAfterMinutes * 60000).toISOString(),
-          status: 'confirmed', name: request.name, email: request.email, phone: request.phone,
+          status: context.policies?.approval === 'manual' ? 'pending' : 'confirmed', name: request.name, email: request.email, phone: request.phone,
           timeZone: context.timeZone, tokenHash: management.hash, tokenExpiresAt: management.expiresAt,
+          ...(request.intake ? { intake: request.intake } : {}),
         })
-        return { reference, ...slot, managementToken: management.token, managementExpiresAt: management.expiresAt }
+        return { reference, ...slot, status: context.policies?.approval === 'manual' ? 'pending' as const : 'confirmed' as const, managementToken: management.token, managementExpiresAt: management.expiresAt }
       })
     },
     async cancel(token: string, clientKey: string) {
@@ -65,7 +66,7 @@ export function createSchedulingService(store: SchedulingStore, clock = () => ne
       return store.withHostLock(scope, async tx => {
         const booking = await tx.getManagedBooking(hash)
         const now = clock().getTime()
-        if (!booking || Date.parse(booking.tokenExpiresAt) <= now || Date.parse(booking.start) <= now || booking.status !== 'confirmed') throw new SchedulingError('forbidden', 'Invalid or expired appointment link.')
+        if (!booking || Date.parse(booking.tokenExpiresAt) <= now || Date.parse(booking.start) - (booking.cancellationMinutes ?? 0) * 60000 < now || Date.parse(booking.start) <= now || !['pending','confirmed'].includes(booking.status)) throw new SchedulingError('forbidden', 'Invalid or expired appointment link.')
         await tx.cancelBooking(booking.id, hash)
         return { reference: booking.reference, status: 'cancelled' as const }
       })
