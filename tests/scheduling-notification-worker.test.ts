@@ -37,7 +37,7 @@ function database(event='reminder') {
   return {db,job,queries,attempts,due:()=>{available=0},cancel:()=>{status='cancelled'},suppress:()=>{suppressed=true}}
 }
 let settings:NotificationSettings
-beforeEach(()=>{vi.clearAllMocks();vi.stubEnv('NODE_ENV','production');vi.stubEnv('VERCEL_ENV','production');mocks.ready.mockResolvedValue(true);settings={...structuredClone(defaultPreferences),senderAddress:'business@example.com',replyTo:'reply@example.com',adminRecipients:['staff@example.com'],customerConfirmation:true,hostNotification:true,cancellationNotice:true,reminderMinutes:[1440,60],version:1,deliveryEnabled:true};mocks.settings.mockImplementation(async()=>settings)})
+beforeEach(()=>{vi.clearAllMocks();vi.stubEnv('NODE_ENV','production');vi.stubEnv('VERCEL_ENV','production');vi.stubEnv('ADMIN_DASHBOARD_KEY','x'.repeat(32));mocks.ready.mockResolvedValue(true);settings={...structuredClone(defaultPreferences),senderAddress:'business@example.com',replyTo:'reply@example.com',adminRecipients:['staff@example.com'],customerConfirmation:true,hostNotification:true,cancellationNotice:true,reminderMinutes:[1440,60],version:1,deliveryEnabled:true};mocks.settings.mockImplementation(async()=>settings)})
 afterEach(()=>vi.unstubAllEnvs())
 describe('notification worker durability',()=>{
   it('never invokes the provider or mutates queues in development',async()=>{vi.stubEnv('NODE_ENV','development');const d=database();const send=vi.fn();expect(await processSchedulingNotifications(d.db,send)).toEqual({state:'dry-run',processed:0});expect(send).not.toHaveBeenCalled();expect(d.queries).toHaveLength(0)})

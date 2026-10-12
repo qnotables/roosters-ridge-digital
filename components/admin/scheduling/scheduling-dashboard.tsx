@@ -87,6 +87,8 @@ export function SchedulingDashboard({
           : undefined,
       keepPreviousData: false,
       revalidateOnFocus: true,
+      refreshInterval: 3000,
+      dedupingInterval: 2000,
     },
   );
   const ready = data?.state === "ready";

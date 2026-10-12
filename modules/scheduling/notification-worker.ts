@@ -5,9 +5,11 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { emailProvider } from '@/lib/email-workspace-provider'
 import { eventEnabled, isLiveSchedulingEnvironment, renderNotification, retryAllowed, type NotificationEvent } from './notifications'
 import { notificationSchemaReady, readNotificationSettings } from './notification-postgres'
+import { customerNotificationDetails } from './customer-notifications'
+import { openCustomerValue, sealCustomerValue, type SealedValue } from './customer-security'
 
 type Payload = { from: string; to: string[]; replyTo: string; subject: string; text: string }
-type Job = { id: string; tenant_id: string; booking_id: string; event: NotificationEvent; expected_start: string; reminder_minutes: number | null; state: string; attempts: number; first_attempt_at: string | null; frozen_payload: Payload | null; claim_id: string | null; host_id: string }
+type Job = { id: string; tenant_id: string; booking_id: string; event: NotificationEvent; expected_start: string; reminder_minutes: number | null; state: string; attempts: number; first_attempt_at: string | null; frozen_payload: Payload | SealedValue | null; claim_id: string | null; host_id: string }
 export type SchedulingSender = (payload: Payload, idempotencyKey: string) => Promise<{ data: { id: string } | null; error: { name?: string; message?: string } | null }>
 const iso = (value: unknown) => new Date(String(value)).toISOString()
 
@@ -21,7 +23,7 @@ async function reconcileReminders(db: NodePgDatabase, tenantId: string) {
       AND b.start_time - m.minutes * interval '1 minute' >= greatest(b.created_at,now()-interval '15 minutes')
     ON CONFLICT DO NOTHING`)
 }
-async function claimJob(db: NodePgDatabase, tenantId: string): Promise<Job | 'skipped' | null> {
+async function claimJob(db: NodePgDatabase, tenantId: string): Promise<(Job & { frozen_payload: Payload }) | 'skipped' | null> {
   return db.transaction(async tx => {
     const result = await tx.execute(sql`SELECT j.*,b.host_id FROM rrd_scheduling.notification_jobs j JOIN rrd_scheduling.bookings b ON b.tenant_id=j.tenant_id AND b.id=j.booking_id
       WHERE j.tenant_id=${tenantId} AND j.available_at<=now() AND (j.state='pending' OR (j.state='sending' AND j.lease_until<now()))
@@ -32,14 +34,14 @@ async function claimJob(db: NodePgDatabase, tenantId: string): Promise<Job | 'sk
       await tx.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='review',last_error='Retry safety window or attempt limit reached; reconcile provider status before any manual resend.' WHERE tenant_id=${tenantId} AND id=${job.id}`)
       return 'skipped'
     }
-    let payload = job.frozen_payload
+    let payload: Payload | null = job.frozen_payload && 'ciphertext' in job.frozen_payload ? openCustomerValue<Payload>(job.frozen_payload,process.env.ADMIN_DASHBOARD_KEY ?? '') : job.frozen_payload
     if (!payload) {
       const settings = await readNotificationSettings(tx, tenantId)
       if (!eventEnabled(job.event, settings, job.reminder_minutes)) {
         await tx.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='skipped',last_error='Notification disabled in current preferences.' WHERE tenant_id=${tenantId} AND id=${job.id}`)
         return 'skipped'
       }
-      const booking = await tx.execute(sql`SELECT b.customer_name,b.customer_email,b.start_time,b.time_zone,b.reference,a.name AS appointment_type,t.name AS business_name FROM rrd_scheduling.bookings b JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id WHERE b.tenant_id=${tenantId} AND b.id=${job.booking_id}`)
+      const booking = await tx.execute(sql`SELECT b.customer_name,b.customer_email,b.start_time,b.time_zone,b.reference,b.version,a.duration_minutes,a.location,a.meeting_mode,a.name AS appointment_type,t.name AS business_name FROM rrd_scheduling.bookings b JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id WHERE b.tenant_id=${tenantId} AND b.id=${job.booking_id}`)
       const b = booking.rows[0]
       const to = job.event === 'admin_booking' ? settings.adminRecipients : [String(b.customer_email).toLowerCase()]
       if (!settings.senderAddress || !settings.replyTo || !to.length) {
@@ -48,13 +50,17 @@ async function claimJob(db: NodePgDatabase, tenantId: string): Promise<Job | 'sk
       }
       payload = { from: `${settings.senderName} <${settings.senderAddress}>`, to, replyTo: settings.replyTo, ...renderNotification(settings.templates[job.event], { customerName: String(b.customer_name), appointmentType: String(b.appointment_type), start: iso(b.start_time), timeZone: String(b.time_zone), reference: String(b.reference), businessName: String(b.business_name) }) }
     }
+    if (!job.frozen_payload && payload && job.event !== 'admin_booking') {
+      const detail = await tx.execute(sql`SELECT b.version,b.start_time,a.duration_minutes,a.location,a.meeting_mode FROM rrd_scheduling.bookings b JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id WHERE b.tenant_id=${tenantId} AND b.id=${job.booking_id}`)
+      if (detail.rows[0]) payload.text += await customerNotificationDetails(tx,job.event,detail.rows[0],tenantId,job.host_id,job.booking_id)
+    }
     const claim = randomUUID()
-    await tx.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='sending',attempts=attempts+1,claim_id=${claim},lease_until=now()+interval '2 minutes',first_attempt_at=coalesce(first_attempt_at,now()),frozen_payload=${JSON.stringify(payload)}::jsonb WHERE tenant_id=${tenantId} AND id=${job.id}`)
+    await tx.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='sending',attempts=attempts+1,claim_id=${claim},lease_until=now()+interval '2 minutes',first_attempt_at=coalesce(first_attempt_at,now()),frozen_payload=${JSON.stringify(sealCustomerValue(payload,process.env.ADMIN_DASHBOARD_KEY ?? ''))}::jsonb WHERE tenant_id=${tenantId} AND id=${job.id}`)
     await tx.execute(sql`INSERT INTO rrd_scheduling.notification_attempts(tenant_id,job_id,id,attempt_number) VALUES(${tenantId},${job.id},${claim},${job.attempts+1})`)
     return { ...job, claim_id: claim, frozen_payload: payload, attempts: job.attempts+1 }
   })
 }
-async function deliverClaim(db: NodePgDatabase, job: Job, send: SchedulingSender) {
+async function deliverClaim(db: NodePgDatabase, job: Job & { frozen_payload: Payload }, send: SchedulingSender) {
   await db.transaction(async tx => {
     // Match booking mutation lock order. Holding these locks through the bounded send prevents stale reminders after cancellation/rescheduling.
     await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${job.tenant_id} AND id=${job.host_id} FOR UPDATE`)

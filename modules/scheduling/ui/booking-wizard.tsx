@@ -31,6 +31,7 @@ export function BookingWizard({ catalog, brand }: { catalog: PublicCatalog; bran
   const [message, setMessage] = useState('')
   const [result, setResult] = useState<PublicConfirmation>()
   const heading = useRef<HTMLHeadingElement>(null)
+  const submission = useRef<{ payload: string; key: string } | null>(null)
   const appointments = catalog.state === 'ready' ? catalog.appointments : []
   const appointment = appointments.find(item => item.key === key)
   useEffect(() => {
@@ -51,14 +52,17 @@ export function BookingWizard({ catalog, brand }: { catalog: PublicCatalog; bran
     if (!appointment || !start || !confirmed || pending) return
     setPending(true); setMessage('')
     try {
-      const response = await fetch('/api/booking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointment: key, start, name: contact.name, email: contact.email, phone: contact.phone, website: contact.website, intake: { businessName: contact.businessName, websiteUrl: contact.websiteUrl, reason: contact.reason, notes: contact.notes, customerTimeZone: timeZone }, confirmed }) })
+      const payload = JSON.stringify({ appointment: key, start, name: contact.name, email: contact.email, phone: contact.phone, website: contact.website, intake: { businessName: contact.businessName, websiteUrl: contact.websiteUrl, reason: contact.reason, notes: contact.notes, customerTimeZone: timeZone }, confirmed })
+      if (submission.current?.payload !== payload) submission.current = { payload, key: crypto.randomUUID() }
+      const response = await fetch('/api/booking', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': submission.current.key }, body: payload })
       const body = await response.json()
       if (!response.ok) {
         setMessage(body.message ?? 'We could not confirm your appointment.')
         if (body.code === 'unavailable') { setStart(''); setDate(''); setStep(1); setConfirmed(false); void mutate() }
         return
       }
-      setResult(body)
+      if (body.confirmationPath === '/book/confirmed') window.location.assign('/book/confirmed')
+      else setResult(body)
     } catch { setMessage('We could not verify whether your booking was received. Please contact us before trying again.') }
     finally { setPending(false) }
   }

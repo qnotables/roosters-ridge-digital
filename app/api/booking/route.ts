@@ -2,6 +2,8 @@ import { rrdPublicScheduling } from '@/modules/scheduling/public-postgres'
 import { publicAppointment, publicMonthAvailability, validatePublicSubmission } from '@/modules/scheduling/public-service'
 import { assertBookingOrigin, boundedBookingBody, publicClientKey, publicError, publicHeaders } from '@/modules/scheduling/public-http'
 import { SchedulingError } from '@/modules/scheduling/types'
+import { createCustomerBooking } from '@/modules/scheduling/customer-postgres'
+import { setCustomerCookies } from '@/modules/scheduling/customer-http'
 
 export const runtime = 'nodejs'
 const unavailable = () => Response.json({ state: 'unavailable', message: 'Online booking is not available right now. Contact us and we will help arrange a time.' }, { status: 503, headers: publicHeaders })
@@ -31,7 +33,8 @@ export async function POST(request: Request) {
     const input = await boundedBookingBody(request)
     const booking = validatePublicSubmission(input)
     const appointment = publicAppointment(context.appointments, (input as Record<string, unknown>).appointment)
-    const result = await context.engine.book(appointment.key, booking, publicClientKey(request, 'booking'))
-    return Response.json({ reference: result.reference, start: result.start, end: result.end, status: result.status }, { status: 201, headers: publicHeaders })
+    const result = await createCustomerBooking(context.tenantId, appointment.key, booking, request.headers.get('idempotency-key'), publicClientKey(request, 'booking'))
+    await setCustomerCookies(result.tokens, true)
+    return Response.json({ reference: result.reference, start: result.start, end: result.end, status: result.status, confirmationPath: '/book/confirmed' }, { status: 201, headers: publicHeaders })
   } catch (error) { return publicError(error) }
 }

@@ -1,0 +1,2 @@
+export type CustomerAppointment = { id: string; version: number; reference: string; customerName: string; appointmentType: string; start: string; end: string; updatedAt: string; timeZone: string; durationMinutes: number; location: string; status: string; cancellationMinutes: number; reschedulingMinutes: number }
+export type CustomerSnapshot = { appointment: CustomerAppointment; canCancel: boolean; canReschedule: boolean }

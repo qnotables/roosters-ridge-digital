@@ -74,7 +74,7 @@ export async function readAdminContext(
     await db.execute(sql`SELECT t.time_zone,h.daily_limit,${appointmentJson} AS appointment
     FROM rrd_scheduling.tenants t JOIN rrd_scheduling.hosts h ON h.tenant_id=t.id
     JOIN rrd_scheduling.appointment_types a ON a.tenant_id=t.id
-    WHERE t.id=${scope.tenantId} AND h.id=${scope.hostId} AND a.id=${typeId} AND h.active AND a.active`);
+    WHERE t.id=${scope.tenantId} AND h.id=${scope.hostId} AND a.id=${typeId} AND h.active AND a.active AND NOT a.archived`);
   const row = result.rows[0] as LinkRow | undefined;
   return row ? contextWithConfiguration(db, scope, row, date) : null;
 }
