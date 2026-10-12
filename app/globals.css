@@ -86,6 +86,36 @@
   --ring: #c2410c;
 }
 
+.rrd-booking {
+  color-scheme: light;
+  --background: #faf8f2;
+  --foreground: #203a2d;
+  --card: #ffffff;
+  --card-foreground: #203a2d;
+  --popover: #ffffff;
+  --popover-foreground: #203a2d;
+  --primary: #234b38;
+  --primary-foreground: #ffffff;
+  --secondary: #edd6a4;
+  --secondary-foreground: #203a2d;
+  --accent: #edd6a4;
+  --accent-foreground: #203a2d;
+  --muted: #f1eee4;
+  --muted-foreground: #566451;
+  --border: #c9cec2;
+  --input: #9ca995;
+  --ring: #7e6227;
+  --destructive: #a62c21;
+}
+
+.rrd-booking [data-slot='input'],
+.rrd-booking [data-slot='textarea'] {
+  background: var(--card);
+  min-height: 44px;
+  font-size: 16px;
+}
+.rrd-booking [data-slot='button'] { min-height: 44px; }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

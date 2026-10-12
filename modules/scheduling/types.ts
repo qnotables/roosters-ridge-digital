@@ -36,7 +36,8 @@ export type AvailabilityContext = Scope & {
   policies?: import('./configuration').BookingPolicies
 }
 export type Slot = { start: string; end: string }
-export type BookingRequest = { start: string; name: string; email: string; phone: string; website: string }
+export type CustomerIntake = { businessName: string; websiteUrl: string; reason: string; notes: string; customerTimeZone: string }
+export type BookingRequest = { start: string; name: string; email: string; phone: string; website: string; intake?: CustomerIntake }
 export type NewBooking = Reservation & Scope & {
   appointmentTypeId: string
   reference: string
@@ -46,6 +47,7 @@ export type NewBooking = Reservation & Scope & {
   timeZone: string
   tokenHash: string
   tokenExpiresAt: string
+  intake?: CustomerIntake
 }
 export type ManagedBooking = Reservation & Scope & { reference: string; tokenExpiresAt: string; cancellationMinutes?: number }
 export type BookingTransaction = {

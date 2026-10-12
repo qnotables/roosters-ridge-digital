@@ -52,6 +52,7 @@ export function createSchedulingService(store: SchedulingStore, clock = () => ne
           occupiedEnd: new Date(Date.parse(slot.end) + context.appointmentType.bufferAfterMinutes * 60000).toISOString(),
           status: context.policies?.approval === 'manual' ? 'pending' : 'confirmed', name: request.name, email: request.email, phone: request.phone,
           timeZone: context.timeZone, tokenHash: management.hash, tokenExpiresAt: management.expiresAt,
+          ...(request.intake ? { intake: request.intake } : {}),
         })
         return { reference, ...slot, status: context.policies?.approval === 'manual' ? 'pending' as const : 'confirmed' as const, managementToken: management.token, managementExpiresAt: management.expiresAt }
       })

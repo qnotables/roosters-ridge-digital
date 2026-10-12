@@ -34,6 +34,7 @@ async function linkRow(
   db: Executor,
   slug: string,
   scope?: Scope,
+  trustedTenantId?: string,
 ): Promise<LinkRow | undefined> {
   const result =
     await db.execute(sql`SELECT l.tenant_id,l.host_id,t.time_zone,h.daily_limit,${appointmentJson} AS appointment
@@ -41,6 +42,7 @@ async function linkRow(
     JOIN rrd_scheduling.hosts h ON h.tenant_id=l.tenant_id AND h.id=l.host_id
     JOIN rrd_scheduling.appointment_types a ON a.tenant_id=l.tenant_id AND a.id=l.appointment_type_id
     WHERE l.slug=${slug} AND l.enabled AND t.enabled AND h.active AND a.active
+    ${trustedTenantId ? sql`AND l.tenant_id=${trustedTenantId} AND NOT a.archived` : sql``}
     ${scope ? sql`AND l.tenant_id=${scope.tenantId} AND l.host_id=${scope.hostId}` : sql``}`);
   return result.rows[0] as LinkRow | undefined;
 }
@@ -54,9 +56,10 @@ async function context(
   scope: Scope,
   slug: string,
   date: string,
+  trustedTenantId?: string,
 ): Promise<AvailabilityContext | null> {
   validateDate(date);
-  const link = await linkRow(db, slug, scope);
+  const link = await linkRow(db, slug, scope, trustedTenantId);
   if (!link) return null;
   return contextWithConfiguration(db, scope, link, date);
 }
@@ -146,10 +149,11 @@ async function enqueue(
 }
 export function createPostgresSchedulingStore(
   db: NodePgDatabase,
+  trustedTenantId?: string,
 ): SchedulingStore {
   return {
     async resolveLink(slug) {
-      const row = await linkRow(db, slug);
+      const row = await linkRow(db, slug, undefined, trustedTenantId);
       return row
         ? {
             tenantId: row.tenant_id,
@@ -159,7 +163,7 @@ export function createPostgresSchedulingStore(
           }
         : null;
     },
-    readContext: (scope, slug, date) => context(db, scope, slug, date),
+    readContext: (scope, slug, date) => context(db, scope, slug, date, trustedTenantId),
     async consumeRequestBudget(tenantId, clientKey) {
       const result =
         await db.execute(sql`INSERT INTO rrd_scheduling.request_limits (tenant_id,client_key,window_start,attempts)
@@ -193,7 +197,7 @@ export function createPostgresSchedulingStore(
                 "Appointment time is unavailable.",
               );
             return work({
-              loadContext: (slug, date) => context(tx, scope, slug, date),
+              loadContext: (slug, date) => context(tx, scope, slug, date, trustedTenantId),
               async insertBooking(booking) {
                 if (
                   booking.tenantId !== scope.tenantId ||
@@ -212,6 +216,11 @@ export function createPostgresSchedulingStore(
                 }
                 await tx.execute(sql`INSERT INTO rrd_scheduling.bookings (tenant_id,host_id,id,appointment_type_id,reference,customer_name,customer_email,customer_phone,time_zone,start_time,end_time,occupied_from,occupied_to,status)
                 VALUES (${scope.tenantId},${scope.hostId},${booking.id},${booking.appointmentTypeId},${booking.reference},${booking.name},${booking.email},${booking.phone},${booking.timeZone},${booking.start}::timestamptz,${booking.end}::timestamptz,${booking.occupiedStart}::timestamptz,${booking.occupiedEnd}::timestamptz,${booking.status})`);
+                if (booking.intake) {
+                  const details = booking.intake;
+                  const customerNotes = `Website: ${details.websiteUrl || 'Not provided'}\nReason: ${details.reason}\nAdditional notes: ${details.notes || 'None'}\nCustomer time zone: ${details.customerTimeZone}`;
+                  await tx.execute(sql`UPDATE rrd_scheduling.bookings SET business_name=${details.businessName},private_notes=${customerNotes} WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND id=${booking.id}`);
+                }
                 await tx.execute(
                   sql`INSERT INTO rrd_scheduling.management_tokens (tenant_id,host_id,booking_id,token_hash,expires_at) VALUES (${scope.tenantId},${scope.hostId},${booking.id},${booking.tokenHash},${booking.tokenExpiresAt}::timestamptz)`,
                 );

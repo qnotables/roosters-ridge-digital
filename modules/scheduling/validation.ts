@@ -47,5 +47,19 @@ export function validateBookingRequest(input: unknown): BookingRequest {
   if (website) return invalid()
   const phone = text(record.phone ?? '', 40)
   if (phone && !/^[+\d\s().-]{7,40}$/.test(phone)) return invalid()
-  return { start, name: text(record.name, 160, true), email, phone, website }
+  let intake: BookingRequest['intake']
+  if (record.intake !== undefined) {
+    if (!record.intake || typeof record.intake !== 'object' || Array.isArray(record.intake)) return invalid()
+    const details = record.intake as Record<string, unknown>
+    const websiteUrl = text(details.websiteUrl ?? '', 500)
+    if (websiteUrl) {
+      try { const url = new URL(websiteUrl); if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return invalid() } catch { return invalid() }
+    }
+    const multiline = (value: unknown, max: number) => {
+      if (typeof value !== 'string' || value.length > max || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f<>]/.test(value)) return invalid()
+      return value.trim()
+    }
+    intake = { businessName: text(details.businessName, 160, true), websiteUrl, reason: text(details.reason, 1000, true), notes: multiline(details.notes ?? '', 2000), customerTimeZone: validateTimeZone(text(details.customerTimeZone, 100, true)) }
+  }
+  return { start, name: text(record.name, 160, true), email, phone, website, ...(intake ? { intake } : {}) }
 }
