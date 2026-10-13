@@ -1,12 +1,13 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
-import { ClipboardCheck, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { CalendarDays, ClipboardCheck, Loader2 } from 'lucide-react'
 import { submitCheckup } from '@/app/actions/leads'
 import { initialLeadState } from '@/lib/leads'
 import { checkupGoalOptions, industryOptions } from '@/lib/site-config'
 import { trackEvent } from '@/lib/analytics'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -49,13 +50,29 @@ export function CheckupForm() {
 
   if (state.ok) {
     return (
-      <div role="status" aria-live="polite" className="flex flex-col gap-4 rounded-lg border border-primary/40 bg-primary/10 p-6">
-        <ClipboardCheck className="size-7 text-primary" aria-hidden="true" />
-        <div>
-          <h3 className="text-xl font-semibold">Your request has been received.</h3>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">We&apos;ll review your information and contact you with the next steps.</p>
-          {state.referenceNumber && <p className="mt-3 font-mono text-xs text-muted-foreground">Reference: {state.referenceNumber}</p>}
+      <div className="flex flex-col gap-6 rounded-lg border border-primary/40 bg-primary/10 p-6">
+        <div role="status" aria-live="polite" className="flex flex-col gap-4">
+          <ClipboardCheck className="size-7 text-primary" aria-hidden="true" />
+          <div className="flex flex-col gap-2">
+            <h3 className="text-xl font-semibold">Your request has been received.</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">We&apos;ll review your information and contact you with the next steps.</p>
+            {state.referenceNumber && <p className="font-mono text-xs text-muted-foreground">Reference: {state.referenceNumber}</p>}
+          </div>
         </div>
+        {state.emailWarning && (
+          <Alert>
+            <AlertDescription>Your request is saved. A confirmation email may be delayed; there is no need to submit again.</AlertDescription>
+          </Alert>
+        )}
+        <section aria-labelledby="checkup-consultation-heading" className="flex flex-col items-start gap-3 border-t border-border pt-6">
+          <h4 id="checkup-consultation-heading" className="text-lg font-semibold">Talk through your digital checkup</h4>
+          <p className="text-sm leading-relaxed text-muted-foreground">Your checkup request is already saved. You can also schedule a free consultation to discuss your business and next steps. Booking is optional and does not submit another lead request.</p>
+          <Link href="/book?source=checkup" prefetch={false} className={buttonVariants({ size: 'lg' })}>
+            <CalendarDays data-icon="inline-start" aria-hidden="true" />
+            Schedule a Consultation
+          </Link>
+          <p className="text-xs text-muted-foreground">Prefer not to book? You&apos;re all set — we&apos;ll follow up personally.</p>
+        </section>
       </div>
     )
   }
