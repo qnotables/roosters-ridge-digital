@@ -10,8 +10,15 @@ export async function saveConfiguration(db: NodePgDatabase, scope: AdminScope, i
   const c = validateConfiguration(input)
   if (!Number.isInteger(version) || version < 1) throw new SchedulingError('invalid','Refresh configuration before saving.')
   return db.transaction(async tx => {
-    await tx.execute(sql`SELECT id FROM rrd_scheduling.tenants WHERE id=${scope.tenantId} FOR UPDATE`)
+    const tenant = await tx.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE id=${scope.tenantId} FOR UPDATE`)
     await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} ORDER BY id FOR UPDATE`)
+    if (scope.assignedOnly || scope.preserveTenantTimeZone) {
+      if (c.kind !== 'availability' || tenant.rows[0]?.time_zone !== c.timeZone) throw new SchedulingError('forbidden','Business configuration requires tenant administrator access.')
+      if (scope.assignedOnly) {
+        const host = await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} AND id=${c.hostId} AND user_id=${scope.userId}`)
+        if (!host.rows.length) throw new SchedulingError('forbidden','Personal availability access required.')
+      }
+    }
     const changed = await tx.execute(sql`UPDATE rrd_scheduling.configuration SET version=version+1 WHERE tenant_id=${scope.tenantId} AND version=${version} RETURNING version`)
     if (!changed.rows.length) throw new SchedulingError('unavailable','Configuration changed. Refresh before saving.')
     let recordId = scope.tenantId

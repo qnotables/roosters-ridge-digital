@@ -25,13 +25,15 @@ const clientKey=(label:string)=>requestFingerprint(`${hostId}:${label}`)
 const pool=new Pool({connectionString:connection,max:6,connectionTimeoutMillis:15000,options:'-c statement_timeout=20000 -c lock_timeout=10000'})
 const db=drizzle(pool)
 let tenantId:string, zone:string
+let original: Record<string, unknown> | undefined
 const day=(days:number,hour=13)=>{const d=new Date();d.setUTCDate(d.getUTCDate()+days);d.setUTCHours(hour,0,0,0);return d.toISOString()}
 
 isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech', 'ep-twilight-brook-auwk6z9c.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
+    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech', 'ep-twilight-brook-auwk6z9c.c-10.us-east-1.aws.neon.tech', 'ep-fragrant-moon-auwkhgo1.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
     const tenant=await db.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`)
     tenantId=String(tenant.rows[0].id);zone=String(tenant.rows[0].time_zone)
+    original=(await db.execute(sql`SELECT t.enabled,c.policies,c.version,n.delivery_enabled,n.preferences,n.customer_confirmation,n.host_notification,n.cancellation_notice FROM rrd_scheduling.tenants t JOIN rrd_scheduling.configuration c ON c.tenant_id=t.id JOIN rrd_scheduling.notification_settings n ON n.tenant_id=t.id WHERE t.id=${tenantId}`)).rows[0]
     await db.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=true WHERE id=${tenantId}`)
     await db.execute(sql`UPDATE rrd_scheduling.configuration SET policies=${JSON.stringify({approval:'automatic',cancellationMinutes:720,reschedulingMinutes:720,allowMultiple:true,reminderMinutes:[]})}::jsonb WHERE tenant_id=${tenantId}`)
     await db.execute(sql`UPDATE rrd_scheduling.notification_settings SET delivery_enabled=false,customer_confirmation=true,cancellation_notice=true,preferences=preferences || '{"reschedulingNotice":true}'::jsonb WHERE tenant_id=${tenantId}`)
@@ -41,7 +43,16 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
     for(let weekday=1;weekday<=7;weekday++) await db.execute(sql`INSERT INTO rrd_scheduling.weekly_availability(tenant_id,host_id,weekday,start_minute,end_minute) VALUES(${tenantId},${hostId},${weekday},0,1440)`)
   },60000)
   beforeEach(()=>vi.stubEnv('ADMIN_DASHBOARD_KEY','isolated-customer-test-secret-32-characters'))
-  afterAll(async()=>{vi.unstubAllEnvs();await pool.end()})
+  afterAll(async()=>{
+    vi.unstubAllEnvs()
+    try {
+      if (original) await db.transaction(async tx => {
+        await tx.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=${original!.enabled} WHERE id=${tenantId}`)
+        await tx.execute(sql`UPDATE rrd_scheduling.configuration SET policies=${JSON.stringify(original!.policies)}::jsonb,version=${original!.version} WHERE tenant_id=${tenantId}`)
+        await tx.execute(sql`UPDATE rrd_scheduling.notification_settings SET delivery_enabled=${original!.delivery_enabled},preferences=${JSON.stringify(original!.preferences)}::jsonb,customer_confirmation=${original!.customer_confirmation},host_notification=${original!.host_notification},cancellation_notice=${original!.cancellation_notice} WHERE tenant_id=${tenantId}`)
+      })
+    } finally { await pool.end() }
+  })
 
   async function book(days:number=3,hour:number=13) {
     return createCustomerBooking(tenantId,link,{start:day(days,hour),name:'Synthetic Test Customer',email:`synthetic-${randomUUID()}@example.invalid`,phone:'',timeZone:zone},randomUUID(),requestFingerprint(randomUUID()),db)

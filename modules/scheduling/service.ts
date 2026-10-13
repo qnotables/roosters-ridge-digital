@@ -5,7 +5,8 @@ import { SchedulingError, type SchedulingStore } from './types'
 import { validateBookingRequest, validateDate, validateSlug } from './validation'
 
 function unavailable(): never { throw new SchedulingError('unavailable', 'Appointment time is unavailable.') }
-export function createSchedulingService(store: SchedulingStore, clock = () => new Date()) {
+export function createSchedulingService(store: SchedulingStore, clock = () => new Date(), referencePrefix = 'RRD') {
+  if (!/^[A-Z0-9]{1,12}$/.test(referencePrefix)) throw new SchedulingError('invalid', 'Invalid booking reference configuration.')
   return {
     async appointment(linkSlug: string) {
       validateSlug(linkSlug)
@@ -44,7 +45,7 @@ export function createSchedulingService(store: SchedulingStore, clock = () => ne
         const slot = availableSlots(context, localDate(request.start, context.timeZone), now).find(value => value.start === requestedStart)
         if (!slot) return unavailable()
         const management = createManagementToken(now, slot.start)
-        const reference = `RRD-${randomUUID()}`
+        const reference = `${referencePrefix}-${randomUUID()}`
         await tx.insertBooking({
           id: randomUUID(), tenantId: context.tenantId, hostId: context.hostId,
           appointmentTypeId: context.appointmentType.id, reference,

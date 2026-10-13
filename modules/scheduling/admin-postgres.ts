@@ -14,6 +14,7 @@ import { readAdminContext } from "./postgres-store";
 import { SchedulingError } from "./types";
 import { validLeadId } from './notifications';
 import { findSchedulingLead } from './integration-postgres';
+import { assignedHostFilter } from './tenant-permissions';
 
 type Executor = Pick<NodePgDatabase, "execute">;
 const iso = (value: unknown) => new Date(String(value)).toISOString();
@@ -47,21 +48,21 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
     if (!tenant.rows.length)
       throw new SchedulingError("forbidden", "Administrator access required.");
     const hosts = await db.execute(
-      sql`SELECT id,name,active,daily_limit AS "dailyLimit" FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} ORDER BY name`,
+      sql`SELECT id,name,active,daily_limit AS "dailyLimit" FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} ${assignedHostFilter(scope, sql`id`)} ORDER BY name`,
     );
     const types = await db.execute(
       sql`SELECT id,slug,name,active,duration_minutes AS "durationMinutes",buffer_before_minutes AS "bufferBeforeMinutes",buffer_after_minutes AS "bufferAfterMinutes",minimum_notice_minutes AS "minimumNoticeMinutes",maximum_horizon_days AS "maximumHorizonDays",slot_interval_minutes AS "slotIntervalMinutes",price_cents AS "priceCents",meeting_mode AS "meetingMode" FROM rrd_scheduling.appointment_types WHERE tenant_id=${scope.tenantId} ORDER BY name`,
     );
     const weekly = await db.execute(
-      sql`SELECT host_id AS "hostId",weekday,start_minute AS "startMinute",end_minute AS "endMinute" FROM rrd_scheduling.weekly_availability WHERE tenant_id=${scope.tenantId} ORDER BY weekday,start_minute`,
+      sql`SELECT host_id AS "hostId",weekday,start_minute AS "startMinute",end_minute AS "endMinute" FROM rrd_scheduling.weekly_availability WHERE tenant_id=${scope.tenantId} ${assignedHostFilter(scope, sql`host_id`)} ORDER BY weekday,start_minute`,
     );
     const exceptions = await db.execute(
-      sql`SELECT host_id AS "hostId",date::text,closed,windows FROM rrd_scheduling.availability_exceptions WHERE tenant_id=${scope.tenantId} ORDER BY date`,
+      sql`SELECT host_id AS "hostId",date::text,closed,windows FROM rrd_scheduling.availability_exceptions WHERE tenant_id=${scope.tenantId} ${assignedHostFilter(scope, sql`host_id`)} ORDER BY date`,
     );
     const installed = await db.execute(sql`SELECT to_regclass('rrd_scheduling.configuration') IS NOT NULL AS ready`);
     let configuration: AdminCatalog['configuration'];
     let typeDetails: AdminCatalog['typeDetails'];
-    if (installed.rows[0]?.ready) {
+    if (installed.rows[0]?.ready && !scope.assignedOnly) {
       const config = await db.execute(sql`SELECT version,policies FROM rrd_scheduling.configuration WHERE tenant_id=${scope.tenantId}`);
       configuration = config.rows[0] as AdminCatalog['configuration'];
       const details = await db.execute(sql`SELECT a.id,a.description,a.location,a.archived,a.intake_questions AS "intakeQuestions",EXISTS (SELECT 1 FROM rrd_scheduling.public_links l WHERE l.tenant_id=a.tenant_id AND l.appointment_type_id=a.id AND l.enabled) AS "publicBookingsEnabled" FROM rrd_scheduling.appointment_types a WHERE a.tenant_id=${scope.tenantId}`);
@@ -84,10 +85,10 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
       const zone = (await catalog(scope)).timeZone;
       const range = utcDateRange(from, to, zone);
       const rows = await db.execute(
-        sql`SELECT ${fields} FROM rrd_scheduling.bookings WHERE tenant_id=${scope.tenantId} AND start_time < ${range.end}::timestamptz AND end_time > ${range.start}::timestamptz ORDER BY start_time LIMIT 1001`,
+        sql`SELECT ${fields} FROM rrd_scheduling.bookings WHERE tenant_id=${scope.tenantId} ${assignedHostFilter(scope, sql`host_id`)} AND start_time < ${range.end}::timestamptz AND end_time > ${range.start}::timestamptz ORDER BY start_time LIMIT 1001`,
       );
       const blocks = await db.execute(
-        sql`SELECT id,host_id AS "hostId",start_time AS start,end_time AS "end",label FROM rrd_scheduling.calendar_blocks WHERE tenant_id=${scope.tenantId} AND start_time < ${range.end}::timestamptz AND end_time > ${range.start}::timestamptz ORDER BY start_time LIMIT 1001`,
+        sql`SELECT id,host_id AS "hostId",start_time AS start,end_time AS "end",label FROM rrd_scheduling.calendar_blocks WHERE tenant_id=${scope.tenantId} ${assignedHostFilter(scope, sql`host_id`)} AND start_time < ${range.end}::timestamptz AND end_time > ${range.start}::timestamptz ORDER BY start_time LIMIT 1001`,
       );
       return {
         bookings: rows.rows.slice(0, 1000).map(booking),
@@ -103,7 +104,7 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
     },
     async locate(scope, id, block = false) {
       const rows = await db.execute(
-        sql`SELECT host_id AS "hostId" FROM ${block ? sql`rrd_scheduling.calendar_blocks` : sql`rrd_scheduling.bookings`} WHERE tenant_id=${scope.tenantId} AND id=${id}`,
+        sql`SELECT host_id AS "hostId" FROM ${block ? sql`rrd_scheduling.calendar_blocks` : sql`rrd_scheduling.bookings`} WHERE tenant_id=${scope.tenantId} ${assignedHostFilter(scope, sql`host_id`)} AND id=${id}`,
       );
       return (rows.rows[0] as { hostId: string } | undefined) ?? null;
     },
@@ -112,7 +113,7 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
         return await db.transaction(
           async (tx) => {
             const locked = await tx.execute(
-              sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} AND id=${hostId} FOR UPDATE`,
+              sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} AND id=${hostId} ${scope.assignedOnly ? sql`AND user_id=${scope.userId}` : sql``} FOR UPDATE`,
             );
             if (!locked.rows.length)
               throw new SchedulingError("forbidden", "Host not found.");
@@ -133,7 +134,9 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
               async save(row, previous, actor) {
                 if (row.hostId !== hostId || actor !== scope.userId)
                   throw new SchedulingError("forbidden", "Invalid scope.");
-                if (validLeadId(row.relatedContact)) {
+                if (scope.assignedOnly && row.relatedContact !== (previous?.relatedContact ?? ''))
+                  throw new SchedulingError('forbidden', 'Lead association requires administrator access.');
+                if (validLeadId(row.relatedContact) && !scope.assignedOnly) {
                   const lead = await findSchedulingLead(tx, scope, row.relatedContact);
                   if (lead.email.trim().toLowerCase() !== row.email.trim().toLowerCase())
                     throw new SchedulingError('invalid', 'Selected lead email must match the appointment customer.');

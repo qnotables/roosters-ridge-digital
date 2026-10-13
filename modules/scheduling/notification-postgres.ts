@@ -15,13 +15,13 @@ export async function readNotificationSettings(db: Pick<NodePgDatabase, 'execute
   if (!row) throw new SchedulingError('forbidden', 'Notification settings not found in this tenant.')
   const preferences = row.preferences as Partial<typeof defaultPreferences>
   let inherited = { sender: '', incoming_address: '', email: '', last_received_at: null as unknown }
-  const tenant = await db.execute(sql`SELECT slug FROM rrd_scheduling.tenants WHERE id=${tenantId}`)
+  const tenant = await db.execute(sql`SELECT slug,name FROM rrd_scheduling.tenants WHERE id=${tenantId}`)
   if (tenant.rows[0]?.slug === 'roosters-ridge-digital') {
     const business = await db.execute(sql`SELECT e.sender,e.incoming_address,e.last_received_at,b.email FROM public.email_settings e LEFT JOIN public.business_profile b ON b.id=1 WHERE e.id=1`)
     inherited = { ...inherited, ...business.rows[0] } as typeof inherited
   }
   return {
-    ...defaultPreferences, ...preferences, templates: { ...defaultPreferences.templates, ...preferences.templates },
+    ...defaultPreferences, ...preferences, senderName: preferences.senderName || String(tenant.rows[0]?.name ?? defaultPreferences.senderName), templates: { ...defaultPreferences.templates, ...preferences.templates },
     senderAddress: preferences.senderAddress || inherited.sender || '', replyTo: preferences.replyTo || (inherited.last_received_at ? inherited.incoming_address : '') || inherited.email || '',
     customerConfirmation: Boolean(row.customer_confirmation), hostNotification: Boolean(row.host_notification), cancellationNotice: Boolean(row.cancellation_notice),
     reminderMinutes: (row.policies as { reminderMinutes?: number[] }).reminderMinutes ?? [], version: Number(row.version), deliveryEnabled: Boolean(row.delivery_enabled),

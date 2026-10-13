@@ -176,7 +176,7 @@ export function createPostgresSchedulingStore(
     },
     async findManagementScope(hash) {
       const result = await db.execute(
-        sql`SELECT tenant_id,host_id FROM rrd_scheduling.management_tokens WHERE token_hash=${hash} AND used_at IS NULL AND expires_at > now()`,
+        sql`SELECT tenant_id,host_id FROM rrd_scheduling.management_tokens WHERE token_hash=${hash} AND used_at IS NULL AND expires_at > now() ${trustedTenantId ? sql`AND tenant_id=${trustedTenantId}` : sql``}`,
       );
       const row = result.rows[0];
       return row
