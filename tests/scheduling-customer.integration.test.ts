@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
-import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/email-workspace-db', () => ({ emailDb: {} }))
 vi.mock('@/lib/email-workspace-provider', () => ({ emailProvider: () => { throw new Error('Live email is prohibited in isolated integration tests.') } }))
@@ -16,6 +16,7 @@ import { registerBookingConversion, claimBookingConversion } from '@/modules/sch
 import { schedulingLeadHistory, findSchedulingLead } from '@/modules/scheduling/integration-postgres'
 import { createPostgresSchedulingStore } from '@/modules/scheduling/postgres-store'
 import { createSchedulingService } from '@/modules/scheduling/service'
+import { recordSchedulingDelivery } from '@/modules/scheduling/notification-webhook'
 
 const connection = process.env.SCHEDULING_TEST_DATABASE_URL
 const isolated = describe.skipIf(!connection)
@@ -29,7 +30,6 @@ const day=(days:number,hour=13)=>{const d=new Date();d.setUTCDate(d.getUTCDate()
 isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
     if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
-    vi.stubEnv('ADMIN_DASHBOARD_KEY','isolated-customer-test-secret-32-characters')
     const tenant=await db.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`)
     tenantId=String(tenant.rows[0].id);zone=String(tenant.rows[0].time_zone)
     await db.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=true WHERE id=${tenantId}`)
@@ -40,6 +40,7 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
     await db.execute(sql`INSERT INTO rrd_scheduling.public_links(tenant_id,host_id,appointment_type_id,slug,enabled) VALUES(${tenantId},${hostId},${typeId},${link},true)`)
     for(let weekday=1;weekday<=7;weekday++) await db.execute(sql`INSERT INTO rrd_scheduling.weekly_availability(tenant_id,host_id,weekday,start_minute,end_minute) VALUES(${tenantId},${hostId},${weekday},0,1440)`)
   },60000)
+  beforeEach(()=>vi.stubEnv('ADMIN_DASHBOARD_KEY','isolated-customer-test-secret-32-characters'))
   afterAll(async()=>{vi.unstubAllEnvs();await pool.end()})
 
   async function book(days:number=3,hour:number=13) {
@@ -255,5 +256,56 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
       await db.execute(sql`UPDATE rrd_scheduling.notification_settings SET delivery_enabled=false WHERE tenant_id=${tenantId}`)
       vi.unstubAllEnvs()
     }
+  },30000)
+  async function acceptedJob(days:number) {
+    const result=await book(days), booking=await customerBooking(db,result.tokens.view!,'view')
+    const providerId=`isolated-webhook-${randomUUID()}`, recipient=`synthetic-webhook-${randomUUID()}@example.invalid`
+    const saved=await db.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='accepted',provider_id=${providerId},frozen_payload=${JSON.stringify({to:[recipient]})}::jsonb WHERE tenant_id=${tenantId} AND booking_id=${booking.id} AND event='confirmed' RETURNING id`)
+    expect(saved.rows).toHaveLength(1)
+    return {id:String(saved.rows[0].id),providerId,recipient}
+  }
+  async function deliveryState(id:string) {
+    const saved=await db.execute(sql`SELECT delivery_status,delivery_event_at FROM rrd_scheduling.notification_jobs WHERE tenant_id=${tenantId} AND id=${id}`)
+    return saved.rows[0]
+  }
+  it('persists exactly one event for concurrent webhook replays',async()=>{
+    const job=await acceptedJob(22), event={id:randomUUID(),providerId:job.providerId,type:'email.delivered',occurred:new Date()}
+    expect(await Promise.all([recordSchedulingDelivery(db,event),recordSchedulingDelivery(db,event)])).toEqual([true,true])
+    const count=await db.execute(sql`SELECT count(*)::int AS count FROM rrd_scheduling.notification_events WHERE tenant_id=${tenantId} AND job_id=${job.id} AND id=${event.id}`)
+    expect(count.rows[0].count).toBe(1)
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.delivered')
+  },30000)
+  it('records late events without regressing delivery state and preserves terminal complaints',async()=>{
+    const job=await acceptedJob(23), now=Date.now()
+    const emit=(type:string,offset:number)=>recordSchedulingDelivery(db,{id:randomUUID(),providerId:job.providerId,type,occurred:new Date(now+offset),recipients:[job.recipient]})
+    await emit('email.delivered',0)
+    await emit('email.sent',-60000)
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.delivered')
+    await emit('email.complained',-120000)
+    await emit('email.delivered',60000)
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.complained')
+    const count=await db.execute(sql`SELECT count(*)::int AS count FROM rrd_scheduling.notification_events WHERE tenant_id=${tenantId} AND job_id=${job.id}`)
+    expect(count.rows[0].count).toBe(4)
+    const suppression=await db.execute(sql`SELECT reason FROM public.email_suppressions WHERE email=${job.recipient}`)
+    expect(suppression.rows).toEqual([{reason:'email.complained'}])
+  },30000)
+  it('suppresses only actual frozen recipients after a hard bounce and deduplicates suppression',async()=>{
+    const job=await acceptedJob(24), outsider=`synthetic-outsider-${randomUUID()}@example.invalid`
+    const event={id:randomUUID(),providerId:job.providerId,type:'email.bounced',occurred:new Date(),hardBounce:true,recipients:[job.recipient.toUpperCase(),outsider]}
+    await recordSchedulingDelivery(db,event)
+    await recordSchedulingDelivery(db,event)
+    await recordSchedulingDelivery(db,{...event,id:randomUUID()})
+    const suppressed=await db.execute(sql`SELECT email,reason FROM public.email_suppressions WHERE email IN (${job.recipient},${outsider})`)
+    expect(suppressed.rows).toEqual([{email:job.recipient,reason:'email.bounced'}])
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.bounced')
+  },30000)
+  it('does not suppress a soft bounce and persists explicit provider suppression',async()=>{
+    const job=await acceptedJob(25)
+    const event={id:randomUUID(),providerId:job.providerId,type:'email.bounced',occurred:new Date(),hardBounce:false,recipients:[job.recipient]}
+    await recordSchedulingDelivery(db,event)
+    expect((await db.execute(sql`SELECT email FROM public.email_suppressions WHERE email=${job.recipient}`)).rows).toEqual([])
+    await recordSchedulingDelivery(db,{...event,id:randomUUID(),type:'email.suppressed'})
+    expect((await db.execute(sql`SELECT reason FROM public.email_suppressions WHERE email=${job.recipient}`)).rows).toEqual([{reason:'email.suppressed'}])
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.suppressed')
   },30000)
 })
