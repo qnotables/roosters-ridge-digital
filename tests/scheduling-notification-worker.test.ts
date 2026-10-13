@@ -19,7 +19,7 @@ function database(event='reminder') {
   const execute=vi.fn(async(input:SQL)=>{
     const q=new PgDialect().sqlToQuery(input);queries.push(q)
     const param=(name:string)=>{const m=new RegExp(`${name}=\\$(\\d+)`).exec(q.sql);return m?q.params[Number(m[1])-1]:undefined}
-    if(q.sql.includes('SELECT enabled FROM')) return {rows:[{enabled:active}]}
+    if(q.sql.includes('SELECT enabled')) return {rows:[{enabled:active}]}
     if(q.sql.includes('SELECT tenant_id FROM')) return {rows:[{tenant_id:tenant}]}
     if(q.sql.includes('SELECT to_regclass')) return {rows:[{ready:true}]}
     if(q.sql.includes('SELECT b.version')) return {rows:[{version:1,start_time:job.expected_start,duration_minutes:30,location:'Online meeting',meeting_mode:'online'}]}

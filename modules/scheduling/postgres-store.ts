@@ -11,6 +11,8 @@ import {
   type SchedulingStore,
 } from "./types";
 import { validateDate } from "./validation";
+import { validateQuestions } from './intake';
+import { sealCustomerValue } from './customer-security';
 
 type Executor = Pick<NodePgDatabase, "execute">;
 async function readPolicies(db: Executor, tenantId: string) {
@@ -22,7 +24,7 @@ async function readPolicies(db: Executor, tenantId: string) {
 }
 const appointmentJson = sql`json_build_object('id',a.id,'slug',a.slug,'name',a.name,'durationMinutes',a.duration_minutes,
   'bufferBeforeMinutes',a.buffer_before_minutes,'bufferAfterMinutes',a.buffer_after_minutes,'minimumNoticeMinutes',a.minimum_notice_minutes,
-  'maximumHorizonDays',a.maximum_horizon_days,'slotIntervalMinutes',a.slot_interval_minutes,'priceCents',a.price_cents,'meetingMode',a.meeting_mode)`;
+  'maximumHorizonDays',a.maximum_horizon_days,'slotIntervalMinutes',a.slot_interval_minutes,'priceCents',a.price_cents,'meetingMode',a.meeting_mode,'intakeQuestions',coalesce(to_jsonb(a)->'intake_questions','[]'::jsonb))`;
 type LinkRow = {
   tenant_id: string;
   host_id: string;
@@ -108,11 +110,13 @@ async function contextWithConfiguration(
     ? await db.execute(sql`SELECT id,start_time,end_time FROM rrd_scheduling.calendar_blocks
     WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND start_time < ${end}::timestamptz AND end_time > ${start}::timestamptz`)
     : { rows: [] };
+  let intakeQuestions = validateQuestions(link.appointment.intakeQuestions ?? []);
+  if (intakeQuestions.length) { const ready = await db.execute(sql`SELECT to_regclass('rrd_scheduling.booking_responses') IS NOT NULL AS ready`); if (!ready.rows[0]?.ready) intakeQuestions = [] }
   return {
     ...scope,
     timeZone: link.time_zone,
     dailyLimit: link.daily_limit,
-    appointmentType: link.appointment,
+    appointmentType: { ...link.appointment, intakeQuestions },
     policies: await readPolicies(db, scope.tenantId),
     weekly: weekly.rows as AvailabilityContext["weekly"],
     exceptions: exceptions.rows as AvailabilityContext["exceptions"],
@@ -219,6 +223,11 @@ export function createPostgresSchedulingStore(
                 if (booking.intake) {
                   const details = booking.intake;
                   const customerNotes = `Website: ${details.websiteUrl || 'Not provided'}\nReason: ${details.reason}\nAdditional notes: ${details.notes || 'None'}\nCustomer time zone: ${details.customerTimeZone}`;
+                  if (details.responses?.length) {
+                    const ready = await tx.execute(sql`SELECT to_regclass('rrd_scheduling.booking_responses') IS NOT NULL AS ready`);
+                    if (!ready.rows[0]?.ready) throw new SchedulingError('unavailable', 'Custom intake storage requires approved Phase 4C migration.');
+                    await tx.execute(sql`INSERT INTO rrd_scheduling.booking_responses(tenant_id,booking_id,sealed_responses) VALUES(${scope.tenantId},${booking.id},${JSON.stringify(sealCustomerValue(details.responses,process.env.ADMIN_DASHBOARD_KEY ?? ''))}::jsonb)`);
+                  }
                   await tx.execute(sql`UPDATE rrd_scheduling.bookings SET business_name=${details.businessName},private_notes=${customerNotes} WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND id=${booking.id}`);
                 }
                 await tx.execute(
@@ -228,6 +237,7 @@ export function createPostgresSchedulingStore(
                   sql`INSERT INTO rrd_scheduling.booking_changes (tenant_id,booking_id,next_status) VALUES (${scope.tenantId},${booking.id},${booking.status})`,
                 );
                 if (booking.status === 'confirmed') await enqueue(tx, scope, booking.id, "confirmed");
+                if (booking.status === 'pending' && trustedTenantId) await tx.execute(sql`INSERT INTO rrd_scheduling.notification_jobs(tenant_id,booking_id,event,event_key,expected_start) SELECT b.tenant_id,b.id,'confirmed','pending',b.start_time FROM rrd_scheduling.bookings b JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id JOIN rrd_scheduling.notification_settings n ON n.tenant_id=b.tenant_id WHERE b.tenant_id=${scope.tenantId} AND b.id=${booking.id} AND n.customer_confirmation AND t.branding->'customization'->'published' IS NOT NULL AND t.branding->'customization'->'published' <> 'null'::jsonb ON CONFLICT DO NOTHING`);
               },
               async getManagedBooking(hash) {
                 const result =

@@ -5,14 +5,14 @@ import type { AdminScope } from './admin-types'
 import { SchedulingError } from './types'
 
 export type TenantRole = 'tenant_admin' | 'scheduling_manager' | 'staff'
-export type TenantPermission = 'appointments' | 'availability' | 'types' | 'notifications' | 'members' | 'tenant' | 'reporting'
+export type TenantPermission = 'appointments' | 'availability' | 'types' | 'notifications' | 'members' | 'tenant' | 'reporting' | 'branding_preview'
 export type SchedulingIdentity = { userId: string; verified: boolean }
 export type IdentityProvider = () => Promise<SchedulingIdentity | null>
 export type TenantAccess = AdminScope & { role: TenantRole }
 export type Executor = Pick<NodePgDatabase, 'execute'>
 const allowed: Record<TenantRole, readonly TenantPermission[]> = {
-  tenant_admin: ['appointments', 'availability', 'types', 'notifications', 'members', 'tenant', 'reporting'],
-  scheduling_manager: ['appointments', 'availability', 'reporting'],
+  tenant_admin: ['appointments', 'availability', 'types', 'notifications', 'members', 'tenant', 'reporting', 'branding_preview'],
+  scheduling_manager: ['appointments', 'availability', 'reporting', 'branding_preview'],
   staff: ['appointments', 'availability'],
 }
 export function denyTenantAccess(): never { throw new SchedulingError('forbidden', 'Scheduling access is not authorized.') }

@@ -6,10 +6,12 @@ import { emailProvider } from '@/lib/email-workspace-provider'
 import { eventEnabled, isLiveSchedulingEnvironment, renderNotification, retryAllowed, type NotificationEvent } from './notifications'
 import { notificationSchemaReady, readNotificationSettings } from './notification-postgres'
 import { customerNotificationDetails } from './customer-notifications'
+import { brandingState, publishedBranding } from './branding'
+import { renderBrandedEmail, escapeEmail } from './branding-email'
 import { openCustomerValue, sealCustomerValue, type SealedValue } from './customer-security'
 
-type Payload = { from: string; to: string[]; replyTo: string; subject: string; text: string }
-type Job = { id: string; tenant_id: string; booking_id: string; event: NotificationEvent; expected_start: string; reminder_minutes: number | null; state: string; attempts: number; first_attempt_at: string | null; frozen_payload: Payload | SealedValue | null; claim_id: string | null; host_id: string }
+type Payload = { from: string; to: string[]; replyTo: string; subject: string; text: string; html?: string }
+type Job = { id: string; tenant_id: string; booking_id: string; event: NotificationEvent; event_key?: string; expected_start: string; reminder_minutes: number | null; state: string; attempts: number; first_attempt_at: string | null; frozen_payload: Payload | SealedValue | null; claim_id: string | null; host_id: string }
 export type SchedulingSender = (payload: Payload, idempotencyKey: string) => Promise<{ data: { id: string } | null; error: { name?: string; message?: string } | null }>
 const iso = (value: unknown) => new Date(String(value)).toISOString()
 
@@ -41,7 +43,7 @@ async function claimJob(db: NodePgDatabase, tenantId: string): Promise<(Job & { 
         await tx.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='skipped',last_error='Notification disabled in current preferences.' WHERE tenant_id=${tenantId} AND id=${job.id}`)
         return 'skipped'
       }
-      const booking = await tx.execute(sql`SELECT b.customer_name,b.customer_email,b.start_time,b.time_zone,b.reference,b.version,a.duration_minutes,a.location,a.meeting_mode,a.name AS appointment_type,t.name AS business_name FROM rrd_scheduling.bookings b JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id WHERE b.tenant_id=${tenantId} AND b.id=${job.booking_id}`)
+      const booking = await tx.execute(sql`SELECT b.customer_name,b.customer_email,b.start_time,b.time_zone,b.reference,b.version,a.duration_minutes,a.location,a.meeting_mode,a.name AS appointment_type,t.name AS business_name,t.branding,EXISTS(SELECT 1 FROM rrd_scheduling.booking_changes bc WHERE bc.tenant_id=b.tenant_id AND bc.booking_id=b.id AND bc.previous_status='pending' AND bc.next_status='confirmed') AS approved FROM rrd_scheduling.bookings b JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id WHERE b.tenant_id=${tenantId} AND b.id=${job.booking_id}`)
       const b = booking.rows[0]
       const to = job.event === 'admin_booking' ? settings.adminRecipients : [String(b.customer_email).toLowerCase()]
       if (!settings.senderAddress || !settings.replyTo || !to.length) {
@@ -49,8 +51,16 @@ async function claimJob(db: NodePgDatabase, tenantId: string): Promise<(Job & { 
         return 'skipped'
       }
       payload = { from: `${settings.senderName} <${settings.senderAddress}>`, to, replyTo: settings.replyTo, ...renderNotification(settings.templates[job.event], { customerName: String(b.customer_name), appointmentType: String(b.appointment_type), start: iso(b.start_time), timeZone: String(b.time_zone), reference: String(b.reference), businessName: String(b.business_name) }) }
+      if (brandingState((b.branding as Record<string, unknown>)?.customization).published) {
+        const config = publishedBranding(b.branding, String(b.business_name)), kind = job.event === 'confirmed' ? job.event_key === 'pending' ? 'pending' : b.approved ? 'approved' : 'confirmed' : job.event
+        const detail = job.event !== 'admin_booking' ? await customerNotificationDetails(tx, job.event, b, tenantId, job.host_id, job.booking_id) : ''
+        const managementLink = /https:\/\/roostersridgedigital\.com\/book\/[^\s]+#purpose=view[^\s]*/.exec(detail)?.[0]
+        payload = { ...payload, ...renderBrandedEmail(config, kind, { customerName: String(b.customer_name), appointmentType: String(b.appointment_type), start: iso(b.start_time), timeZone: String(b.time_zone), durationMinutes: Number(b.duration_minutes), managementLink }) }
+        payload.text += detail
+        payload.html += detail ? `<p>${escapeEmail(detail).replace(/\n/g, '<br>')}</p>` : ''
+      }
     }
-    if (!job.frozen_payload && payload && job.event !== 'admin_booking') {
+    if (!job.frozen_payload && payload && !payload.html && job.event !== 'admin_booking') {
       const detail = await tx.execute(sql`SELECT b.version,b.start_time,a.duration_minutes,a.location,a.meeting_mode FROM rrd_scheduling.bookings b JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id WHERE b.tenant_id=${tenantId} AND b.id=${job.booking_id}`)
       if (detail.rows[0]) payload.text += await customerNotificationDetails(tx,job.event,detail.rows[0],tenantId,job.host_id,job.booking_id)
     }
@@ -73,15 +83,21 @@ async function deliverClaim(db: NodePgDatabase, job: Job & { frozen_payload: Pay
     const b = booking.rows[0]
     const settings = await readNotificationSettings(tx, job.tenant_id)
     let skip = ''
-    const tenant = await tx.execute(sql`SELECT enabled FROM rrd_scheduling.tenants WHERE id=${job.tenant_id}`)
+    const tenant = await tx.execute(sql`SELECT enabled,branding FROM rrd_scheduling.tenants WHERE id=${job.tenant_id}`)
     if (!tenant.rows[0]?.enabled) skip = 'Tenant scheduling is suspended.'
     else if (!isLiveSchedulingEnvironment(process.env) || !settings.deliveryEnabled) skip = 'Delivery paused by environment or approval gate.'
     else if (!eventEnabled(job.event, settings, job.reminder_minutes)) skip = 'Notification disabled in current preferences.'
     else if (job.event === 'admin_booking' && job.frozen_payload!.to.some(e => !settings.adminRecipients.includes(e))) skip = 'Administrator recipient permissions changed before delivery.'
-    else if (job.event === 'cancelled' ? b.status !== 'cancelled' : job.event !== 'admin_booking' && (b.status !== 'confirmed' || iso(b.start_time) !== iso(job.expected_start))) skip = 'Appointment changed before delivery.'
+    else if (job.event === 'cancelled' ? b.status !== 'cancelled' : job.event !== 'admin_booking' && (b.status !== (job.event_key === 'pending' ? 'pending' : 'confirmed') || iso(b.start_time) !== iso(job.expected_start))) skip = 'Appointment changed before delivery.'
     else if (job.event !== 'admin_booking' && job.frozen_payload?.to[0] !== String(b.customer_email).toLowerCase()) skip = 'Customer email changed before delivery.'
     else if (job.event !== 'cancelled' && new Date(String(b.start_time)).getTime() <= Date.now()) skip = 'Appointment time has passed.'
     else if (job.event !== 'reminder' && Date.now()-new Date(String(current.rows[0].created_at)).getTime() > 24*60*60*1000) skip = 'Historical notification expired; no catch-up customer email.'
+    const brand = tenant.rows[0]?.branding as Record<string, unknown> | undefined
+    if (brandingState(brand?.customization).published) {
+      const domain = settings.senderAddress.split('@')[1]?.toLowerCase()
+      const approved = await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${job.tenant_id} AND hostname=${domain ?? ''} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
+      if (!domain || !((brand?.authorizedSenderDomains ?? []) as string[]).includes(domain) || !approved.rows.length || job.frozen_payload.from !== `${settings.senderName} <${settings.senderAddress}>`) skip = 'Published branded delivery requires a current tenant-owned, provider-verified sender.'
+    }
     const suppressed = await tx.execute(sql`SELECT email FROM public.email_suppressions WHERE email IN (${sql.join(job.frozen_payload!.to.map(e => sql`${e}`),sql`,`)}) LIMIT 1`)
     if (suppressed.rows.length) skip = 'Recipient is suppressed. Do not resend.'
     let state = 'skipped', error: string | null = skip || null, providerId: string | null = null

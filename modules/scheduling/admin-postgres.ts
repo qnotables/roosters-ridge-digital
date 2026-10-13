@@ -69,6 +69,7 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
       typeDetails = Object.fromEntries(details.rows.map(row => [String(row.id), row])) as AdminCatalog['typeDetails'];
     }
     return {
+      tenantId: scope.tenantId,
       configuration,
       typeDetails,
       timeZone: String(tenant.rows[0].time_zone),

@@ -4,6 +4,7 @@ import { emailDb } from '@/lib/email-workspace-db'
 import { createPostgresSchedulingStore } from './postgres-store'
 import { createSchedulingService } from './service'
 import type { PublicAppointment } from './public-types'
+import { validateQuestions } from './intake'
 
 import { resolvePublicTenant, type PublicTenantSelector } from './tenant-resolution'
 
@@ -21,7 +22,7 @@ export async function rrdPublicScheduling() {
   return tenantPublicScheduling(emailDb, tenantId)
 }
 export async function tenantPublicScheduling(db: import('drizzle-orm/node-postgres').NodePgDatabase, tenantId: string, referencePrefix = 'RRD') {
-  const result = await db.execute(sql`SELECT l.slug AS key,a.name,a.description,a.duration_minutes AS "durationMinutes",a.meeting_mode AS "meetingMode",t.time_zone AS "timeZone",a.maximum_horizon_days AS "maximumHorizonDays",(c.policies->>'cancellationMinutes')::integer AS "cancellationMinutes",(c.policies->>'reschedulingMinutes')::integer AS "reschedulingMinutes",c.policies->>'approval' AS approval
+  const result = await db.execute(sql`SELECT l.slug AS key,a.name,a.description,a.duration_minutes AS "durationMinutes",a.meeting_mode AS "meetingMode",t.time_zone AS "timeZone",a.maximum_horizon_days AS "maximumHorizonDays",(c.policies->>'cancellationMinutes')::integer AS "cancellationMinutes",(c.policies->>'reschedulingMinutes')::integer AS "reschedulingMinutes",c.policies->>'approval' AS approval,a.intake_questions AS questions
     FROM rrd_scheduling.public_links l
     JOIN rrd_scheduling.tenants t ON t.id=l.tenant_id
     JOIN rrd_scheduling.hosts h ON h.tenant_id=l.tenant_id AND h.id=l.host_id
@@ -29,7 +30,9 @@ export async function tenantPublicScheduling(db: import('drizzle-orm/node-postgr
     JOIN rrd_scheduling.configuration c ON c.tenant_id=l.tenant_id
     WHERE l.tenant_id=${tenantId} AND l.enabled AND t.enabled AND h.active AND a.active AND NOT a.archived AND a.price_cents=0
     ORDER BY a.name,l.slug LIMIT 100`)
-  const appointments = result.rows as PublicAppointment[]
+  const needsIntake = result.rows.some(row => Array.isArray(row.questions) && row.questions.length > 0)
+  const intakeReady = !needsIntake || Boolean((await db.execute(sql`SELECT to_regclass('rrd_scheduling.booking_responses') IS NOT NULL AS ready`)).rows[0]?.ready)
+  const appointments = result.rows.map(row => ({ ...row, questions: intakeReady ? validateQuestions(row.questions ?? []) : [] })) as PublicAppointment[]
   if (!appointments.length) return null
   const store = createPostgresSchedulingStore(db, tenantId)
   return { appointments, store, tenantId, engine: createSchedulingService(store, () => new Date(), referencePrefix) }

@@ -3,6 +3,7 @@ import { availableSlots, localDate } from './availability'
 import { createManagementToken, tokenHash } from './security'
 import { SchedulingError, type SchedulingStore } from './types'
 import { validateBookingRequest, validateDate, validateSlug } from './validation'
+import { validateAnswers } from './intake'
 
 function unavailable(): never { throw new SchedulingError('unavailable', 'Appointment time is unavailable.') }
 export function createSchedulingService(store: SchedulingStore, clock = () => new Date(), referencePrefix = 'RRD') {
@@ -44,6 +45,9 @@ export function createSchedulingService(store: SchedulingStore, clock = () => ne
         const requestedStart = new Date(request.start).toISOString()
         const slot = availableSlots(context, localDate(request.start, context.timeZone), now).find(value => value.start === requestedStart)
         if (!slot) return unavailable()
+        const responses = validateAnswers(context.appointmentType.intakeQuestions ?? [], request.answers)
+        if (responses.length && !request.intake) throw new SchedulingError('invalid', 'Complete the appointment intake form.')
+        if (request.intake && responses.length) request.intake.responses = responses
         const management = createManagementToken(now, slot.start)
         const reference = `${referencePrefix}-${randomUUID()}`
         await tx.insertBooking({

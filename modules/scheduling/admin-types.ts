@@ -35,6 +35,7 @@ export type CalendarBlock = {
   label: string;
 };
 export type AdminCatalog = {
+  tenantId?: string;
   timeZone: string;
   enabled: boolean;
   configuration?: { version: number; policies: import('./configuration').BookingPolicies };

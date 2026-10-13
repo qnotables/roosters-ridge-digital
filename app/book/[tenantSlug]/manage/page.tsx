@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: 'Manage your appointment', robots: { 
 export default async function Page({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params, data = await hostedScheduling(tenantSlug).catch(() => null)
   if (!data) notFound()
-  return <TenantManagement slug={tenantSlug} businessName={data.brand.displayName} />
+  return <TenantManagement slug={tenantSlug} businessName={data.customization.brand.displayName} customization={data.customization} />
 }

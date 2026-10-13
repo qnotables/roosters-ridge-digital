@@ -1,8 +1,9 @@
 import { Temporal } from '@js-temporal/polyfill'
+import { validateQuestions } from './intake'
 import { SchedulingError, type TimeWindow, type WeeklyWindow, type AvailabilityException } from './types'
 
 export type BookingPolicies = { approval: 'automatic' | 'manual'; cancellationMinutes: number; reschedulingMinutes: number; customerConfirmation: boolean; hostNotification: boolean; cancellationNotice: boolean; reminderMinutes: number[]; allowMultiple: boolean }
-export type TypeDetails = { description: string; location: string; archived: boolean; intakeQuestions: string[]; publicBookingsEnabled?: boolean }
+export type TypeDetails = { description: string; location: string; archived: boolean; intakeQuestions: (string | import('./intake').IntakeQuestion)[]; publicBookingsEnabled?: boolean }
 export type ConfigurationCommand =
   | { kind: 'availability'; hostId: string; timeZone: string; dailyLimit: number; weekly: WeeklyWindow[]; exceptions: AvailabilityException[] }
   | { kind: 'policies'; policies: BookingPolicies }
@@ -50,7 +51,7 @@ export function validateConfiguration(input: unknown): ConfigurationCommand {
     if (!['online','phone_or_online','phone','in_person'].includes(c.meetingMode)) invalid('Choose a valid meeting option.')
     const d = c.details; if (!d || !Array.isArray(d.intakeQuestions) || d.intakeQuestions.length > 10) invalid('Use at most ten intake questions.')
     const archived = boolean(d.archived)
-    return {kind:'type', ...(c.id ? {id:uuid(c.id)} : {}),slug,name:text(c.name,160,'Name',true),durationMinutes:integer(c.durationMinutes,5,480,'Duration'),bufferBeforeMinutes:integer(c.bufferBeforeMinutes,0,240,'Before buffer'),bufferAfterMinutes:integer(c.bufferAfterMinutes,0,240,'After buffer'),minimumNoticeMinutes:integer(c.minimumNoticeMinutes,0,43200,'Minimum notice'),maximumHorizonDays:integer(c.maximumHorizonDays,1,365,'Advance booking days'),slotIntervalMinutes:integer(c.slotIntervalMinutes,5,120,'Start interval'),meetingMode:c.meetingMode,active:!archived && boolean(c.active),details:{description:text(d.description,2000,'Description'),location:text(d.location,500,'Location'),archived,intakeQuestions:d.intakeQuestions.map((q:unknown)=>text(q,200,'Intake question',true))}}
+    return {kind:'type', ...(c.id ? {id:uuid(c.id)} : {}),slug,name:text(c.name,160,'Name',true),durationMinutes:integer(c.durationMinutes,5,480,'Duration'),bufferBeforeMinutes:integer(c.bufferBeforeMinutes,0,240,'Before buffer'),bufferAfterMinutes:integer(c.bufferAfterMinutes,0,240,'After buffer'),minimumNoticeMinutes:integer(c.minimumNoticeMinutes,0,43200,'Minimum notice'),maximumHorizonDays:integer(c.maximumHorizonDays,1,365,'Advance booking days'),slotIntervalMinutes:integer(c.slotIntervalMinutes,5,120,'Start interval'),meetingMode:c.meetingMode,active:!archived && boolean(c.active),details:{description:text(d.description,2000,'Description'),location:text(d.location,500,'Location'),archived,intakeQuestions:d.intakeQuestions.every((q:unknown)=>typeof q === 'string') ? d.intakeQuestions.map((q:unknown)=>text(q,200,'Intake question',true)) : validateQuestions(d.intakeQuestions)}}
   }
   return invalid('Unknown configuration action.')
 }

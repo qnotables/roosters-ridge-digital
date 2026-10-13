@@ -39,6 +39,7 @@ import type {
 } from "@/modules/scheduling/admin-types";
 import type { BookingStatus } from "@/modules/scheduling/types";
 import { StatusBadge, statusLabels } from "./calendar-views";
+import { IntakeResponses } from './intake-responses';
 
 export function SchedulingSelect({
   id,
@@ -231,6 +232,7 @@ export function AppointmentPanel({
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>{row ? row.name : "New appointment"}</SheetTitle>
+            {row && catalog.tenantId && <IntakeResponses tenantId={catalog.tenantId} bookingId={row.id} />}
             <SheetDescription>
               {row
                 ? `${row.reference} · ${calendarTime(row.start, catalog.timeZone)}`

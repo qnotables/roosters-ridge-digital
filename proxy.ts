@@ -13,6 +13,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308)
   }
 
+  if (host && ![canonicalHost, 'localhost', '127.0.0.1'].includes(host) && !host.endsWith('.vercel.app') && !host.endsWith('.vusercontent.net') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/_next/')) {
+    try {
+      const { resolveBrandDomain } = await import('@/modules/scheduling/branding-postgres')
+      const { emailDb } = await import('@/lib/email-workspace-db')
+      const pathname = await resolveBrandDomain(emailDb, host, request.nextUrl.pathname)
+      if (pathname) { const url = request.nextUrl.clone(); url.pathname = pathname; const response = NextResponse.rewrite(url); response.headers.set('Cache-Control', 'private, no-store'); response.headers.set('X-Frame-Options', 'SAMEORIGIN'); return response }
+      if (['/', '/book', '/appointments', '/schedule'].some(path => request.nextUrl.pathname === path || path !== '/' && request.nextUrl.pathname.startsWith(path + '/'))) return new NextResponse('Booking is unavailable.', { status: 404 })
+    } catch { return new NextResponse('Booking routing is unavailable.', { status: 503 }) }
+  }
   if (request.nextUrl.pathname.startsWith('/embed/')) {
     const { embeddingPolicy } = await import('@/modules/scheduling/hosted-postgres')
     const segments = request.nextUrl.pathname.split('/').filter(Boolean)
