@@ -29,7 +29,7 @@ const day=(days:number,hour=13)=>{const d=new Date();d.setUTCDate(d.getUTCDate()
 
 isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
+    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech', 'ep-twilight-brook-auwk6z9c.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
     const tenant=await db.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`)
     tenantId=String(tenant.rows[0].id);zone=String(tenant.rows[0].time_zone)
     await db.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=true WHERE id=${tenantId}`)

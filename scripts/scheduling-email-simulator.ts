@@ -3,9 +3,12 @@ import { defaultPreferences, renderNotification, type NotificationEvent } from '
 
 async function main() {
   const runId = process.argv[2]
-  if (process.argv[3] !== '--approved-simulator-send' || !runId || !/^[a-z0-9-]{1,80}$/.test(runId)) {
-    throw new Error('Supply a stable rehearsal ID and explicit --approved-simulator-send authorization.')
+  const staffOnly = process.argv[3] === '--approved-staff-template-send'
+  if ((!staffOnly && process.argv[3] !== '--approved-simulator-send') || !runId || !/^[a-z0-9-]{1,80}$/.test(runId)) {
+    throw new Error('Supply a stable rehearsal ID and explicit simulator or approved staff-template authorization.')
   }
+  const recipient = staffOnly ? 'rooster@roostersridgedigital.com' : 'delivered@resend.dev'
+  const marker = staffOnly ? 'STAFF STAGING TEMPLATE ONLY' : 'SIMULATOR ONLY'
   if (!process.env.RESEND_API_KEY) throw new Error('Resend integration is required.')
   const resend = new Resend(process.env.RESEND_API_KEY)
   const domains = await resend.domains.list()
@@ -32,12 +35,14 @@ async function main() {
     })
     const response = await resend.emails.send({
       from: 'RRD Scheduling Readiness <scheduling-test@roostersridgedigital.com>',
-      to: ['delivered@resend.dev'],
+      to: [recipient],
       replyTo: 'scheduling-test@roostersridgedigital.com',
-      subject: `[SIMULATOR ONLY] ${rendered.subject}`,
-      text: `Synthetic readiness test. No real appointment or management token exists.\n\n${rendered.text}`,
-    }, { idempotencyKey: `scheduling-simulator/${runId}/${event}` })
-    console.log(JSON.stringify({ event, recipient: 'delivered@resend.dev', state: response.error ? 'rejected' : 'accepted', providerId: response.data?.id ?? null, error: response.error?.name ?? null }))
+      subject: `[${marker}] ${rendered.subject}`,
+      text: staffOnly
+        ? `Synthetic readiness template test. No real appointment or management token exists. This is not a scheduling-worker or secure-link test.\n\n${rendered.text}`
+        : `Synthetic readiness test. No real appointment or management token exists.\n\n${rendered.text}`,
+    }, { idempotencyKey: `${staffOnly ? 'scheduling-staff-template' : 'scheduling-simulator'}/${runId}/${event}` })
+    console.log(JSON.stringify({ event, recipient, state: response.error ? 'rejected' : 'accepted', providerId: response.data?.id ?? null, error: response.error?.name ?? null }))
     if (response.error || !response.data?.id) throw new Error('Simulator send was not accepted; stop and inspect before retrying with the same run ID.')
     await new Promise(resolve => setTimeout(resolve, 1100))
   }
