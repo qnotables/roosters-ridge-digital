@@ -36,6 +36,7 @@ describe.skipIf(!connection)('Phase 4B isolated PostgreSQL installation', () => 
     rrdBefore = await baseline()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)
     a = await platformService.provision(provision(slugA)); b = await platformService.provision(provision(slugB))
+    await db.execute(sql`DELETE FROM rrd_scheduling.platform_accounts WHERE tenant_id IN (${a},${b})`)
     const management = createTenantManagement(db, identity(owner))
     for (const [tenant, domain] of [[a, domainA], [b, domainB]]) {
       const challenge = domainChallenge(tenant, domain)

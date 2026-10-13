@@ -7,6 +7,7 @@ import { SchedulingError } from './types'
 import { registeredHostname } from './tenant-resolution'
 import { validateQuestions } from './intake'
 import { sharedBrandTemplates } from './branding-platform'
+import { assertFeature, accountEntitlements, platformAudit, featureAvailable } from './platform-entitlements'
 
 type Executor = Pick<NodePgDatabase, 'execute'>
 export type BrandMedia = { id: string; pathname: string; contentType: string }
@@ -29,6 +30,11 @@ export function createBrandingService(db: NodePgDatabase, identity: IdentityProv
     return db.transaction(async tx => {
       const tenant = await row(tx, tenantId, true), actor = await access(tenantId, true, tx), state = brandingState(tenant.branding.customization)
       if (state.version !== version) throw new SchedulingError('unavailable', 'Branding changed in another session. Refresh before saving.')
+      if(action!=='discard') await assertFeature(tx,tenantId,'branding')
+      const account=await accountEntitlements(tx,tenantId)
+      if(account) tenant.branding.entitlements={whiteLabel:account.limits.whiteLabel}
+      const proposed=action==='publish'?state.draft:input as BrandingConfiguration|undefined
+      if(proposed?.page?.visibility==='white_label') await assertFeature(tx,tenantId,'whiteLabel')
       if (action === 'save') { state.draft = validateBranding(input); assertBrandAssets(state.draft, tenantId, tenant.branding); assertWhiteLabel(state.draft, tenant.branding) }
       if (action === 'publish') { if (!state.draft) throw new SchedulingError('invalid', 'Save a draft before publishing.'); const config = validateBranding(state.draft, true); assertBrandAssets(config, tenantId, tenant.branding); assertWhiteLabel(config, tenant.branding); state.published = config; state.draft = null; state.publishedAt = new Date().toISOString() }
       if (action === 'discard') state.draft = null
@@ -36,12 +42,16 @@ export function createBrandingService(db: NodePgDatabase, identity: IdentityProv
       state.version++
       await tx.execute(sql`UPDATE rrd_scheduling.tenants SET branding=jsonb_set(branding,'{customization}',${JSON.stringify(state)}::jsonb),updated_at=now() WHERE id=${tenantId}`)
       await tx.execute(sql`INSERT INTO rrd_scheduling.tenant_audit(tenant_id,actor_user_id,action) VALUES(${tenantId},${actor.userId},${'branding_' + action})`)
+      await platformAudit(tx,tenantId,actor.userId,'branding_'+action)
       return state.version
     })
   }
   return {
     async inspect(tenantId: string) {
-      const actor = await access(tenantId, false), tenant = await row(db, tenantId), state = brandingState(tenant.branding.customization), published = publishedBranding(tenant.branding, tenant.name)
+      const actor = await access(tenantId, false), tenant = await row(db, tenantId)
+      const account=await accountEntitlements(db,tenantId)
+      if(account) tenant.branding.entitlements={whiteLabel:account.limits.whiteLabel}
+      const state = brandingState(tenant.branding.customization), published = publishedBranding(tenant.branding, tenant.name)
       const types = await db.execute(sql`SELECT id,name,intake_questions AS questions FROM rrd_scheduling.appointment_types WHERE tenant_id=${tenantId} AND NOT archived ORDER BY name LIMIT 100`)
       const domains = await db.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
       const draft = state.draft ?? published
@@ -74,6 +84,8 @@ export function createBrandingService(db: NodePgDatabase, identity: IdentityProv
       const ids = publishers.map(id => brandingText(id, 200, true))
       await db.transaction(async tx => {
         await requirePlatformAccess(tx, await identity()); await row(tx, tenantId, true)
+        if(whiteLabel) await assertFeature(tx,tenantId,'whiteLabel')
+        await platformAudit(tx,tenantId,actor.userId,'platform_branding_entitlements')
         for (const id of ids) await requireTenantAccess(tx, { userId: id, verified: true }, tenantId, 'branding_preview')
         await tx.execute(sql`UPDATE rrd_scheduling.tenants SET branding=branding || ${JSON.stringify({ entitlements: { whiteLabel }, brandingPublishers: ids })}::jsonb WHERE id=${tenantId}`)
         await tx.execute(sql`INSERT INTO rrd_scheduling.tenant_audit(tenant_id,actor_user_id,action) VALUES(${tenantId},${actor.userId},'platform_branding_entitlements')`)
@@ -84,6 +96,8 @@ export function createBrandingService(db: NodePgDatabase, identity: IdentityProv
       if (!['/', '/book', '/appointments', '/schedule'].includes(path)) throw new SchedulingError('invalid', 'Use an approved non-conflicting booking path.')
       await db.transaction(async tx => {
         await requirePlatformAccess(tx, await identity()); const tenant = await row(tx, tenantId, true)
+        if(host!=='roostersridgedigital.com') await assertFeature(tx,tenantId,'customDomain')
+        await platformAudit(tx,tenantId,actor.userId,'platform_booking_routing')
         if (host === 'roostersridgedigital.com' && (tenant.slug !== 'roosters-ridge-digital' || path !== '/book')) throw new SchedulingError('invalid', 'Preserve the existing RRD booking route.')
         const domain = await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND hostname=${host} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL FOR SHARE`)
         if (!domain.rows.length) throw new SchedulingError('forbidden', 'Verify domain ownership before routing.')
@@ -95,8 +109,9 @@ export function createBrandingService(db: NodePgDatabase, identity: IdentityProv
 }
 export async function resolveBrandDomain(db: Executor, hostname: string, pathname: string) {
   const host = registeredHostname(hostname)
-  const result = await db.execute(sql`SELECT t.slug,t.branding->'bookingRouting' AS routing FROM rrd_scheduling.domains d JOIN rrd_scheduling.tenants t ON t.id=d.tenant_id WHERE d.hostname=${host} AND d.active AND d.approved_at IS NOT NULL AND d.approved_by IS NOT NULL AND t.enabled AND t.branding->'bookingRouting'->>'hostname'=${host}`)
+  const result = await db.execute(sql`SELECT t.id,t.slug,t.branding->'bookingRouting' AS routing FROM rrd_scheduling.domains d JOIN rrd_scheduling.tenants t ON t.id=d.tenant_id WHERE d.hostname=${host} AND d.active AND d.approved_at IS NOT NULL AND d.approved_by IS NOT NULL AND t.enabled AND t.branding->'bookingRouting'->>'hostname'=${host}`)
   const r = result.rows[0], routing = r?.routing as { path: string } | undefined
+  if(r && host!=='roostersridgedigital.com' && !await featureAvailable(db,String(r.id),'customDomain')) return null
   if (!routing || !['/', '/book', '/appointments', '/schedule'].includes(routing.path)) return null
   const tail = routing.path === '/' ? pathname : pathname === routing.path ? '' : pathname.startsWith(routing.path + '/') ? pathname.slice(routing.path.length) : null
   if (tail === null || !/^\/?(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(tail)) return null

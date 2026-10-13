@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { ConfigurationSection } from './configuration-sections'
+import { TenantNavigation } from './tenant-navigation'
 import { ConfigurationSaveProvider } from './configuration-form'
 import { NotificationSettingsPage } from './notification-settings'
 import { TenantBooking } from '@/modules/scheduling/ui/tenant-booking'
@@ -17,9 +18,9 @@ import type { createInstallationService } from '@/modules/scheduling/installatio
 import { saveSchedulingInstallation, saveTenantSchedulingConfiguration, saveTenantSchedulingNotifications, addTenantSchedulingHost } from '@/app/admin/scheduling/install/actions'
 
 type Installation = Awaited<ReturnType<ReturnType<typeof createInstallationService>['inspect']>>
-export function InstallationDashboard({ data, checks, memberships }: { data: Installation; checks: InstallationCheck[]; memberships: { id: string; name: string }[] }) {
+export function InstallationDashboard({ data, checks, memberships, initialSection = 'installation' }: { data: Installation; checks: InstallationCheck[]; memberships: { id: string; name: string }[]; initialSection?: string }) {
   const router = useRouter(), { tenant, configuration, catalog } = data, urls = bookingUrls(tenant.slug)
-  const [section, setSection] = useState('installation'), [message, setMessage] = useState(''), [pending, setPending] = useState(false), [probe, setProbe] = useState('')
+  const [section, setSection] = useState(['installation','branding','types','availability','policies','notifications','preview'].includes(initialSection)?initialSection:'installation'), [message, setMessage] = useState(''), [pending, setPending] = useState(false), [probe, setProbe] = useState('')
   const refresh = () => router.refresh()
   async function run(operation: () => Promise<{ ok: boolean; message: string }>) { setPending(true); setMessage(''); try { const result = await operation(); setMessage(result.message); if (result.ok) refresh() } catch { setMessage('Request unavailable. No changes were confirmed.') } finally { setPending(false) } }
   async function copy(value: string) { try { await navigator.clipboard.writeText(value); setMessage('Copied to clipboard.') } catch { setMessage('Clipboard unavailable. Select and copy the displayed text.') } }
@@ -29,6 +30,7 @@ export function InstallationDashboard({ data, checks, memberships }: { data: Ins
   }
   return <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-8">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div className="flex flex-col gap-2"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Scheduling / {tenant.name}</p><h1 className="text-3xl font-semibold tracking-tight">Install your booking experience</h1><p className="text-sm text-muted-foreground">Native, hosted, or embedded. Always the same tenant-isolated engine.</p></div><Badge variant={tenant.enabled ? 'default' : 'secondary'}>{tenant.enabled ? 'Active' : catalog.types.length ? 'Inactive' : 'Awaiting configuration'}</Badge></header>
+    <TenantNavigation tenantId={tenant.id}/>
     <nav aria-label="White-label customization" className="flex flex-wrap gap-4 text-sm"><a href={`/admin/scheduling/branding?tenant=${tenant.id}`} className="underline">Open brand studio</a><a href={`/admin/scheduling/email-templates?tenant=${tenant.id}`} className="underline">Email template editor</a></nav>
     <Field><FieldLabel htmlFor="installation-tenant">Authorized business</FieldLabel><select id="installation-tenant" value={tenant.id} onChange={event => router.push(`/admin/scheduling/install?tenant=${event.target.value}`)} className="min-h-11 rounded-md border border-input bg-card px-3">{memberships.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
     <nav aria-label="Installation settings" className="flex flex-wrap gap-2">{[['installation', 'Installation'], ['branding', 'Branding'], ['types', 'Appointment types'], ['availability', 'Business availability'], ['policies', 'Booking policies'], ['notifications', 'Notifications'], ['preview', 'Preview']].map(([id, label]) => <Button key={id} variant={section === id ? 'default' : 'outline'} onClick={() => setSection(id)} aria-current={section === id ? 'page' : undefined}>{label}</Button>)}</nav>

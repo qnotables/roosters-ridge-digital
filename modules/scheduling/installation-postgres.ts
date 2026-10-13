@@ -13,6 +13,7 @@ import { installationDefaults, publicInstallation, validateInstallation, type In
 import { createAdminPostgresStore } from './admin-postgres'
 import { readNotificationSettings, recentNotificationJobs } from './notification-postgres'
 import { resolveTenantPublicScheduling } from './public-postgres'
+import { assertFeature, assertNewBookings, featureAvailable, platformAudit } from './platform-entitlements'
 
 function bounded(value: unknown, max: number) { if (typeof value !== 'string' || !value.trim() || value.length > max || /[\u0000-\u001f<>]/.test(value)) throw new SchedulingError('invalid', 'Review onboarding details.'); return value.trim() }
 export async function installationSchemaReady(db: Pick<NodePgDatabase, 'execute'>) {
@@ -66,6 +67,8 @@ export function createInstallationService(db: NodePgDatabase, identity: Identity
       await db.transaction(async tx => {
         await requireTenantAccess(tx, await identity(), tenantId, 'tenant')
         await tx.execute(sql`SELECT id FROM rrd_scheduling.tenants WHERE id=${tenantId} FOR UPDATE`)
+        await assertFeature(tx,tenantId,'branding')
+        if(configuration.embeddingOrigins.length) await assertFeature(tx,tenantId,'embed')
         for (const origin of configuration.embeddingOrigins) {
           const hostname = registeredHostname(new URL(origin).hostname)
           const domain = await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND hostname=${hostname} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL FOR SHARE`)
@@ -84,6 +87,7 @@ export function createInstallationService(db: NodePgDatabase, identity: Identity
         if (!tenant.rows.length) throw new SchedulingError('forbidden', 'Scheduling access is not authorized.')
         await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${tenantId} ORDER BY id FOR UPDATE`)
         if (enabled) {
+          await assertNewBookings(tx,tenantId)
           if ((process.env.ADMIN_DASHBOARD_KEY ?? '').length < 32) throw new SchedulingError('unavailable', 'Configure strong booking protection before activation.')
           const domain = await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND hostname=${tenant.rows[0].primary_domain} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
           const admin = await tx.execute(sql`SELECT user_id FROM rrd_scheduling.members WHERE tenant_id=${tenantId} AND status='active' AND permission_role='tenant_admin' LIMIT 1`)
@@ -91,6 +95,7 @@ export function createInstallationService(db: NodePgDatabase, identity: Identity
           if (!domain.rows.length || !admin.rows.length || !links.rows.length) throw new SchedulingError('invalid', 'Approve a business domain, assign an administrator, and configure public types and valid availability before activation.')
         }
         await tx.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=${enabled} WHERE id=${tenantId}`)
+        await platformAudit(tx,tenantId,actor.userId,enabled?'installation_activated':'installation_suspended')
         await tx.execute(sql`INSERT INTO rrd_scheduling.tenant_audit(tenant_id,actor_user_id,action) VALUES(${tenantId},${actor.userId},${enabled ? 'installation_activated' : 'installation_suspended'})`)
       })
     },
@@ -134,6 +139,7 @@ export function domainChallenge(tenantId: string, hostname: string) {
   return { name: `_rrd-booking.${domain}`, value: `rrd-booking=${createHmac('sha256', secret).update(JSON.stringify(['domain-ownership', tenantId, domain])).digest('hex')}` }
 }
 export async function approvedEmbeddingOrigins(db: Pick<NodePgDatabase, 'execute'>, tenantId: string, branding: unknown, name: string) {
+  if(!await featureAvailable(db,tenantId,'embed')) return []
   const proposed = publicInstallation(branding, name).embeddingOrigins
   if (!proposed.length) return []
   const domains = await db.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)

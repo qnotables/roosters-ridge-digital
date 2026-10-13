@@ -5,6 +5,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import type { AdminScope } from './admin-types'
 import { validateConfiguration } from './configuration'
 import { SchedulingError } from './types'
+import { assertFeature, assertResourceLimit } from './platform-entitlements'
 
 export async function saveConfiguration(db: NodePgDatabase, scope: AdminScope, input: unknown, version: number) {
   const c = validateConfiguration(input)
@@ -19,6 +20,9 @@ export async function saveConfiguration(db: NodePgDatabase, scope: AdminScope, i
         if (!host.rows.length) throw new SchedulingError('forbidden','Personal availability access required.')
       }
     }
+    if (c.kind === 'type' && c.active && !c.details.archived) await assertResourceLimit(tx,scope.tenantId,'types',c.id)
+    if (c.kind === 'policies' && c.policies.reminderMinutes.length) await assertFeature(tx,scope.tenantId,'reminders')
+    if (c.kind === 'policies' && c.policies.allowMultiple) await assertFeature(tx,scope.tenantId,'advancedRules')
     const changed = await tx.execute(sql`UPDATE rrd_scheduling.configuration SET version=version+1 WHERE tenant_id=${scope.tenantId} AND version=${version} RETURNING version`)
     if (!changed.rows.length) throw new SchedulingError('unavailable','Configuration changed. Refresh before saving.')
     let recordId = scope.tenantId

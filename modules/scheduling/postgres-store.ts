@@ -13,6 +13,7 @@ import {
 import { validateDate } from "./validation";
 import { validateQuestions } from './intake';
 import { sealCustomerValue } from './customer-security';
+import { assertNewBookings, platformConfiguration } from './platform-entitlements';
 
 type Executor = Pick<NodePgDatabase, "execute">;
 async function readPolicies(db: Executor, tenantId: string) {
@@ -46,7 +47,9 @@ async function linkRow(
     WHERE l.slug=${slug} AND l.enabled AND t.enabled AND h.active AND a.active
     ${trustedTenantId ? sql`AND l.tenant_id=${trustedTenantId} AND NOT a.archived` : sql``}
     ${scope ? sql`AND l.tenant_id=${scope.tenantId} AND l.host_id=${scope.hostId}` : sql``}`);
-  return result.rows[0] as LinkRow | undefined;
+  const row=result.rows[0] as LinkRow | undefined;
+  if(row) await assertNewBookings(db,row.tenant_id);
+  return row;
 }
 function iso(value: unknown) {
   return value instanceof Date
@@ -169,13 +172,14 @@ export function createPostgresSchedulingStore(
     },
     readContext: (scope, slug, date) => context(db, scope, slug, date, trustedTenantId),
     async consumeRequestBudget(tenantId, clientKey) {
+      const limit=(await platformConfiguration(db))?.configuration.bookingRequestsPerMinute ?? 5;
       const result =
         await db.execute(sql`INSERT INTO rrd_scheduling.request_limits (tenant_id,client_key,window_start,attempts)
         VALUES (${tenantId},${clientKey},clock_timestamp(),1)
         ON CONFLICT (tenant_id,client_key) DO UPDATE SET
           attempts=CASE WHEN rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' THEN 1 ELSE rrd_scheduling.request_limits.attempts+1 END,
           window_start=CASE WHEN rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' THEN clock_timestamp() ELSE rrd_scheduling.request_limits.window_start END
-        WHERE rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' OR rrd_scheduling.request_limits.attempts < 5 RETURNING attempts`);
+        WHERE rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' OR rrd_scheduling.request_limits.attempts < ${limit} RETURNING attempts`);
       return result.rows.length === 1;
     },
     async findManagementScope(hash) {
@@ -211,6 +215,7 @@ export function createPostgresSchedulingStore(
                     "forbidden",
                     "Invalid booking scope.",
                   );
+                await assertNewBookings(tx,scope.tenantId);
                 const policies = await readPolicies(tx, scope.tenantId);
                 if (policies && !policies.allowMultiple) {
                   const email = booking.email.toLowerCase();

@@ -40,6 +40,7 @@ isolated('Phase 4A on the approved isolated Neon branch',()=>{
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)
     a=await management.create({name:'Synthetic Tenant A',slug:`synthetic-a-${suffix}`,timeZone:'UTC'})
     b=await management.create({name:'Synthetic Tenant B',slug:`synthetic-b-${suffix}`,timeZone:'UTC'})
+    await db.execute(sql`DELETE FROM rrd_scheduling.platform_accounts WHERE tenant_id IN (${a},${b})`)
     for (const tenant of [a,b]) await management.assignMember(tenant,{userId:owner,role:'tenant_admin',status:'active'},'Isolated synthetic tenant bootstrap')
     const owned=createTenantManagement(db,identity(owner))
     await owned.assignMember(a,{userId:staff,role:'staff',status:'active'})

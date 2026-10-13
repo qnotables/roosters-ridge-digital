@@ -15,6 +15,7 @@ import { SchedulingError } from "./types";
 import { validLeadId } from './notifications';
 import { findSchedulingLead } from './integration-postgres';
 import { assignedHostFilter } from './tenant-permissions';
+import { assertNewBookings } from './platform-entitlements';
 
 type Executor = Pick<NodePgDatabase, "execute">;
 const iso = (value: unknown) => new Date(String(value)).toISOString();
@@ -152,6 +153,7 @@ export function createAdminPostgresStore(db: NodePgDatabase): AdminStore {
                       "Appointment changed. Refresh before saving.",
                     );
                 } else {
+                  await assertNewBookings(tx,scope.tenantId);
                   await tx.execute(sql`INSERT INTO rrd_scheduling.bookings (tenant_id,host_id,id,appointment_type_id,reference,customer_name,customer_email,customer_phone,business_name,private_notes,internal_notes,related_contact,time_zone,start_time,end_time,occupied_from,occupied_to,status,version)
                   VALUES (${scope.tenantId},${hostId},${row.id},${row.appointmentTypeId},${row.reference},${row.name},${row.email},${row.phone},${row.businessName},${row.customerNotes},${row.internalNotes},${row.relatedContact},${row.timeZone},${row.start}::timestamptz,${row.end}::timestamptz,${row.occupiedStart}::timestamptz,${row.occupiedEnd}::timestamptz,${row.status},${row.version})`);
                 }

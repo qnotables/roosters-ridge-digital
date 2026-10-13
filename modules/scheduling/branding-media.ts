@@ -10,10 +10,12 @@ import { brandingState } from './branding'
 import { sanitizeBrandImage } from './branding-media-validation'
 import { createPostgresSchedulingStore } from './postgres-store'
 import { SchedulingError } from './types'
+import { assertFeature } from './platform-entitlements'
 
 export async function uploadBrandMedia(tenantId: string, file: File) {
   const access = await createBrandingService(emailDb, schedulingIdentity).inspect(tenantId)
   if (!access.canEdit) throw new SchedulingError('forbidden', 'Branding editing permission required.')
+  await assertFeature(emailDb,tenantId,'branding')
   const actor = await schedulingIdentity()
   const key = createHash('sha256').update(`brand-upload:${actor!.userId}`).digest('hex')
   if (!await createPostgresSchedulingStore(emailDb, tenantId).consumeRequestBudget(tenantId, key)) throw new SchedulingError('rate_limited', 'Too many upload attempts. Retry later.')
@@ -24,6 +26,7 @@ export async function uploadBrandMedia(tenantId: string, file: File) {
       const scope = await requireTenantAccess(tx, await schedulingIdentity(), tenantId, 'branding_preview')
       const r = await tx.execute(sql`SELECT branding FROM rrd_scheduling.tenants WHERE id=${tenantId} FOR UPDATE`), branding = r.rows[0]?.branding as Record<string, unknown>
       if (scope.role !== 'tenant_admin' && !((branding.brandingPublishers ?? []) as string[]).includes(scope.userId)) throw new SchedulingError('forbidden', 'Branding editing permission required.')
+      await assertFeature(tx,tenantId,'branding')
       const media = (branding.media ?? []) as BrandMedia[]
       if (media.length >= 60) throw new SchedulingError('invalid', 'Tenant image storage limit reached. Ask a platform operator to review unused images.')
       media.push({ id, pathname: blob.pathname, contentType: 'image/png' })

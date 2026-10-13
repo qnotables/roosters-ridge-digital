@@ -21,7 +21,7 @@ function database(event='reminder') {
     const param=(name:string)=>{const m=new RegExp(`${name}=\\$(\\d+)`).exec(q.sql);return m?q.params[Number(m[1])-1]:undefined}
     if(q.sql.includes('SELECT enabled')) return {rows:[{enabled:active}]}
     if(q.sql.includes('SELECT tenant_id FROM')) return {rows:[{tenant_id:tenant}]}
-    if(q.sql.includes('SELECT to_regclass')) return {rows:[{ready:true}]}
+    if(q.sql.includes('SELECT to_regclass')) return {rows:[{ready:!q.sql.includes('platform_accounts')}]}
     if(q.sql.includes('SELECT b.version')) return {rows:[{version:1,start_time:job.expected_start,duration_minutes:30,location:'Online meeting',meeting_mode:'online'}]}
     if(q.sql.includes('SELECT j.*')) return {rows:job.state==='pending'&&available<=Date.now()?[{...job}]:[]}
     if(q.sql.includes('SELECT b.customer_name')) return {rows:[{customer_name:'Safe Customer',customer_email:'customer@example.com',start_time:job.expected_start,time_zone:'UTC',reference:'RRD-1',appointment_type:'Checkup',business_name:'RRD',private_notes:'SECRET',internal_notes:'CONFIDENTIAL'}]}

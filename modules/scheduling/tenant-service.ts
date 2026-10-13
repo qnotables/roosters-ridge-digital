@@ -12,6 +12,7 @@ import { readAdminContext } from './postgres-store'
 import { availableSlots } from './availability'
 import { SchedulingError } from './types'
 import { registeredHostname } from './tenant-resolution'
+import { assertFeature, assertNewBookings, assertResourceLimit, platformAudit, platformConfiguration } from './platform-entitlements'
 import { assertAssignedHost, denyTenantAccess, requirePlatformAccess, requireTenantAccess, type Executor, type IdentityProvider, type TenantRole } from './tenant-permissions'
 
 function text(value: unknown, max: number) {
@@ -22,6 +23,7 @@ function zone(value: unknown) { const result = text(value, 100); try { Temporal.
 function slug(value: unknown) { const result = text(value, 100); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(result)) throw new SchedulingError('invalid', 'Invalid business slug.'); return result }
 async function audit(db: Executor, tenantId: string, actor: string, action: string) {
   await db.execute(sql`INSERT INTO rrd_scheduling.tenant_audit(tenant_id,actor_user_id,action) VALUES(${tenantId},${actor},${action})`)
+  await platformAudit(db,tenantId,actor,action)
 }
 const initialPolicies = { approval: 'manual', cancellationMinutes: 720, reschedulingMinutes: 720, customerConfirmation: false, hostNotification: false, cancellationNotice: false, reminderMinutes: [], allowMultiple: false }
 
@@ -34,6 +36,8 @@ export function createTenantManagement(db: NodePgDatabase, identity: IdentityPro
         await tx.execute(sql`INSERT INTO rrd_scheduling.tenants(id,name,slug,time_zone,enabled) VALUES(${id},${name},${businessSlug},${timeZone},false)`)
         await tx.execute(sql`INSERT INTO rrd_scheduling.configuration(tenant_id,policies) VALUES(${id},${JSON.stringify(initialPolicies)}::jsonb)`)
         await tx.execute(sql`INSERT INTO rrd_scheduling.notification_settings(tenant_id) VALUES(${id})`)
+        const platform=await platformConfiguration(tx)
+        if(platform) await tx.execute(sql`INSERT INTO rrd_scheduling.platform_accounts(tenant_id,plan_key,status,trial_ends_at) VALUES(${id},${platform.configuration.defaultPlan},'trial',now()+${platform.configuration.trialDays}*interval '1 day')`)
         await audit(tx,id,actor.userId,'tenant_created_disabled')
         return id
       })
@@ -53,9 +57,12 @@ export function createTenantManagement(db: NodePgDatabase, identity: IdentityPro
       if (input.branding?.logoUrl) { const logo = new URL(text(input.branding.logoUrl,1000)); if (logo.protocol !== 'https:' || logo.username || logo.password) throw new SchedulingError('invalid','Use an HTTPS logo URL.'); branding.logoUrl=logo.href }
       if (input.branding?.accentColor) { if (!/^#[a-f0-9]{6}$/i.test(input.branding.accentColor)) throw new SchedulingError('invalid','Use a hex accent color.'); branding.accentColor=input.branding.accentColor }
       await db.transaction(async tx => {
-        const existing = await tx.execute(sql`SELECT id,slug FROM rrd_scheduling.tenants WHERE id=${tenantId} FOR UPDATE`)
+        const existing = await tx.execute(sql`SELECT id,slug,enabled FROM rrd_scheduling.tenants WHERE id=${tenantId} FOR UPDATE`)
         if (!existing.rows.length || (existing.rows[0].slug === 'roosters-ridge-digital') !== (businessSlug === 'roosters-ridge-digital')) denyTenantAccess()
         await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${tenantId} ORDER BY id FOR UPDATE`)
+        if(input.enabled && !existing.rows[0].enabled) await requirePlatformAccess(tx,{userId:actor.userId,verified:true})
+        if(input.enabled) await assertNewBookings(tx,tenantId)
+        if(Object.keys(branding).length) await assertFeature(tx,tenantId,'branding')
         if (primary) {
           const domain=await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND hostname=${primary} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
           if (!domain.rows.length) denyTenantAccess()
@@ -107,6 +114,7 @@ export function createTenantManagement(db: NodePgDatabase, identity: IdentityPro
       if (typeof input.active !== 'boolean' || !Number.isInteger(input.dailyLimit) || input.dailyLimit<1 || input.dailyLimit>100) throw new SchedulingError('invalid','Invalid staff configuration.')
       await db.transaction(async tx => {
         await tx.execute(sql`SELECT id FROM rrd_scheduling.tenants WHERE id=${tenantId} FOR UPDATE`)
+        if(input.active) await assertResourceLimit(tx,tenantId,'hosts',input.id)
         if (input.userId) {
           const member=await tx.execute(sql`SELECT user_id FROM rrd_scheduling.members WHERE tenant_id=${tenantId} AND user_id=${input.userId} AND status='active'`)
           if (!member.rows.length) denyTenantAccess()

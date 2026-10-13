@@ -9,6 +9,7 @@ import { customerNotificationDetails } from './customer-notifications'
 import { brandingState, publishedBranding } from './branding'
 import { renderBrandedEmail, escapeEmail } from './branding-email'
 import { openCustomerValue, sealCustomerValue, type SealedValue } from './customer-security'
+import { featureAvailable, platformConfiguration, recordOperation } from './platform-entitlements'
 
 type Payload = { from: string; to: string[]; replyTo: string; subject: string; text: string; html?: string }
 type Job = { id: string; tenant_id: string; booking_id: string; event: NotificationEvent; event_key?: string; expected_start: string; reminder_minutes: number | null; state: string; attempts: number; first_attempt_at: string | null; frozen_payload: Payload | SealedValue | null; claim_id: string | null; host_id: string }
@@ -16,6 +17,7 @@ export type SchedulingSender = (payload: Payload, idempotencyKey: string) => Pro
 const iso = (value: unknown) => new Date(String(value)).toISOString()
 
 async function reconcileReminders(db: NodePgDatabase, tenantId: string) {
+  if(!await featureAvailable(db,tenantId,'reminders')) return
   await db.execute(sql`INSERT INTO rrd_scheduling.notification_jobs(tenant_id,booking_id,event,event_key,expected_start,reminder_minutes,available_at)
     SELECT b.tenant_id,b.id,'reminder',b.start_time::text || ':' || m.minutes::text,b.start_time,m.minutes,b.start_time - m.minutes * interval '1 minute'
     FROM rrd_scheduling.bookings b JOIN rrd_scheduling.configuration c ON c.tenant_id=b.tenant_id
@@ -86,6 +88,7 @@ async function deliverClaim(db: NodePgDatabase, job: Job & { frozen_payload: Pay
     const tenant = await tx.execute(sql`SELECT enabled,branding FROM rrd_scheduling.tenants WHERE id=${job.tenant_id}`)
     if (!tenant.rows[0]?.enabled) skip = 'Tenant scheduling is suspended.'
     else if (!isLiveSchedulingEnvironment(process.env) || !settings.deliveryEnabled) skip = 'Delivery paused by environment or approval gate.'
+    else if(job.event==='reminder' && !await featureAvailable(tx,job.tenant_id,'reminders')) skip='Reminder entitlement is unavailable.'
     else if (!eventEnabled(job.event, settings, job.reminder_minutes)) skip = 'Notification disabled in current preferences.'
     else if (job.event === 'admin_booking' && job.frozen_payload!.to.some(e => !settings.adminRecipients.includes(e))) skip = 'Administrator recipient permissions changed before delivery.'
     else if (job.event === 'cancelled' ? b.status !== 'cancelled' : job.event !== 'admin_booking' && (b.status !== (job.event_key === 'pending' ? 'pending' : 'confirmed') || iso(b.start_time) !== iso(job.expected_start))) skip = 'Appointment changed before delivery.'
@@ -113,22 +116,25 @@ async function deliverClaim(db: NodePgDatabase, job: Job & { frozen_payload: Pay
     }
     await tx.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state=${state},provider_id=${providerId},last_error=${error},lease_until=NULL,available_at=now()+${Math.min(60,2**job.attempts)}*interval '1 minute' WHERE tenant_id=${job.tenant_id} AND id=${job.id} AND claim_id=${job.claim_id}`)
     await tx.execute(sql`UPDATE rrd_scheduling.notification_attempts SET outcome=${state},error=${error},finished_at=now() WHERE tenant_id=${job.tenant_id} AND id=${job.claim_id} AND job_id=${job.id}`)
+    await recordOperation(tx,job.tenant_id,'notification',state==='accepted'?'success':state==='skipped'?'forbidden':'error')
   })
 }
 export async function processSchedulingNotifications(db: NodePgDatabase, send: SchedulingSender = async (payload,key) => emailProvider().emails.send(payload,{idempotencyKey:key})) {
   if (!await notificationSchemaReady(db)) return { state: 'setup', processed: 0 }
   if (!isLiveSchedulingEnvironment(process.env)) return { state: 'dry-run', processed: 0 }
-  const tenants = await db.execute(sql`SELECT tenant_id FROM rrd_scheduling.notification_settings WHERE delivery_enabled=true ORDER BY tenant_id LIMIT 100`)
+  const config=(await platformConfiguration(db))?.configuration
+  const tenants = await db.execute(sql`SELECT tenant_id FROM rrd_scheduling.notification_settings WHERE delivery_enabled=true ORDER BY tenant_id LIMIT ${config?.notificationTenantLimit??100}`)
   let processed = 0
   const deadline = Date.now()+45000
   for (const tenant of tenants.rows) {
     const tenantId = String(tenant.tenant_id)
     await reconcileReminders(db, tenantId)
-    for (let n=0; n<10 && Date.now()<deadline; n++) {
+    for (let n=0; n<(config?.notificationJobsPerTenant??10) && Date.now()<deadline; n++) {
       const job = await claimJob(db, tenantId)
       if (!job) break
       if (job === 'skipped') continue
       await deliverClaim(db, job, send)
+      await recordOperation(db,tenantId,'background_job','success')
       processed++
       await new Promise(resolve => setTimeout(resolve,550))
     }

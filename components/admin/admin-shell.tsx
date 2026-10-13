@@ -20,7 +20,7 @@ const navigation = [
   { href: '/admin/estimating/new', label: 'New estimate', icon: Settings2 },
 ]
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, schedulingPlatform = false }: { children: React.ReactNode; schedulingPlatform?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -61,6 +61,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               const active = href === '/admin' ? pathname === href : pathname.startsWith(href)
               return <Link key={href} href={href} onClick={() => setOpen(false)} className={cn('flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon className="size-4" />{label}</Link>
             })}
+            {schedulingPlatform && <Link href="/admin/platform/scheduling" onClick={() => setOpen(false)} className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Scheduling platform</Link>}
             <Link href="/admin/profile" onClick={() => setOpen(false)} className={cn('flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors md:ml-auto', pathname.startsWith('/admin/profile') ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Settings2 className="size-4" />Business profile</Link>
             <button type="button" onClick={signOut} className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"><LogOut className="size-4" />Sign out</button>
           </nav>

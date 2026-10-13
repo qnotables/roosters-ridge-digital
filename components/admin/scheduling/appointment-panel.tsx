@@ -25,7 +25,7 @@ import {
   FieldLabel,
   FieldDescription,
 } from "@/components/ui/field";
-import { manageScheduling } from "@/app/admin/scheduling/actions";
+import { useCalendarManagement } from './calendar-management-context';
 import {
   instantLocalInput,
   localInputInstant,
@@ -81,6 +81,7 @@ export function ConfirmCalendarAction({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const manageScheduling=useCalendarManagement();
   const [busy, setBusy] = useState(false);
   async function confirm() {
     if (!command) return;
@@ -143,6 +144,7 @@ export function AppointmentPanel({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const manageScheduling=useCalendarManagement();
   const row = booking && booking !== "new" ? booking : null;
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState<ManagementCommand | null>(
@@ -458,6 +460,7 @@ export function BlockPanel({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const manageScheduling=useCalendarManagement();
   const [host, setHost] = useState(catalog.hosts[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
