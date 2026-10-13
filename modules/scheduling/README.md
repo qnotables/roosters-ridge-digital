@@ -193,6 +193,125 @@ Only the opt-in test subprocesses receive `SCHEDULING_TEST_DATABASE_URL` and `SC
 4. Verify actual domain ownership, DNS/Vercel routing and sender authorization outside the registry mutation, then explicitly approve domain entries. Review timezone/hours/type associations, business policy, contact recipients, and enabled/delivery gates independently. Approval metadata is not automatic DNS verification.
 5. Migration failure rolls back the atomic statement. Operational rollback is to disable affected public/delivery gates and restore the previous application revision while retaining additive schema and the original legacy roles. Do not drop the namespace, extension, new tables/columns, audit rows, or customer records as an automatic rollback. Destructive down-migration or data restoration requires a separately approved backup-based procedure. Tenant configuration changes should be reverted from reviewed snapshots by an authorized operator, not by reassigning records.
 
-### Outstanding risks and Phase 4B boundary
+### Outstanding risks at the Phase 4A handoff
 
-Real PostgreSQL concurrency verification is complete, but production activation remains unapproved. Phase 4B still needs tenant-selection/onboarding and platform-management UI, custom-domain deployment/ownership verification, white-label public and customer-management HTTP/UI adapters, an explicit multi-business CRM integration, tenant-aware client-cache integration where shared caching is added, retention/audit policy, verified per-tenant senders and actual Resend delivery testing, and authenticated end-to-end browser verification. The current RRD HTTP surfaces remain RRD-specific intentionally; reusable services are not a claim that additional businesses have public booking pages. Direct database-owner access remains privileged and must follow the host-lock protocol for cross-table booking/block inventory. No new RLS guarantee, shared-resource scheduling engine, OAuth provider, external service, or production client activation is claimed.
+The following Phase 4B report supersedes the earlier UI/HTTP installation boundary. Production activation, custom-domain deployment routing, a multi-business CRM, retention/audit policy, verified per-tenant senders, actual Resend delivery testing, and authenticated end-to-end browser verification remain separately gated. Direct database-owner access remains privileged and must follow the host-lock protocol for cross-table booking/block inventory. No new RLS guarantee, shared-resource scheduling engine, OAuth provider, external service, or production client activation is claimed.
+
+## Phase 4B — reusable installation and tenant onboarding delivery report
+
+### Architecture and prerequisites
+
+Phase 4A's schema, tenant resolution, persisted RBAC, scoped booking/availability services, notification jobs, RRD compatibility routes, and deployment headers were inspected before implementation. Its real PostgreSQL isolation/concurrency verification is recorded above and was exercised again in the Phase 4B regression suite. Phase 4B reuses the central Next.js 16 application, managed Neon Auth, shared Neon PostgreSQL/Drizzle connection, transactional scheduling engine, customer capabilities, and Resend outbox. It does not duplicate the booking engine, introduce another booking provider, or provision per-customer databases.
+
+Development branch: `v0/scheduling-phase-4b-installation`. This phase requires migrations 001–007 already installed on the intended backend; **no new migration is introduced**. The connected production environment is not migrated by this implementation. Installation routes show an infrastructure approval gate when required schema is missing, and new public routes fail closed. No production deployment, production migration, live customer provisioning, additional business activation, or real email delivery was performed.
+
+### Tenant onboarding guide
+
+1. An approved operator must bootstrap an active persisted `platform_administrators` assignment for a verified managed Neon Auth user. Signup, email matching, tenant selection, and the dashboard key do not confer this role. No bootstrap API is exposed.
+2. Visit `/admin/scheduling/tenants` with that verified session. Enter business name, IANA business time zone, unique business slug, and the initial administrator's existing authenticated user ID. The suggested slug includes a retry-key suffix; reserved RRD and management route slugs are rejected.
+3. Provisioning uses a transaction, a slug advisory lock, and a payload/actor-bound retry fingerprint. Identical retries return the same tenant; changed payloads or conflicting slugs fail. Tenant creation, initial administrator assignment, and installation defaults commit together. Scheduling and notification delivery start disabled.
+4. Request the tenant-bound DNS TXT challenge for the exact business hostname. Publish `_rrd-booking.<hostname>` with the supplied proof; verification checks DNS before approving the registry domain and associating it with the tenant. Proofs cannot be reused by another tenant or hostname. No other tenant may claim that domain. Include every embedding subdomain separately.
+5. The tenant administrator visits `/admin/scheduling/install`, selecting only a persisted authorized membership. Add a host, set business availability, public free appointment types, booking policies, branding/contact details, notification settings, and approved embedding origins. Existing versioned configuration validation and locks remain authoritative.
+6. Review installation diagnostics and the no-write preview. Platform administrators explicitly activate only after a verified primary domain, active administrator, public appointment/host with valid availability, and strong runtime booking protection exist. Tenant administrators cannot activate scheduling or grant privileged administrators. Platform suspension disables new public resolution; delivery remains an independent gate.
+
+Domain ownership verification is not DNS/Vercel deployment provisioning or Resend sender authorization. Configure those separately under approved operator procedures; this phase does not automatically route arbitrary custom domains.
+
+### Installation methods and templates
+
+Canonical central booking origin is `https://roostersridgedigital.com`. Do not substitute an arbitrary hostname or expose infrastructure credentials in a client project. If an approved operator changes the central deployment, update both `installation.ts` and `ui/booking-embed.tsx`, canonical metadata, and the external HTML template together, then retest origin/CSP behavior.
+
+**Native Next.js, same central application:** reuse `ui/tenant-booking.tsx`, `ui/booking-wizard.tsx`, appointment/calendar/slot/form/confirmation components, and `ui/tenant-management.tsx`. Server-side `HostedBookingPage` resolves active business/public appointment configuration, passing only public presentation data to client components. Server-only services and database credentials must stay on the central server. Do not use a browser-supplied tenant ID as authorization.
+
+**Separate Next.js client website:** use the portable `ui/booking-embed.tsx` React adapter and the templates `templates/existing-nextjs.tsx` or `templates/new-client-nextjs.tsx`. Obtain the adapter from the approved RRD GitHub repository; copy only that presentation adapter into the client application's components directory and update the template's relative import. It requires React and TypeScript/TSX support, no backend dependencies or environment variables. For example:
+
+```tsx
+import { BookingEmbed } from './components/booking-embed'
+
+export function Schedule() {
+  return <BookingEmbed tenantSlug="your-approved-business-slug" appointment="your-public-link-slug" />
+}
+```
+
+Omit `appointment` to show the public type selector. These are routing selectors, not authorization credentials; the central backend validates both. The external React adapter intentionally uses an iframe so it stays centrally maintained without cross-origin API access or customer auth cookies. It is not a published npm package or a standalone cross-origin headless calendar SDK. No database/schema, auth service, outbox worker, or secret should be copied to client websites.
+
+**Hosted page:** share `/book/[tenantSlug]`, or `/book/[tenantSlug]/[appointment]` for a public-link slug. Pages expose business branding, eligible public appointment types, customer-local availability, intake, confirmation, and private management links. They require active tenants and enabled free/public types with active hosts. Private/admin records never become public. Tenant metadata uses canonical central URLs; unavailable businesses are not indexed. Private management lives at `/book/[tenantSlug]/manage` with a purpose-bound capability in the URL fragment, not a query parameter.
+
+**External iframe:** use `templates/external-iframe.html` or the installation dashboard's generated code:
+
+```html
+<iframe src="https://roostersridgedigital.com/embed/your-approved-business-slug"
+  title="Schedule an appointment" width="100%" height="1000"
+  style="border:0" loading="lazy" referrerpolicy="no-referrer"></iframe>
+```
+
+Optional appointment-specific path: `/embed/[tenantSlug]/[appointment]`. The widget has responsive internal controls and loading states; the adapter provides a hosted-page fallback when embedding is unavailable. Height is fixed at 1000px with normal iframe scrolling; this version does not implement cross-window auto-resizing or messaging. Link to the hosted page as the fallback on external HTML websites. Both parent and booking origins must use HTTPS.
+
+### Supported installation configuration
+
+Configuration is stored in `tenants.branding.installation`; unrelated legacy branding and internal provisioning metadata are preserved. Public projection includes only validated presentation fields, never provisioning fingerprints or infrastructure secrets.
+
+- Business display name, HTTPS logo URL, primary/secondary six-digit hex colors, public description, contact email/phone.
+- `rounded`/`square` button style and approved `sans`/`serif` typography. Primary button text selects a readable black/white foreground.
+- Up to 20 distinct exact HTTPS embedding origins, without ports, credentials, paths, queries, fragments, or wildcards. Only active platform-approved domains owned by this tenant can be saved; approval revocation is rechecked when composing framing policy.
+- IANA business time zone remains tenant configuration. Booking inventory is evaluated in business time; displayed availability supports customer time zones. Policies, host availability, appointment types, notification recipients, and sender settings remain independently tenant-scoped.
+
+The tenant installation dashboard supplies hosted URL/embed-code copy buttons, active/inactive/awaiting-configuration labels, installation instructions, branding/type/availability/policy/notification settings, a read-only preview, and actionable diagnostics. A separate same-origin HTTP probe checks the hosted page and public catalog; configuration diagnostics alone are not a claim of deployed reachability, successful email delivery, or exhaustive runtime isolation testing.
+
+### Public API and security model
+
+`/api/scheduling/public/[tenantSlug]` exposes only:
+
+| Method | Operation |
+| --- | --- |
+| GET without appointment | Enabled public appointment catalog |
+| GET with `appointment`, `month`, `timeZone` | Customer-local monthly availability |
+| POST `action: book` (default) | Validated transactional booking with `Idempotency-Key` |
+| POST `action: view` | Capability-scoped appointment result |
+| POST `action: availability` | Capability-scoped rescheduling availability |
+| POST `action: cancel` / `reschedule` | Explicitly confirmed capability-scoped change |
+
+No public tenant-listing or administrative mutation API is provided. Tenant resolution happens on the server from the slug; submitted `tenantId`, `hostId`, `userId`, or `appointmentTypeId` are rejected. Public appointment keys must belong to the resolved tenant. Management capabilities are bound to that same tenant, purpose and booking version; lifecycle changes rotate/revoke capabilities. Confirmation links are returned directly after booking and must be saved when delivery is disabled.
+
+Existing validation, honeypot, bounded JSON body, persistent tenant-scoped request budgets, idempotency fingerprints, tenant/host locks, database exclusion constraints, composite foreign keys and audit/outbox transactions remain in effect. Production IP throttling trusts only Vercel's overwritten proxy header; a production deployment on another host fails closed without a separately reviewed adapter. Public clients omit credentials; same-origin JSON POST validation rejects foreign origins. No permissive CORS policy or cross-origin browser API is introduced.
+
+`proxy.ts` applies an enforcing tenant-specific `Content-Security-Policy: frame-ancestors 'self' <approved-exact-origins>` only to valid embed routes, and `'none'` to unavailable widgets. Other matched application routes retain `X-Frame-Options: SAMEORIGIN`; global baseline security headers remain intact. This is a framing policy, not a claim of complete script-src CSP protection. No authentication cookie is required by the public widget. Cross-window messaging is not used.
+
+Private services enforce fresh verified sessions, active persisted memberships, role permissions and explicit tenant predicates. Platform configuration inspection is audited and does not grant implicit tenant booking access. Public/private responses use no-store; SWR keys include the tenant endpoint and capability when relevant. Notification jobs, sender-domain authorization, recipients and management links remain tenant-scoped; RRD-only lead/calendar integrations are not generalized to other businesses. Booking and management routes are excluded from the shared analytics component to avoid public booking/customer-capability tracking.
+
+### Dependencies and environment variables
+
+Central application reuses the installed Next.js 16/React 19, TypeScript, Tailwind/shadcn, SWR, Temporal, Drizzle/pg, managed Neon Auth and Resend stack. No new dependencies, provider, auth method, production environment variable, or database resource was introduced.
+
+Keep `DATABASE_URL`, managed `NEON_AUTH_BASE_URL` / `NEON_AUTH_COOKIE_SECRET`, `ADMIN_DASHBOARD_KEY` (at least 32 characters), `CRON_SECRET`, `RESEND_API_KEY` and `RESEND_WEBHOOK_SECRET` server-only. Existing sender/provider settings remain separately authorized. Neither HTML snippets nor portable React installations contain these values. The protection secret also signs tenant-bound DNS proofs; rotating it invalidates outstanding challenges and requires review of existing scheduling hashing/encryption/capability uses.
+
+Test subprocesses alone receive `SCHEDULING_TEST_DATABASE_URL` and `SCHEDULING_MULTITENANT_TEST_DATABASE_URL`, hard-bound to the approved isolated compute `ep-fragrant-moon-auwkhgo1.c-10.us-east-1.aws.neon.tech` on branch `br-raspy-brook-au128c8x`, project `royal-bonus-04874440`. Connection values are not printed or committed. The optional isolated browser-fixture flag is not for production; after testing, disable synthetic tenants and their delivery gates. Fixtures use `.invalid` domains and fake senders and are not live client accounts.
+
+### Testing and verification — 2026-10-13
+
+- Complete serialized regression suite reports **581 passed, one pre-existing opt-in live-network test skipped**, across 49 passing files. All three opt-in PostgreSQL scheduling suites were enabled against the isolated branch.
+- Real database coverage includes onboarding transactions/simultaneous retries, duplicate slug rejection, verified platform privileges, tenant activation/suspension, DNS-proof/domain ownership isolation, installation save/read isolation, approved-origin revocation, preserved branding/retry metadata, public tenant/appointment resolution, real simultaneous booking idempotency, conflicting-slot races, independent tenant reservations, capability tenant/purpose isolation, cancellation races, rotated rescheduling capabilities, customer-time-zone availability, tenant notification routing/authorized sender domains, and unchanged RRD baseline. Phase 3/4A concurrency and isolation regressions also ran.
+- Deterministic HTTP/component tests cover native React adapter rendering/injection rejection, CSP construction, safe branding, reserved public data projection, public request scoping, origin rejection and public/widget booking adapters. These tests do not imply a real third-party iframe or authenticated admin browser journey.
+- Standalone `pnpm exec tsc --noEmit` completed; the production build generated all routes successfully. Existing `ignoreBuildErrors` remains in config, so the standalone type check is necessary.
+- Browser smoke verification at dark desktop 1638×986 confirms `/admin/scheduling/install` displays the infrastructure approval gate without provisioning or activation. Earlier isolated booking-page inspection rendered public branding/type selection and loading/error states. An attempted live local HTTP lifecycle check was blocked by missing/short runtime abuse-protection configuration; it is **not** recorded as a successful live widget booking or cancellation/rescheduling browser test. Activation now explicitly checks that prerequisite.
+- Authenticated platform/tenant-admin onboarding/settings browser journeys, live browser booking/management lifecycle, real external-host frame enforcement, DNS-provider integration and actual Resend delivery remain unverified. Unit/real SQL evidence does not replace those release checks. No auth bypass or production mutation was used to make preview tests pass.
+- pg emitted a forward-looking SSL-mode warning; it did not fail these checks. Review explicit `verify-full` behavior when upgrading pg/pg-connection-string.
+
+### Deployment, upgrade and rollback plan
+
+1. Obtain separate production migration/deployment approval, an operator-reviewed restore point, and the intended release revision. Retain all prior RRD IDs/settings and booking/delivery gates.
+2. Confirm approved migrations 001–007 and current managed auth on the intended central backend; apply missing prerequisites only under their own approval. No Phase 4B migration is needed. Bootstrap platform role through an approved operator action; verify the runtime protection secret, Vercel IP headers, cron and Resend configuration before any activation.
+3. Deploy the reviewed central application only after approval. Test unauthorized admin access, synthetic inactive tenant behavior, HTTP diagnostics, public data isolation, actual frame headers on approved/unapproved parent sites, and a fully authenticated staging onboarding/booking/management journey. Do not test with live client identities/data.
+4. DNS-verify the business/embedding hostnames, separately confirm deployment routing and sender-provider authorization, configure hosts/types/availability/policies and review diagnostics. Obtain explicit per-business approval before platform activation; approve notification delivery independently.
+5. Install the portable adapter or HTML template in client websites from the approved GitHub revision. Upgrade the central engine once, then run regression/security checks and validate compatibility of slugs, route shapes, branding fields and management links. Client presentation updates do not require a database copy.
+6. Roll back operationally by suspending affected public tenant gates and disabling delivery, then restoring the prior application release while retaining additive Phase 4A schema, tenant identities, booking/customer/audit/outbox data, and capability keys. A rollback to a revision without hosted routes makes external integrations unavailable; use the hosted contact fallback and communicate that limitation. Do not automatically drop tables or restore/reassign customer records. Destructive restoration requires separate backup-based approval.
+
+### Troubleshooting and Phase 4C readiness
+
+- **Infrastructure approval screen / unavailable tenant:** check approved migration prerequisites, active tenant/host, enabled public free type links and runtime protection. Do not enable or migrate production as a preview workaround.
+- **403 admin mutation:** confirm a verified managed session and active persisted platform/tenant role. Supplied IDs, email addresses and dashboard keys are not substitutes.
+- **DNS verification fails:** publish the exact current tenant-bound TXT value, wait for propagation, and verify the exact hostname/subdomain. Secret rotation changes proofs. An owned domain elsewhere cannot be stolen through a new challenge.
+- **iframe blocked:** confirm HTTPS, exact parent hostname and tenant domain approval, saved embedding origin, active tenant and deployed CSP headers. Do not remove global security headers or add wildcard origins. Use the hosted fallback while correcting approval.
+- **Booking unavailable / 429:** confirm protection configuration and trusted Vercel IP headers, refresh availability after a conflict, retain the same idempotency key for the same submission, and respect retry delays. A changed payload requires a new submission key.
+- **No notification email:** check tenant sender/reply-to, authorized sender domain/provider verification, recipient/policy configuration, cron/outbox health, and separately approved delivery gate. Saving settings does not enable delivery; confirmation management links remain available without email.
+
+**Readiness assessment:** Phase 4B supplies the tenant onboarding, centrally maintained public/embedded booking and installation configuration foundation for Phase 4C branding work. It is not a production launch sign-off. Phase 4C can build on validated `branding.installation` fields without rewriting scheduling; outstanding authenticated/external-frame/live-delivery verification and production approvals remain release gates. Custom-domain serving, a published headless SDK, full white-label editor, iframe auto-resizing, multi-business CRM, retention automation and additional live businesses are outside this implementation.
