@@ -31,7 +31,7 @@ async function baseline() { return (await db.execute(sql`SELECT md5(coalesce(jso
 
 describe.skipIf(!connection)('Phase 4B isolated PostgreSQL installation', () => {
   beforeAll(async () => {
-    if (!connection || new URL(connection).hostname !== 'ep-fragrant-moon-auwkhgo1.c-10.us-east-1.aws.neon.tech') throw new Error('Only the approved isolated Neon compute is allowed.')
+    if (!connection || new URL(connection).hostname !== 'ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech') throw new Error('Only the approved isolated Neon compute is allowed.')
     process.env.ADMIN_DASHBOARD_KEY = 'synthetic-installation-secret-32-characters'
     rrdBefore = await baseline()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)

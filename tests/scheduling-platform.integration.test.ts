@@ -21,7 +21,7 @@ async function integrity(){return(await db.execute(sql`SELECT md5(to_jsonb(t)::t
 async function account(plan:'starter'|'professional'|'business',status:'trial'|'active'|'suspended'|'past_due'='trial'){const current=await accountEntitlements(db,a);await platform.account(a,plan,status,current!.version,'CHANGE ACCOUNT')}
 describe.skipIf(!connection)('Phase 4D on the approved isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if(new URL(connection!).hostname!=='ep-fragrant-moon-auwkhgo1.c-10.us-east-1.aws.neon.tech')throw new Error('Isolated endpoint required.')
+    if(new URL(connection!).hostname!=='ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech')throw new Error('Isolated endpoint required.')
     process.env.ADMIN_DASHBOARD_KEY='synthetic-phase-4d-verification-secret-32-characters';baseline=await integrity()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${operator},true)`)
     a=await installation.provision({name:'Synthetic Phase 4D A',slug:businessSlug,timeZone:'America/Chicago',administratorUserId:owner,requestKey:randomUUID()})

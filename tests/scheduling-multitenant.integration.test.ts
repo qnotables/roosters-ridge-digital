@@ -35,7 +35,7 @@ async function rrdIntegrity() {
 }
 isolated('Phase 4A on the approved isolated Neon branch',()=>{
   beforeAll(async()=>{
-    if (!connection || new URL(connection).hostname!=='ep-fragrant-moon-auwkhgo1.c-10.us-east-1.aws.neon.tech') throw new Error('Only approved Phase 4A isolated compute is allowed.')
+    if (!connection || new URL(connection).hostname!=='ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech') throw new Error('Only approved Phase 4A isolated compute is allowed.')
     rrdSnapshot=await rrdIntegrity()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)
     a=await management.create({name:'Synthetic Tenant A',slug:`synthetic-a-${suffix}`,timeZone:'UTC'})
