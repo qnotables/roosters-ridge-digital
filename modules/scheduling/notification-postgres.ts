@@ -34,7 +34,12 @@ export async function recentNotificationJobs(db: Pick<NodePgDatabase, 'execute'>
 export async function saveNotificationSettings(db: NodePgDatabase, scope: AdminScope, input: unknown) {
   const settings = validateNotifications(input)
   await db.transaction(async tx => {
-    await tx.execute(sql`SELECT id FROM rrd_scheduling.tenants WHERE id=${scope.tenantId} FOR UPDATE`)
+    const tenant = await tx.execute(sql`SELECT id,slug,to_jsonb(t)->'branding' AS branding FROM rrd_scheduling.tenants t WHERE id=${scope.tenantId} FOR UPDATE`)
+    if (tenant.rows[0]?.slug !== 'roosters-ridge-digital' && (tenant.rows[0]?.branding as Record<string, unknown>)?.installation && settings.senderAddress) {
+      const senderDomain = settings.senderAddress.split('@')[1].toLowerCase()
+      const approved = await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${scope.tenantId} AND hostname=${senderDomain} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
+      if (!approved.rows.length) throw new SchedulingError('forbidden', 'Verify and approve this tenant sender domain before saving notification settings.')
+    }
     await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} ORDER BY id FOR UPDATE`)
     const changed = await tx.execute(sql`UPDATE rrd_scheduling.configuration SET version=version+1,policies=policies || ${JSON.stringify({ customerConfirmation: settings.customerConfirmation, hostNotification: settings.hostNotification, cancellationNotice: settings.cancellationNotice, reminderMinutes: settings.reminderMinutes })}::jsonb WHERE tenant_id=${scope.tenantId} AND version=${settings.version} RETURNING version`)
     if (!changed.rows.length) throw new SchedulingError('unavailable', 'Settings changed. Refresh before saving.')

@@ -15,10 +15,11 @@ function database(event='reminder') {
   const queries:{sql:string;params:unknown[]}[]=[]
   const attempts:any[]=[]
   let status=event==='cancelled'?'cancelled':'confirmed'
-  let suppressed=false
+  let suppressed=false, active=true
   const execute=vi.fn(async(input:SQL)=>{
     const q=new PgDialect().sqlToQuery(input);queries.push(q)
     const param=(name:string)=>{const m=new RegExp(`${name}=\\$(\\d+)`).exec(q.sql);return m?q.params[Number(m[1])-1]:undefined}
+    if(q.sql.includes('SELECT enabled FROM')) return {rows:[{enabled:active}]}
     if(q.sql.includes('SELECT tenant_id FROM')) return {rows:[{tenant_id:tenant}]}
     if(q.sql.includes('SELECT to_regclass')) return {rows:[{ready:true}]}
     if(q.sql.includes('SELECT b.version')) return {rows:[{version:1,start_time:job.expected_start,duration_minutes:30,location:'Online meeting',meeting_mode:'online'}]}
@@ -37,7 +38,7 @@ function database(event='reminder') {
     return {rows:[]}
   })
   const db={execute,transaction:async(fn:any)=>fn({execute})} as unknown as NodePgDatabase
-  return {db,job,queries,attempts,due:()=>{available=0},cancel:()=>{status='cancelled'},suppress:()=>{suppressed=true}}
+  return {db,job,queries,attempts,due:()=>{available=0},cancel:()=>{status='cancelled'},suppress:()=>{suppressed=true},suspend:()=>{active=false}}
 }
 let settings:NotificationSettings
 beforeEach(()=>{vi.clearAllMocks();vi.stubEnv('NODE_ENV','production');vi.stubEnv('VERCEL_ENV','production');vi.stubEnv('ADMIN_DASHBOARD_KEY','x'.repeat(32));mocks.ready.mockResolvedValue(true);settings={...structuredClone(defaultPreferences),senderAddress:'business@example.com',replyTo:'reply@example.com',adminRecipients:['staff@example.com'],customerConfirmation:true,hostNotification:true,cancellationNotice:true,reminderMinutes:[1440,60],version:1,deliveryEnabled:true};mocks.settings.mockImplementation(async()=>settings)})
@@ -50,5 +51,6 @@ describe('notification worker durability',()=>{
   it('does not send cancelled appointment reminders',async()=>{const d=database();d.cancel();const send=vi.fn();await processSchedulingNotifications(d.db,send);expect(d.job.state).toBe('skipped');expect(send).not.toHaveBeenCalled()})
   it('sends cancellation notices only from safe customer fields',async()=>{const d=database('cancelled');const send=vi.fn().mockResolvedValue({data:{id:'cancel-id'},error:null});await processSchedulingNotifications(d.db,send);expect(send).toHaveBeenCalledOnce();expect(send.mock.calls[0][0].text).toContain('has been cancelled');expect(d.job.state).toBe('accepted')})
   it('honors disabled delivery and suppression before invoking the provider',async()=>{for(const mode of ['paused','suppressed']){const d=database();settings.deliveryEnabled=mode!=='paused';if(mode==='suppressed')d.suppress();const send=vi.fn();await processSchedulingNotifications(d.db,send);expect(send).not.toHaveBeenCalled();expect(d.job.state).toBe('skipped')}})
+  it('never sends queued messages for suspended tenants',async()=>{const d=database();d.suspend();const send=vi.fn();await processSchedulingNotifications(d.db,send);expect(send).not.toHaveBeenCalled();expect(d.job.state).toBe('skipped')})
   it('keeps every claim, update, and attempt tenant scoped',async()=>{const d=database();await processSchedulingNotifications(d.db,vi.fn().mockResolvedValue({data:{id:'id'},error:null}));for(const q of d.queries.filter(q=>/notification_jobs|notification_attempts|bookings|hosts/.test(q.sql))) {expect(q.sql).toContain('tenant_id');expect(q.params).toContain(tenant)};expect(d.queries.some(q=>q.sql.includes('SKIP LOCKED'))).toBe(true)})
 })

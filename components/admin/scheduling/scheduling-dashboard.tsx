@@ -145,6 +145,7 @@ export function SchedulingDashboard({
           Private admin workspace
         </Badge>
       </header>
+      <nav aria-label="Scheduling installation" className="flex flex-wrap gap-4 text-sm"><a href="/admin/scheduling/install" className="underline underline-offset-4">Installation settings</a><a href="/admin/scheduling/tenants" className="underline underline-offset-4">Platform tenant onboarding</a></nav>
       <div className="flex flex-col gap-6 lg:flex-row">
         <aside className="shrink-0 lg:w-52">
           <nav

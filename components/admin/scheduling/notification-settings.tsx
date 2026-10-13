@@ -15,7 +15,7 @@ import { defaultPreferences, notificationEvents, templateVariables, validateNoti
 import { ConfigCheck } from './configuration-form'
 
 const labels = { confirmed: 'Booking confirmation', admin_booking: 'Administrator new-booking notification', cancelled: 'Cancellation notice', rescheduled: 'Rescheduling notice', reminder: 'Appointment reminder' }
-export function NotificationSettingsPage({ result }: { result: NotificationResult }) {
+export function NotificationSettingsPage({ result, saveSettings = updateSchedulingNotifications, businessName = 'RRD', embedded = false }: { embedded?: boolean; result: NotificationResult; saveSettings?: (input: unknown) => Promise<{ ok: boolean; message: string }>; businessName?: string }) {
   const router = useRouter()
   const ready = result.state === 'ready'
   const settings = ready ? result.settings : { ...defaultPreferences, customerConfirmation: false, hostNotification: false, cancellationNotice: false, reminderMinutes: [] as number[], version: 1, deliveryEnabled: false }
@@ -30,14 +30,15 @@ export function NotificationSettingsPage({ result }: { result: NotificationResul
       const custom = text('customReminders').trim()
       const reminderMinutes = [...(data.has('24hour')?[1440]:[]),...(data.has('1hour')?[60]:[]),...(custom?custom.split(',').map(Number):[])]
       const input = validateNotifications({ version: settings.version, customerConfirmation: data.has('customerConfirmation'), hostNotification: data.has('hostNotification'), cancellationNotice: data.has('cancellationNotice'), reschedulingNotice: data.has('reschedulingNotice'), reminderMinutes: [...new Set(reminderMinutes)], senderName: text('senderName'), senderAddress: text('senderAddress'), replyTo: text('replyTo'), adminRecipients: text('adminRecipients').split(',').map(e=>e.trim()).filter(Boolean), templates: Object.fromEntries(notificationEvents.map(e=>[e,{subject:text(`${e}-subject`),body:text(`${e}-body`)}])) })
-      const response = await updateSchedulingNotifications(input)
+      const response = await saveSettings(input)
       setMessage(response)
       if(response.ok) router.refresh()
     } catch(error) { setMessage({ok:false,message:error instanceof Error?error.message:'Could not save notification settings.'}) }
     finally { setPending(false) }
   }
-  return <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div className="flex flex-col gap-2"><p className="text-xs font-semibold uppercase tracking-widest text-primary">RRD / Scheduling</p><h1 className="text-3xl font-semibold tracking-tight">Notifications</h1><p className="text-sm text-muted-foreground">Clear confirmations. Timely reminders. Customer-safe communication.</p></div><Link className={buttonVariants({variant:'outline'})} href="/admin/scheduling">Back to Calendar</Link></header>
+  const Root = embedded ? 'section' : 'main'
+  return <Root className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div className="flex flex-col gap-2"><p className="text-xs font-semibold uppercase tracking-widest text-primary">{businessName} / Scheduling</p><h1 className="text-3xl font-semibold tracking-tight">Notifications</h1><p className="text-sm text-muted-foreground">Clear confirmations. Timely reminders. Customer-safe communication.</p></div><Link className={buttonVariants({variant:'outline'})} href="/admin/scheduling">Back to Calendar</Link></header>
     <Alert><ShieldCheck/><AlertTitle>{settings.deliveryEnabled?'Production delivery approved':'Live delivery is paused'}</AlertTitle><AlertDescription>Saving preferences never enables email delivery. Development and preview environments do not send scheduling emails. Activation requires separate approval, migration validation, and a production cron.</AlertDescription></Alert>
     {!ready && <Alert><AlertTitle>{result.state==='forbidden'?'Staff authorization required':result.state==='setup'?'Activation pending approval':'Notifications unavailable'}</AlertTitle><AlertDescription>{result.message}</AlertDescription></Alert>}
     <form onSubmit={save} className="flex flex-col gap-5"><fieldset disabled={!ready||pending} className="flex min-w-0 flex-col gap-5">
@@ -46,5 +47,5 @@ export function NotificationSettingsPage({ result }: { result: NotificationResul
       <Card><CardHeader><CardTitle>Email templates</CardTitle><CardDescription>Plain-text templates. Allowed variables: {templateVariables.map(v=>`{{${v}}}`).join(', ')}. HTML is not rendered.</CardDescription></CardHeader><CardContent><FieldGroup>{notificationEvents.map(event=><FieldSet key={event}><FieldLegend>{labels[event]}</FieldLegend><FieldGroup><Field><FieldLabel htmlFor={`${event}-subject`}>Subject</FieldLabel><Input id={`${event}-subject`} name={`${event}-subject`} maxLength={200} required defaultValue={settings.templates[event].subject}/></Field><Field><FieldLabel htmlFor={`${event}-body`}>Message</FieldLabel><Textarea id={`${event}-body`} name={`${event}-body`} maxLength={8000} rows={6} required defaultValue={settings.templates[event].body}/></Field></FieldGroup></FieldSet>)}</FieldGroup></CardContent><CardFooter><Button type="submit" disabled={!ready||pending}>{pending?'Saving…':'Save notification settings'}</Button></CardFooter></Card>
     </fieldset>{message&&<Alert variant={message.ok?'default':'destructive'} role={message.ok?'status':'alert'}><AlertTitle>{message.ok?'Saved':'Review settings'}</AlertTitle><AlertDescription>{message.message}</AlertDescription></Alert>}</form>
     <Card><CardHeader><CardTitle>Recent delivery activity</CardTitle><CardDescription>Provider acceptance is not proof of delivery. Signature-verified webhooks record delivery outcomes.</CardDescription></CardHeader><CardContent>{ready&&result.recent.length?<ul className="flex flex-col gap-3">{result.recent.map(job=><li key={job.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3"><div><p className="text-sm font-medium">{labels[job.event as keyof typeof labels]??job.event}</p><p className="text-xs text-muted-foreground">{job.attempts} attempts · {job.createdAt}{job.lastError&&` · ${job.lastError}`}</p></div><Badge variant="outline">{job.deliveryStatus||job.state}</Badge></li>)}</ul>:<p className="text-sm text-muted-foreground">No scheduling delivery attempts to display.</p>}</CardContent></Card>
-  </main>
+  </Root>
 }

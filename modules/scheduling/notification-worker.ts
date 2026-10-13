@@ -73,7 +73,9 @@ async function deliverClaim(db: NodePgDatabase, job: Job & { frozen_payload: Pay
     const b = booking.rows[0]
     const settings = await readNotificationSettings(tx, job.tenant_id)
     let skip = ''
-    if (!isLiveSchedulingEnvironment(process.env) || !settings.deliveryEnabled) skip = 'Delivery paused by environment or approval gate.'
+    const tenant = await tx.execute(sql`SELECT enabled FROM rrd_scheduling.tenants WHERE id=${job.tenant_id}`)
+    if (!tenant.rows[0]?.enabled) skip = 'Tenant scheduling is suspended.'
+    else if (!isLiveSchedulingEnvironment(process.env) || !settings.deliveryEnabled) skip = 'Delivery paused by environment or approval gate.'
     else if (!eventEnabled(job.event, settings, job.reminder_minutes)) skip = 'Notification disabled in current preferences.'
     else if (job.event === 'admin_booking' && job.frozen_payload!.to.some(e => !settings.adminRecipients.includes(e))) skip = 'Administrator recipient permissions changed before delivery.'
     else if (job.event === 'cancelled' ? b.status !== 'cancelled' : job.event !== 'admin_booking' && (b.status !== 'confirmed' || iso(b.start_time) !== iso(job.expected_start))) skip = 'Appointment changed before delivery.'

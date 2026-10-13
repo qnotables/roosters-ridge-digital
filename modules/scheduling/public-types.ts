@@ -14,7 +14,7 @@ export type PublicAppointment = {
 }
 export type PublicCatalog = { state: 'ready'; appointments: PublicAppointment[] } | { state: 'unavailable'; message: string }
 export type PublicAvailability = { month: string; timeZone: string; days: Record<string, Slot[]> }
-export type PublicConfirmation = Slot & { reference: string; status: 'pending' | 'confirmed' }
+export type PublicConfirmation = Slot & { reference: string; status: 'pending' | 'confirmed'; managementLinks?: { view: string; cancel: string; reschedule: string } }
 export type BookingBrand = { name: string; eyebrow: string; heading: string; description: string; contactHref: string }
 export const bookingSteps = ['Appointment', 'Date', 'Time', 'Your details', 'Review'] as const
 export function displaySlot(start: string, timeZone: string) {

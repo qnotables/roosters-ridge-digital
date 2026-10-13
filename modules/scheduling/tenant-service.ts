@@ -60,7 +60,7 @@ export function createTenantManagement(db: NodePgDatabase, identity: IdentityPro
           const domain=await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${tenantId} AND hostname=${primary} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
           if (!domain.rows.length) denyTenantAccess()
         }
-        await tx.execute(sql`UPDATE rrd_scheduling.tenants SET name=${name},slug=${businessSlug},time_zone=${timeZone},enabled=${input.enabled},primary_domain=${primary},branding=${JSON.stringify(branding)}::jsonb WHERE id=${tenantId}`)
+        await tx.execute(sql`UPDATE rrd_scheduling.tenants SET name=${name},slug=${businessSlug},time_zone=${timeZone},enabled=${input.enabled},primary_domain=${primary},branding=branding || ${JSON.stringify(branding)}::jsonb WHERE id=${tenantId}`)
         await audit(tx,tenantId,actor.userId,'tenant_configuration_updated')
       })
     },
