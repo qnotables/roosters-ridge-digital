@@ -26,6 +26,12 @@ Audit date: 2026-10-13. Source baseline: `89853e4` on `v0/scheduling-phase-4c-va
 
 The production build retains `typescript.ignoreBuildErrors: true`; the independent TypeScript check is required evidence. No ESLint script/configuration or dependency consistency tool is configured; compilation must not be presented as a lint or accessibility audit.
 
+## Task 2 completion: schema comparison and isolated rehearsal
+
+Completed with read-only final verification on 2026-10-13. Compared the table declarations in repository migrations 001–009 with the catalog on `br-dawn-sea-aucw8o2d`: all 32 expected tables exist, with no missing or unexpected scheduling tables, zero unvalidated constraints and zero invalid indexes. Booking and delivery remain disabled: zero enabled tenants, enabled public links or enabled notification delivery settings; zero bookings and notification jobs. The rehearsal branch has zero public leads, consistent with its recorded postflight count; this is not a content-level checksum of all unrelated data.
+
+A separate read-only query against the connected default production database reconfirmed 21 public tables, no `rrd_scheduling` or `drizzle` schema, and only the `plpgsql` extension. No production scheduling migration or activation was performed. This closes Task 2's schema-comparison/rehearsal scope, not PostgreSQL concurrency, migration-ledger implementation, backup restoration or production release acceptance. Task 3 remains the fresh PostgreSQL concurrency and notification-reliability verification.
+
 ## Implementation inventory: actual scope of Phases 1–4D
 
 The code exists for the following systems, but existence and unit/service evidence do not establish production provisioning or authenticated browser acceptance:
