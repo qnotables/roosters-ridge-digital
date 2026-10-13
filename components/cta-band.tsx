@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { siteConfig } from '@/lib/site-config'
 
 export function CtaBand({
@@ -30,7 +30,8 @@ export function CtaBand({
             <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
             <p className="text-pretty text-muted-foreground">{description}</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col items-start gap-4">
+          <div className="flex flex-wrap gap-3">
             <Button render={<Link href={primaryHref} />} size="lg">
               {primaryLabel}
               <ArrowRight data-icon="inline-end" />
@@ -38,6 +39,8 @@ export function CtaBand({
             <Button render={<Link href={secondaryHref} />} size="lg" variant="outline">
               {secondaryLabel}
             </Button>
+          </div>
+          <Link href="/book" className={buttonVariants({ variant: 'link' })}>Schedule a Consultation <ArrowRight data-icon="inline-end" /></Link>
           </div>
         </div>
       </div>

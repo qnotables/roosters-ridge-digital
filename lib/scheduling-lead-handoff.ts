@@ -23,4 +23,5 @@ export async function associateRrdLead(db: Pick<NodePgDatabase, 'execute'>, tena
   if (!validLeadId(leadId)) return
   await db.execute(sql`UPDATE rrd_scheduling.bookings b SET related_contact=l.id::text FROM public.leads l,rrd_scheduling.tenants t WHERE b.tenant_id=${tenantId} AND b.id=${bookingId} AND t.id=b.tenant_id AND t.slug='roosters-ridge-digital' AND l.id=${leadId}::uuid AND lower(trim(l.email))=lower(trim(${email})) AND lower(trim(b.customer_email))=lower(trim(l.email))`)
 }
+export const rrdBookingMarketingTargets = { metaPixelId: '2429109034284892', google: '' }
 export const rrdBookingPreferences = { checkup: 'rrd-free-digital-checkup', quote: 'rrd-website-consultation' } as const

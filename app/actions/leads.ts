@@ -1,6 +1,7 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { setLeadHandoff } from '@/lib/scheduling-lead-handoff'
 import { sql, isDatabaseConfigured } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
 import { sendInternalLeadNotification, sendLeadConfirmation } from '@/lib/email'
@@ -102,8 +103,9 @@ type StoreArgs = {
 
 async function storeLead(args: StoreArgs): Promise<boolean> {
   if (!sql) return false
+  let id: string
   try {
-    await sql`
+    const rows = await sql`
       INSERT INTO public.leads (
         reference_number, lead_type, first_name, last_name, business_name, email, phone,
         preferred_contact_method, website_url, services, project_description, audience,
@@ -118,13 +120,17 @@ async function storeLead(args: StoreArgs): Promise<boolean> {
         ${args.sourcePage}, ${args.utm.utmSource}, ${args.utm.utmMedium},
         ${args.utm.utmCampaign}, ${args.utm.utmContent}, ${args.utm.referrer}, ${args.trackingMetadata ? JSON.stringify(args.trackingMetadata) : null},
         ${args.smsConsent}, ${args.smsConsentAt}, ${args.smsConsentSource}, ${args.smsConsentVersion}
-      )
+      ) RETURNING id
     `
-    return true
+    id = String(rows[0].id)
   } catch (err) {
     console.error('[v0] Lead insert failed:', err instanceof Error ? err.message : 'unknown error')
     return false
   }
+  try { await setLeadHandoff(id, args.leadType) } catch {
+    // A failed optional handoff must not encourage resubmitting an already saved lead.
+  }
+  return true
 }
 
 // ---------------------------------------------------------------------------

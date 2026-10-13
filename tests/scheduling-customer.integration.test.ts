@@ -9,6 +9,9 @@ import { changeCustomerBooking, createCustomerBooking, customerAvailability, cus
 import { customerCalendar } from '@/modules/scheduling/customer-calendar'
 import { customerToken, requestFingerprint } from '@/modules/scheduling/customer-security'
 import { tokenHash } from '@/modules/scheduling/security'
+import { associateRrdLead } from '@/lib/scheduling-lead-handoff'
+import { registerBookingConversion, claimBookingConversion } from '@/modules/scheduling/marketing-postgres'
+import { schedulingLeadHistory, findSchedulingLead } from '@/modules/scheduling/integration-postgres'
 
 const connection = process.env.SCHEDULING_TEST_DATABASE_URL
 const isolated = describe.skipIf(!connection)
@@ -20,7 +23,7 @@ const day=(days:number,hour=13)=>{const d=new Date();d.setUTCDate(d.getUTCDate()
 
 isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if (!connection || new URL(connection).hostname !== 'ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech') throw new Error('These integration tests may run only on the approved isolated Phase 3B branch.')
+    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on the approved isolated Phase 3B branch.')
     vi.stubEnv('ADMIN_DASHBOARD_KEY','isolated-customer-test-secret-32-characters')
     const tenant=await db.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`)
     tenantId=String(tenant.rows[0].id);zone=String(tenant.rows[0].time_zone)
@@ -52,6 +55,37 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
     await expect(customerBooking(db,results[0].tokens.cancel!,'reschedule')).rejects.toMatchObject({code:'forbidden'})
     const safe=publicCustomerAppointment(b)
     expect(safe).not.toHaveProperty('tenantId');expect(safe).not.toHaveProperty('hash');expect(safe).not.toHaveProperty('customer_email')
+  },30000)
+  it('associates the selected existing lead without creating duplicates and claims a conversion exactly once',async()=>{
+    const email=`synthetic-${randomUUID()}@example.invalid`, leadId=randomUUID(), otherId=randomUUID()
+    await db.execute(sql`INSERT INTO public.leads(id,reference_number,lead_type,first_name,email) VALUES(${leadId},${randomUUID()},'checkup','Synthetic selected lead',${email}),(${otherId},${randomUUID()},'quote','Synthetic ambiguous lead',${email})`)
+    const input={start:day(12),name:'Synthetic selected lead',email,phone:'',timeZone:zone}, key=randomUUID()
+    const integration={key:leadId,async associate(tx:Parameters<typeof associateRrdLead>[0],id:string){await associateRrdLead(tx,tenantId,id,leadId,email);await registerBookingConversion(tx,tenantId,id,true)}}
+    const [first,retry]=await Promise.all([createCustomerBooking(tenantId,link,input,key,'c'.repeat(64),db,integration),createCustomerBooking(tenantId,link,input,key,'c'.repeat(64),db,integration)])
+    expect(first).toEqual(retry)
+    const booking=await customerBooking(db,first.tokens.view!,'view')
+    const links=await db.execute(sql`SELECT lead_id FROM rrd_scheduling.lead_links WHERE tenant_id=${tenantId} AND booking_id=${booking.id}`)
+    expect(links.rows).toEqual([{lead_id:leadId}])
+    expect((await db.execute(sql`SELECT count(*)::int AS count FROM public.leads WHERE email=${email}`)).rows[0].count).toBe(2)
+    const claims=await Promise.all([claimBookingConversion(db,tenantId,booking.id),claimBookingConversion(db,tenantId,booking.id)])
+    expect(claims.filter(Boolean)).toHaveLength(1);expect(claims.find(Boolean)?.consent).toBe(true)
+    expect(await claimBookingConversion(db,tenantId,booking.id)).toBeNull()
+    await changeCustomerBooking(first.tokens.reschedule!,'reschedule',day(13),db)
+    const history=await schedulingLeadHistory(db,{tenantId,userId:'isolated-staff'},leadId)
+    expect(history[0].history.some(h=>h.previousStart && h.nextStart && h.previousStart!==h.nextStart)).toBe(true)
+    await expect(findSchedulingLead(db,{tenantId:randomUUID(),userId:'isolated-other-tenant'},leadId)).rejects.toMatchObject({code:'forbidden'})
+  },30000)
+  it('does not associate ambiguous direct bookings or claim pending and cancelled bookings',async()=>{
+    const email=`synthetic-${randomUUID()}@example.invalid`
+    await db.execute(sql`INSERT INTO public.leads(reference_number,lead_type,first_name,email) VALUES(${randomUUID()},'quote','Synthetic ambiguity one',${email}),(${randomUUID()},'quote','Synthetic ambiguity two',${email})`)
+    const result=await createCustomerBooking(tenantId,link,{start:day(14),name:'Synthetic ambiguity',email,phone:'',timeZone:zone},randomUUID(),'d'.repeat(64),db)
+    const booking=await customerBooking(db,result.tokens.view!,'view')
+    expect((await db.execute(sql`SELECT count(*)::int AS count FROM rrd_scheduling.lead_links WHERE tenant_id=${tenantId} AND booking_id=${booking.id}`)).rows[0].count).toBe(0)
+    await registerBookingConversion(db,tenantId,booking.id,false)
+    await db.execute(sql`UPDATE rrd_scheduling.bookings SET status='pending' WHERE tenant_id=${tenantId} AND id=${booking.id}`)
+    expect(await claimBookingConversion(db,tenantId,booking.id)).toBeNull()
+    await db.execute(sql`UPDATE rrd_scheduling.bookings SET status='cancelled' WHERE tenant_id=${tenantId} AND id=${booking.id}`)
+    expect(await claimBookingConversion(db,tenantId,booking.id)).toBeNull()
   },30000)
   it('rejects expired and unknown tokens and exchanges without mutating an appointment',async()=>{
     const result=await book(4)

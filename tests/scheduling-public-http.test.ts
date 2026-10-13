@@ -3,6 +3,9 @@ const mocks = vi.hoisted(() => ({ runtime: vi.fn(), budget: vi.fn(), book: vi.fn
 vi.mock('@/modules/scheduling/public-postgres', () => ({ rrdPublicScheduling: mocks.runtime }))
 vi.mock('@/modules/scheduling/customer-postgres', () => ({ createCustomerBooking: mocks.book }))
 vi.mock('@/modules/scheduling/customer-http', () => ({ setCustomerCookies: vi.fn() }))
+vi.mock('@/lib/email-workspace-db', () => ({ emailDb: {} }))
+vi.mock('@/lib/scheduling-lead-handoff', () => ({ readLeadHandoff: vi.fn().mockResolvedValue(null), associateRrdLead: vi.fn() }))
+vi.mock('@/modules/scheduling/marketing-postgres', () => ({ registerBookingConversion: vi.fn() }))
 import { GET, POST } from '@/app/api/booking/route'
 import { boundedBookingBody, publicClientKey } from '@/modules/scheduling/public-http'
 
@@ -48,7 +51,7 @@ describe('public booking HTTP boundary', () => {
     expect(response.status).toBe(201)
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect(await response.json()).toEqual({ reference: 'RRD-reference', start: body.start, end: '2026-11-09T13:30:00Z', status: 'confirmed', confirmationPath: '/book/confirmed' })
-    expect(mocks.book).toHaveBeenCalledWith('configured-tenant', appointment.key, expect.objectContaining({ intake: body.intake }), '11111111-1111-4111-8111-111111111111', expect.stringMatching(/^[a-f0-9]{64}$/))
+    expect(mocks.book).toHaveBeenCalledWith('configured-tenant', appointment.key, expect.objectContaining({ intake: body.intake }), '11111111-1111-4111-8111-111111111111', expect.stringMatching(/^[a-f0-9]{64}$/), {}, expect.objectContaining({ key: 'direct:false', associate: expect.any(Function) }))
   })
   it('returns a helpful conflict without database details', async () => {
     const { SchedulingError } = await import('@/modules/scheduling/types')

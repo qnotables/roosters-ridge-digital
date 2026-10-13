@@ -13,12 +13,16 @@ export const metadata: Metadata = {
 }
 export const viewport: Viewport = { colorScheme: 'light', themeColor: '#234b38' }
 const brand: BookingBrand = { name: 'Roosters Ridge Digital', eyebrow: 'Roosters Ridge Digital / Book a conversation', heading: 'Good things start with a conversation.', description: 'A fresh perspective on your website. A plan for your next project. Let’s find the right next step for your business.', contactHref: '/contact' }
-export default async function BookPage() {
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ source?: string }> }) {
+  const { source } = await searchParams
   let catalog: PublicCatalog = { state: 'unavailable', message: 'Online booking is not available right now. Get in touch and we will help arrange a time that works for you.' }
   try {
     const scheduling = await rrdPublicScheduling()
     if (scheduling) catalog = { state: 'ready', appointments: scheduling.appointments }
   } catch { /* Public visitors receive no database or internal configuration details. */ }
   const lead = await readLeadHandoff()
-  return <div className="rrd-booking min-h-[70dvh] bg-background text-foreground"><BookingWizard catalog={catalog} brand={brand} preferredAppointment={lead ? rrdBookingPreferences[lead.type] : undefined} /></div>
+  const kind = lead?.type ?? (source === 'checkup' || source === 'quote' ? source : undefined)
+  const preference = kind ? rrdBookingPreferences[kind] : undefined
+  const preferredAppointment = catalog.state === 'ready' && catalog.appointments.some(a => a.key === preference) ? preference : undefined
+  return <div className="rrd-booking min-h-[70dvh] bg-background text-foreground"><BookingWizard catalog={catalog} brand={brand} preferredAppointment={preferredAppointment} /></div>
 }

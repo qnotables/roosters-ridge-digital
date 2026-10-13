@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { trackBookingEvent, emitBookingConversion, type BookingMarketingTargets } from '../marketing'
 import useSWR from 'swr'
 import { CalendarDays, Download, ShieldCheck } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -21,12 +22,22 @@ export function CustomerManagement() {
   const [action,setAction] = useState<'cancel' | 'reschedule' | null>(null), [date,setDate] = useState(''), [start,setStart] = useState(''), [confirmed,setConfirmed] = useState(false), [pending,setPending] = useState(false), [message,setMessage] = useState('')
   const { data:availability,error:slotError,isValidating,mutate:refreshSlots } = useSWR<{slots:Slot[]}>(action === 'reschedule' && date ? `/api/booking/manage?date=${encodeURIComponent(date)}` : null,fetchPrivate,{ revalidateOnFocus:false,shouldRetryOnError:false })
   const b = data?.appointment
+  useSWR<{ conversion: { id: string; consent: boolean } | null; targets: BookingMarketingTargets }>(b?.status === 'confirmed' ? ['booking-conversion', b.id] : null, async () => {
+    const response = await fetch('/api/booking/conversion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    if (!response.ok) throw new Error('Conversion receipt unavailable.')
+    return response.json()
+  }, { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false, onSuccess(receipt) {
+    if (!receipt.conversion) return
+    trackBookingEvent('booking_completed')
+    try { emitBookingConversion(receipt.conversion.id, receipt.conversion.consent, receipt.targets) } catch { /* Advertising must never disrupt appointment access. */ }
+  } })
   async function change() {
     if (!action || !confirmed || pending) return
     setPending(true);setMessage('')
     try {
       const response = await fetch('/api/booking/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ action,start,confirmed })}), body = await response.json()
       if (!response.ok) { setMessage(body.message ?? 'Your appointment could not be changed.');void refreshSlots();return }
+      if (action === 'cancel') trackBookingEvent('appointment_canceled')
       setMessage(action === 'cancel' ? 'Your appointment has been cancelled.' : 'Your new appointment time is confirmed.');setAction(null);setConfirmed(false);setStart('');await mutate()
     } catch { setMessage('We could not verify the change. Refresh your appointment before trying again.');await mutate() }
     finally { setPending(false) }
