@@ -14,6 +14,8 @@ import { tokenHash } from '@/modules/scheduling/security'
 import { associateRrdLead } from '@/lib/scheduling-lead-handoff'
 import { registerBookingConversion, claimBookingConversion } from '@/modules/scheduling/marketing-postgres'
 import { schedulingLeadHistory, findSchedulingLead } from '@/modules/scheduling/integration-postgres'
+import { createPostgresSchedulingStore } from '@/modules/scheduling/postgres-store'
+import { createSchedulingService } from '@/modules/scheduling/service'
 
 const connection = process.env.SCHEDULING_TEST_DATABASE_URL
 const isolated = describe.skipIf(!connection)
@@ -159,6 +161,77 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
     await expect(changeCustomerBooking(result.tokens.reschedule!,'reschedule',day(9),db)).rejects.toMatchObject({code:'unavailable'})
     expect((await customerBooking(db,result.tokens.view!,'view')).version).toBe(original.version)
     await db.execute(sql`UPDATE rrd_scheduling.appointment_types SET active=true WHERE tenant_id=${tenantId} AND id=${typeId}`)
+  },30000)
+  async function bookAt(start: string, label: string) {
+    return createCustomerBooking(tenantId,link,{start,name:'Synthetic clock boundary customer',email:`synthetic-${randomUUID()}@example.invalid`,phone:'',timeZone:zone},randomUUID(),clientKey(label),db)
+  }
+  it('persists elapsed duration across the spring DST gap without offering nonexistent local times',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    vi.setSystemTime(new Date('2027-03-13T12:00:00Z'))
+    try {
+      expect(zone).toBe('America/New_York')
+      const engine=createSchedulingService(createPostgresSchedulingStore(db,tenantId))
+      const slots=await engine.availability(link,'2027-03-14')
+      const localHour=(start:string)=>new Intl.DateTimeFormat('en-US',{timeZone:zone,hour:'2-digit',hourCycle:'h23'}).format(new Date(start))
+      expect(slots.some(slot=>localHour(slot.start)==='02')).toBe(false)
+      expect(slots.map(slot=>slot.start)).toContain('2027-03-14T07:00:00.000Z')
+      const result=await bookAt('2027-03-14T06:30:00.000Z','spring-gap')
+      const saved=await customerBooking(db,result.tokens.view!,'view')
+      expect(saved.start).toBe('2027-03-14T06:30:00.000Z')
+      expect(saved.end).toBe('2027-03-14T07:00:00.000Z')
+      expect(localHour(saved.start)).toBe('01');expect(localHour(saved.end)).toBe('03')
+      expect(Date.parse(saved.end)-Date.parse(saved.start)).toBe(30*60000)
+      expect((await engine.availability(link,'2027-03-14')).map(slot=>slot.start)).not.toContain(saved.start)
+    } finally { vi.useRealTimers() }
+  },30000)
+  it('persists both repeated fall DST instants as distinct nonconflicting appointments',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    vi.setSystemTime(new Date('2027-11-06T12:00:00Z'))
+    try {
+      const starts=['2027-11-07T05:30:00.000Z','2027-11-07T06:30:00.000Z']
+      const engine=createSchedulingService(createPostgresSchedulingStore(db,tenantId))
+      expect((await engine.availability(link,'2027-11-07')).map(slot=>slot.start)).toEqual(expect.arrayContaining(starts))
+      const results=await Promise.all(starts.map((start,index)=>bookAt(start,`fall-repeat-${index}`)))
+      const saved=await Promise.all(results.map(result=>customerBooking(db,result.tokens.view!,'view')))
+      expect(saved.map(booking=>booking.start)).toEqual(starts)
+      expect(saved[0].id).not.toBe(saved[1].id)
+      for(const booking of saved) {
+        expect(new Intl.DateTimeFormat('en-US',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(booking.start))).toBe('01:30')
+        expect(Date.parse(booking.end)-Date.parse(booking.start)).toBe(30*60000)
+      }
+      const remaining=(await engine.availability(link,'2027-11-07')).map(slot=>slot.start)
+      for(const start of starts) expect(remaining).not.toContain(start)
+    } finally { vi.useRealTimers() }
+  },30000)
+  it('enforces the exact advance-notice boundary through a real booking transaction',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    const start='2027-02-02T13:00:00.000Z', boundary=Date.parse(start)-60*60000
+    try {
+      vi.setSystemTime(boundary+1)
+      await expect(bookAt(start,'notice-after')).rejects.toMatchObject({code:'unavailable'})
+      vi.setSystemTime(boundary)
+      const result=await bookAt(start,'notice-exact')
+      expect((await customerBooking(db,result.tokens.view!,'view')).start).toBe(start)
+    } finally { vi.useRealTimers() }
+  },30000)
+  it('allows cancellation just before and at the cutoff but rejects cancellation and rescheduling one millisecond after',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    const start='2027-02-04T13:00:00.000Z', cutoff=Date.parse(start)-720*60000
+    try {
+      for(const [label,offset] of [['before',-1],['exact',0]] as const) {
+        vi.setSystemTime(cutoff-60*60000)
+        const result=await bookAt(start,`cutoff-${label}`)
+        vi.setSystemTime(cutoff+offset)
+        expect((await changeCustomerBooking(result.tokens.cancel!,'cancel',undefined,db)).status).toBe('cancelled')
+      }
+      vi.setSystemTime(cutoff-60*60000)
+      const result=await bookAt(start,'cutoff-after')
+      vi.setSystemTime(cutoff+1)
+      await expect(changeCustomerBooking(result.tokens.cancel!,'cancel',undefined,db)).rejects.toMatchObject({code:'forbidden'})
+      await expect(changeCustomerBooking(result.tokens.reschedule!,'reschedule','2027-02-05T13:00:00.000Z',db)).rejects.toMatchObject({code:'forbidden'})
+      const unchanged=await customerBooking(db,result.tokens.cancel!,'cancel')
+      expect(unchanged.status).toBe('confirmed');expect(unchanged.version).toBe(1);expect(unchanged.start).toBe(start)
+    } finally { vi.useRealTimers() }
   },30000)
   it('persists provider failures and retries the identical payload and key without sending real email',async()=>{
     const result=await book(21), booking=await customerBooking(db,result.tokens.view!,'view')
