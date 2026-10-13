@@ -46,10 +46,11 @@ export function publicCustomerAppointment(b: Awaited<ReturnType<typeof customerB
   const { tenantId: _tenant, hostId: _host, typeId: _type, hash: _hash, ...safe } = b
   return safe
 }
-export async function createCustomerBooking(tenantId: string, link: string, input: unknown, key: unknown, clientKey: string, db: NodePgDatabase = emailDb) {
+export type BookingIntegration = { key: string; associate: (db: Pick<NodePgDatabase, 'execute'>, bookingId: string) => Promise<void> }
+export async function createCustomerBooking(tenantId: string, link: string, input: unknown, key: unknown, clientKey: string, db: NodePgDatabase = emailDb, integration?: BookingIntegration) {
   assertIdempotencyKey(key)
   if (!await customerSchemaReady(db)) throw new SchedulingError('unavailable', 'Customer appointment management setup is required.')
-  const requestHash = requestFingerprint(key), payloadHash = requestFingerprint({ link, input })
+  const requestHash = requestFingerprint(key), payloadHash = requestFingerprint({ link, input, integration: integration?.key })
   return db.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${tenantId + ':' + requestHash},0))`)
     const prior = await tx.execute(sql`SELECT payload_hash,sealed_result,expires_at FROM rrd_scheduling.booking_requests WHERE tenant_id=${tenantId} AND request_hash=${requestHash}`)
@@ -62,6 +63,7 @@ export async function createCustomerBooking(tenantId: string, link: string, inpu
     const result = await engine.book(link, input, clientKey)
     const booking = await tx.execute(sql`SELECT id,host_id,version FROM rrd_scheduling.bookings WHERE tenant_id=${tenantId} AND reference=${result.reference}`)
     const b = booking.rows[0]
+    if (integration) await integration.associate(tx, String(b.id))
     const tokens = await issueCustomerTokens(tx, { tenantId, hostId: String(b.host_id), id: String(b.id), version: Number(b.version), start: result.start })
     const saved = { reference: result.reference, start: result.start, end: result.end, status: result.status, tokens }
     await tx.execute(sql`INSERT INTO rrd_scheduling.booking_requests(tenant_id,request_hash,payload_hash,sealed_result) VALUES(${tenantId},${requestHash},${payloadHash},${JSON.stringify(sealCustomerValue(saved,secret()))}::jsonb)`)

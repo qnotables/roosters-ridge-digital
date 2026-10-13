@@ -4,6 +4,9 @@ import { assertBookingOrigin, boundedBookingBody, publicClientKey, publicError, 
 import { SchedulingError } from '@/modules/scheduling/types'
 import { createCustomerBooking } from '@/modules/scheduling/customer-postgres'
 import { setCustomerCookies } from '@/modules/scheduling/customer-http'
+import { emailDb } from '@/lib/email-workspace-db'
+import { readLeadHandoff, associateRrdLead } from '@/lib/scheduling-lead-handoff'
+import { registerBookingConversion } from '@/modules/scheduling/marketing-postgres'
 
 export const runtime = 'nodejs'
 const unavailable = () => Response.json({ state: 'unavailable', message: 'Online booking is not available right now. Contact us and we will help arrange a time.' }, { status: 503, headers: publicHeaders })
@@ -33,7 +36,15 @@ export async function POST(request: Request) {
     const input = await boundedBookingBody(request)
     const booking = validatePublicSubmission(input)
     const appointment = publicAppointment(context.appointments, (input as Record<string, unknown>).appointment)
-    const result = await createCustomerBooking(context.tenantId, appointment.key, booking, request.headers.get('idempotency-key'), publicClientKey(request, 'booking'))
+    const lead = await readLeadHandoff()
+    const consent = (input as Record<string, unknown>).marketingConsent === true
+    const result = await createCustomerBooking(context.tenantId, appointment.key, booking, request.headers.get('idempotency-key'), publicClientKey(request, 'booking'), emailDb, {
+      key: `${lead?.id ?? 'direct'}:${consent}`,
+      async associate(db, bookingId) {
+        if (lead) await associateRrdLead(db, context.tenantId, bookingId, lead.id, booking.email)
+        await registerBookingConversion(db, context.tenantId, bookingId, consent)
+      },
+    })
     await setCustomerCookies(result.tokens, true)
     return Response.json({ reference: result.reference, start: result.start, end: result.end, status: result.status, confirmationPath: '/book/confirmed' }, { status: 201, headers: publicHeaders })
   } catch (error) { return publicError(error) }

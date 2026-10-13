@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { BookingWizard } from '@/modules/scheduling/ui/booking-wizard'
 import { rrdPublicScheduling } from '@/modules/scheduling/public-postgres'
 import type { BookingBrand, PublicCatalog } from '@/modules/scheduling/public-types'
+import { readLeadHandoff, rrdBookingPreferences } from '@/lib/scheduling-lead-handoff'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
@@ -18,5 +19,6 @@ export default async function BookPage() {
     const scheduling = await rrdPublicScheduling()
     if (scheduling) catalog = { state: 'ready', appointments: scheduling.appointments }
   } catch { /* Public visitors receive no database or internal configuration details. */ }
-  return <div className="rrd-booking min-h-[70dvh] bg-background text-foreground"><BookingWizard catalog={catalog} brand={brand} /></div>
+  const lead = await readLeadHandoff()
+  return <div className="rrd-booking min-h-[70dvh] bg-background text-foreground"><BookingWizard catalog={catalog} brand={brand} preferredAppointment={lead ? rrdBookingPreferences[lead.type] : undefined} /></div>
 }
