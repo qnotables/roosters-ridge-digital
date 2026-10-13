@@ -6,6 +6,7 @@ import { defaultPreferences, type NotificationSettings } from '@/modules/schedul
 const mocks=vi.hoisted(()=>({settings:vi.fn(),ready:vi.fn(),provider:vi.fn()}))
 vi.mock('@/modules/scheduling/notification-postgres',()=>({readNotificationSettings:mocks.settings,notificationSchemaReady:mocks.ready}))
 vi.mock('@/lib/email-workspace-provider',()=>({emailProvider:mocks.provider}))
+vi.mock('@/lib/email-workspace-db',()=>({emailDb:{}}))
 import { processSchedulingNotifications } from '@/modules/scheduling/notification-worker'
 const tenant='11111111-1111-4111-8111-111111111111'
 function database(event='reminder') {
@@ -19,6 +20,8 @@ function database(event='reminder') {
     const q=new PgDialect().sqlToQuery(input);queries.push(q)
     const param=(name:string)=>{const m=new RegExp(`${name}=\\$(\\d+)`).exec(q.sql);return m?q.params[Number(m[1])-1]:undefined}
     if(q.sql.includes('SELECT tenant_id FROM')) return {rows:[{tenant_id:tenant}]}
+    if(q.sql.includes('SELECT to_regclass')) return {rows:[{ready:true}]}
+    if(q.sql.includes('SELECT b.version')) return {rows:[{version:1,start_time:job.expected_start,duration_minutes:30,location:'Online meeting',meeting_mode:'online'}]}
     if(q.sql.includes('SELECT j.*')) return {rows:job.state==='pending'&&available<=Date.now()?[{...job}]:[]}
     if(q.sql.includes('SELECT b.customer_name')) return {rows:[{customer_name:'Safe Customer',customer_email:'customer@example.com',start_time:job.expected_start,time_zone:'UTC',reference:'RRD-1',appointment_type:'Checkup',business_name:'RRD',private_notes:'SECRET',internal_notes:'CONFIDENTIAL'}]}
     if(q.sql.includes("state='sending',attempts=")) {job.state='sending';job.attempts++;job.claim_id=param('claim_id');job.frozen_payload=JSON.parse(String(param('frozen_payload')));job.first_attempt_at??=new Date().toISOString()}

@@ -78,6 +78,8 @@ export default async function QuotePage({
             </CardContent>
           </Card>
 
+          <a href="/book?source=quote" className="text-sm font-medium text-primary underline underline-offset-4">Schedule a Consultation instead</a>
+
           {siteConfig.contact.email && (
             <p className="text-sm text-muted-foreground">
               Prefer email? Reach us at{' '}

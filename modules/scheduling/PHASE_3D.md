@@ -1,0 +1,109 @@
+# Phase 3D — production readiness and controlled launch
+
+Review date: 2026-10-13. **Not approved for production activation.** No production deployment, production schema/data mutation, public booking activation, or live customer notification was performed. Four explicitly approved synthetic messages were sent exclusively to Resend's `delivered@resend.dev` simulator.
+
+This report supersedes historical phase-one readiness statements in README.md; it does not change their historical scope.
+
+## Change inventory
+
+- `tests/scheduling-customer.integration.test.ts`: allowlist for the approved isolated readiness endpoint; unique synthetic client budgets; real PostgreSQL two-customer booking contention, occupied-slot reschedule rejection, changed hours, holiday closures, duration conflicts, and persisted notification failure/idempotent-retry checks. Existing tests cover request replay, token security, customer history, lead isolation, and conversion claiming.
+- `components/site-header.tsx`: desktop navigation switches at `lg` instead of `md` to prevent tablet header overflow; existing mobile menu remains available at tablet widths.
+- `scripts/scheduling-email-simulator.ts`: reusable opt-in, simulator-only rehearsal using the actual default notification renderer. Verifies the exact RRD domain and SPF/DKIM before sending; requires a stable run ID and explicit approval flag; each event has a stable idempotency key. It does not connect to a database or change notification gates.
+- `modules/scheduling/PHASE_3D.md`: this readiness report and controlled deployment/rollback checklist.
+
+No dependency or production migration-file changes were required by these checks.
+
+## Database verification
+
+Project: `royal-bonus-04874440`; disposable readiness branch: `br-misty-voice-aufl3zpe`; endpoint: `ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech`.
+
+The approved isolated branch received the scheduling schema and the remaining 003–006 changes in an atomic SQL rehearsal. Existing `public.leads` and `public.email_suppressions` support the integration. Production was inspected read-only: `rrd_scheduling` does not exist, and zero scheduling tables are installed. Both legacy integration tables exist.
+
+Isolated seed verification:
+
+| Setting | Verified value |
+| --- | --- |
+| Tenant | `roosters-ridge-digital`, `America/New_York` |
+| Business hours | Monday–Friday, 09:00–17:00 business-local |
+| Free Digital Checkup | 30 minutes |
+| Project Discovery Call | 30 minutes |
+| Website Design Consultation | 45 minutes |
+| Existing Client Meeting | 30 minutes, inactive |
+| Existing type policy | 720-minute notice, 15-minute after-buffer, 60-day horizon |
+| Notification delivery | Disabled after rehearsal |
+
+The isolated tests enable only test-branch scheduling and create synthetic customers/hosts/leads. They leave synthetic history on that disposable branch; do not promote or merge its data into production. No automatic deletion is supplied.
+
+Verified catalog inspection includes tenant/host composite foreign keys, unique public references, hashed-token lookup, host/day lookup, customer-token booking lookup, due-job/provider lookup, lead-history index, and unique event keys. The GiST booking exclusion rejects intersecting buffered inventory for non-cancelled bookings within the same tenant/host. Calendar blocks have their own exclusion constraint. **Cross-table block/booking conflicts and daily capacity are service-enforced using common host locks, not an all-purpose database exclusion.** External writers must follow that protocol.
+
+The rehearsal supports schema compatibility, but is not a claim that the six migration files were replayed byte-for-byte in the production execution environment. Review and execute the exact files on a fresh production-derived branch before the approved production run; abort on unexpected schema drift.
+
+## Validation results
+
+- Scheduling regression suite: **274 passed**; the opt-in database suite was skipped in the no-database run. This is distinct from the actual isolated database run below.
+- Actual isolated PostgreSQL suite: **9 passed**, using a pool with multiple connections, not an in-memory concurrency substitute.
+- Real database checks: one booking/job for simultaneous identical requests; one winner for two different customer requests; one winner for simultaneous reschedules; occupied-slot rejection preserves the original booking; versioned customer history and cancellation; wrong-purpose/expired/unknown tokens; encrypted replay results; unique selected lead association; ambiguous-email protection; cross-tenant lead rejection; one-time conversion claims; business hours/date overrides; 30/45-minute duration overlap; deadline/notice/horizon/inactive-type enforcement.
+- Real notification persistence with an injected non-network provider: failure persisted as a pending attempt, identical frozen payload and idempotency key on retry, accepted second attempt, and no third send. The live provider factory is prohibited in those tests. Delivery is reset to false afterward.
+- Standalone TypeScript check passed; production Next.js build passed. The existing build configuration skips type validation, so the independent TypeScript check is required.
+- DST gap/repeated-hour behavior and exact deadline boundaries have deterministic engine/policy coverage. **A real PostgreSQL booking at a DST transition and a real-time just-before-cutoff browser flow remain unverified.**
+- Browser evidence covers the inactive `/book` contact fallback at desktop 1638×986, tablet 768×1024, and mobile 390×844. Tablet overflow was reproduced and corrected; layout checks passed after the change. Navigation focus/menu/Escape behavior was inspected. Earlier phases exercised the wizard against isolated HTTP fixtures; those are not real database-backed browser evidence.
+- **Full authenticated administrator, active booking, management-link, and error journeys against the isolated database on desktop/mobile/tablet remain launch blockers.** No customer-facing route was enabled to obtain that evidence.
+
+## Email delivery rehearsal
+
+Verified Resend domain: `roostersridgedigital.com`; sending enabled, SPF and DKIM verified; click/open tracking disabled at inspection. Other domains on the same account were not repaired or used.
+
+Sender for this rehearsal: `RRD Scheduling Readiness <scheduling-test@roostersridgedigital.com>`; recipient: **only `delivered@resend.dev`**. No real booking, customer data, or management capability was included. The real default text renderer was used; rescheduled time differs from the original appointment.
+
+| Event | Provider ID | Observed last event |
+| --- | --- | --- |
+| Confirmation | `01a134fd-785c-7e5f-b761-f17698b45dd0` | delivered |
+| Cancellation | `01a134fd-7cf9-74e7-b0b4-1034f82d500f` | delivered |
+| Rescheduling | `01a134fd-8199-7a2b-97db-61f1ec28d645` | delivered |
+| Reminder | `01a134fd-8636-7aff-a2c7-d40c82e62c69` | delivered |
+
+Run ID: `phase3d-20261013`; keys: `scheduling-simulator/{runId}/{event}`. Resend deduplication expires after 24 hours: do not rerun an old ID believing it guarantees permanent deduplication. A new send always needs approval. The script stops on a provider rejection; inspect status before retrying the same stable payload/key.
+
+These are simulator delivery events, **not real-inbox placement, scheduling-worker-to-provider end-to-end delivery, reminder-clock execution, or signed-webhook-to-job persistence proof**. Before launch, use approved staff recipients on staging to verify secure links, calendar downloads, four real worker events, and webhook updates without contacting customers.
+
+## Security findings
+
+Reviewed safeguards:
+
+- Scheduling administration requires the dashboard HMAC cookie **and** a fresh verified Neon Auth session **and** explicit owner/admin membership in the selected tenant. A shared dashboard key alone cannot authorize scheduling writes.
+- Parameterized SQL and tenant predicates/composite foreign keys constrain reads, mutations, links, and lead history. Public payloads cannot choose tenant/host/status/duration. Narrow opaque-token resolution derives internal scope server-side.
+- Same-origin JSON POST checks, 16 KB streamed request-body bound, contact/intake validation, honeypot, distributed Postgres request budgets, generic database-error mapping, and no-store responses.
+- Production client identity trusts Vercel's overwritten proxy header; other production hosts fail closed. This is not CAPTCHA/reputation filtering and is not a full abuse penetration test.
+- Cryptographically random purpose-scoped tokens, SHA-256 database hashes, expiry/version checks, one-use mutation capabilities, HTTP-only secure cookies, fragment-based emailed links, no-referrer/noindex management responses, and AES-256-GCM sealed retry payloads.
+- Scheduling UI source has no references to private environment variables. PII is not projected into public availability, and raw database/provider errors are not returned publicly. Private customer records still require retention/access controls; application encryption does not encrypt every customer column.
+- Cron requires a timing-safe bearer-secret comparison. Notification delivery requires both production runtime and explicit database delivery approval. Stable frozen payloads/keys, bounded retries, leases, attempt history, suppression checks, and review states protect uncertain sends.
+- Existing baseline headers include nosniff, HTTPS HSTS, referrer policy, frame protection, and denied unused device permissions. Enforcing CSP is not configured; do not claim CSP protection.
+
+Operational risks: `ADMIN_DASHBOARD_KEY` is also the encryption/hash dependency. Require at least 32 high-entropy characters and preserve its value across redeploys; plan decrypt/re-encrypt or job reconciliation before rotation. Never log tokens, customer fields, or provider payloads. Ensure backups, staff access, PII retention, and expired-token/rate-bucket cleanup are explicitly owned. No automatic cleanup schedule was enabled in this review.
+
+## Controlled deployment procedure — approval required
+
+1. Resolve the unverified flows above on an isolated production-derived staging branch. Select an accountable launch operator; approve actual timezone/hours, policies, host, staff user, and sender/recipients. Existing Client Meeting remains inactive unless separately approved.
+2. Take a production recovery point and record application commit/deployment and database branch IDs. Confirm backups and restoration access. Keep scheduling/public links and notification delivery disabled.
+3. Review the exact ordered migrations: `001_scheduling.sql`, `002_admin_calendar.sql`, `003_configuration.sql`, `004_notifications.sql`, `005_customer_management.sql`, `006_website_integration.sql`. Execute each with its transaction/timeouts and fail-on-error behavior, recording completion. The files are not generally idempotent; do not blindly rerun partially completed sequences. Verify `btree_gist`, existing leads/suppression dependencies, triggers, indexes, seed defaults, and all readiness markers after each step.
+4. Environment checklist: existing `DATABASE_URL` (pooled runtime) and approved direct/unpooled URL for migration operations; `NEON_AUTH_BASE_URL`/`NEON_AUTH_COOKIE_SECRET`; high-entropy `ADMIN_DASHBOARD_KEY`; `RESEND_API_KEY`; `RESEND_WEBHOOK_SECRET`; `CRON_SECRET`. Validate environment scopes in project Vars without printing values. Confirm the canonical HTTPS site URL in `lib/site-config.ts`, staff sign-in callback/origins, and deployment's Vercel proxy headers. The simulator bypasses none of the production gates.
+5. Bootstrap the selected verified Neon staff identity into `rrd_scheduling.members` as owner/admin through an approved parameterized operator action scoped to the RRD tenant; associate the approved host identity. Do not grant membership by an unverified email match or public signup. Test both authorized access and denial without either authorization layer.
+6. Deploy the reviewed feature commit only after explicit deployment approval. First smoke-test while public and delivery gates remain off. Then approve and enable only the intended RRD tenant/host/type links and validate the catalog. Keep email delivery off until its separate checks pass.
+7. Review the real sender/reply-to/admin recipients and preferences in Scheduling Notifications. Verify secure message links and signed webhook delivery on the canonical deployment. Enable `delivery_enabled` only after explicit notification approval; do not replay old jobs indiscriminately.
+8. Scheduled reminder processing is **not yet configured** (`vercel.json` is absent). Prepare an approved schedule for `GET /api/cron/scheduling`, ideally every minute, with Vercel's `CRON_SECRET` bearer header. Confirm hosting-plan frequency support before adoption. The worker processes a bounded number of jobs in a 45-second budget; reminders older than its 15-minute reconciliation window can be missed after an outage. Monitor backlog and clock execution before claiming reliable reminders; a daily-only cron is insufficient.
+9. Post-deployment smoke tests with approved synthetic/staff data: public catalog and visitor timezone; validated booking, repeat request, two-customer contention; authorized private calendar; cancellation/reschedule and old-token denial; cross-tenant denial; mobile/tablet labels/focus/error states; calendar download; four staff-only emails and signed status updates; unauthorized cron 401 and authorized cron success. Verify production response headers. Check customer routes contain no private notes/IDs/secrets.
+10. Monitor Vercel route/cron 5xx and latency, Postgres connections/lock timeouts, conflict and rate-limit rates, due-job age, pending/sending lease age, failed/review outcomes, accepted-versus-delivered status, bounce/complaint suppression, and provider errors. Assign an operator to reconcile ambiguous jobs within the 23-hour retry safety window. Monitor retries, not just HTTP 200. Avoid PII in monitoring. No new monitoring service was provisioned.
+
+## Rollback procedure
+
+- Before any production mutation: cancel launch; the existing inactive fallback continues to operate.
+- If any migration fails: its own transaction rolls back. Identify the last committed migration; stop and inspect rather than rerunning all files or treating the whole sequence as one transaction.
+- After activation: first pause notification delivery and disable public tenant/links using approved scoped operations; stop the cron schedule; allow in-flight transactions to settle and reconcile any provider acceptance. Do not resend uncertain jobs with new keys.
+- Roll back to the recorded known-good application deployment. Preserve the additive scheduling schema, customer records, audit history, and encryption secret for recovery. Disabling gates does not cancel existing bookings; arrange staff follow-up.
+- Destructive schema removal or database point-in-time restore needs separate approval and a backup/export. A full-database restore could discard unrelated leads/email changes. Prefer an isolated recovery branch and a reviewed selective restoration plan. Do not drop shared `btree_gist`, blindly reverse seeded settings, or merge synthetic test data into production.
+
+## Manual actions and decision
+
+Remaining: exact-file staging migration replay; real database DST/boundary scenarios; full database-backed browser journeys and authenticated authorization tests; approved real inbox/worker/webhook checks; owner/host bootstrap; sender/policy confirmation; recovery plan; cron frequency configuration; retention/cleanup and monitoring ownership.
+
+**Ready for review and controlled staging verification; not ready for an unconditional production launch. Request explicit approval for the production migration, deployment, public activation, and notification activation as separate gates. No approval is inferred from choosing simulator recipients.**

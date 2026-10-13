@@ -30,7 +30,7 @@ export function SiteHeader() {
           />
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
           {navLinks.map((link) => link.href === '/industries' ? (
             <div key={link.href} className="group relative">
               <Link href="/industries" className={cn('inline-flex items-center gap-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors hover:text-primary', isActive(link.href) ? 'text-primary' : 'text-foreground/80')}>{link.label}<ChevronDown className="size-3.5" aria-hidden="true" /></Link>
@@ -41,7 +41,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <Button render={<Link href="/quote" />} size="sm">
             {siteConfig.cta.primary}
           </Button>
@@ -49,7 +49,7 @@ export function SiteHeader() {
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
-            render={<Button nativeButton variant="outline" size="icon" className="md:hidden" aria-label="Open menu" />}
+            render={<Button nativeButton variant="outline" size="icon" className="lg:hidden" aria-label="Open menu" />}
           >
             <Menu className="size-5" />
           </SheetTrigger>

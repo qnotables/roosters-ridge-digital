@@ -55,6 +55,7 @@ export function SchedulingDashboard({
   create = false,
   initialStatus = 'all',
   leadPrefill,
+  leadError,
 }: {
   initial: DashboardResult;
   initialDate: string;
@@ -62,6 +63,7 @@ export function SchedulingDashboard({
   create?: boolean;
   initialStatus?: string;
   leadPrefill?: import('@/modules/scheduling/notifications').LeadPrefill;
+  leadError?: string;
 }) {
   const section = sections.some((item) => item.key === requested)
     ? requested
@@ -184,6 +186,12 @@ export function SchedulingDashboard({
           </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col gap-4">
+          {leadError && (
+            <Alert variant="destructive">
+              <AlertTitle>Could not schedule for this lead</AlertTitle>
+              <AlertDescription>{leadError} No appointment was created. Return to the lead record and try again.</AlertDescription>
+            </Alert>
+          )}
           {data && data.state !== "ready" && (
             <Alert>
               <ShieldCheck />

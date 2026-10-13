@@ -67,6 +67,7 @@ export default async function FreeCheckupPage() {
               Get My Free Digital Checkup
               <ArrowDown data-icon="inline-end" />
             </Button>
+            <a href="/book?source=checkup" className="text-sm font-medium text-primary underline underline-offset-4">Schedule a Consultation</a>
           </div>
         </div>
       </section>

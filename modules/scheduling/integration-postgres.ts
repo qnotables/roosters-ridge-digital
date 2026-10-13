@@ -8,6 +8,7 @@ import { validLeadId, type LeadPrefill } from './notifications'
 import { SchedulingError } from './types'
 
 export type MeetingSummary = { id:string; reference:string; name:string; start:string; status:string }
+export type LeadMeeting = MeetingSummary & { timeZone: string; internalNotes: string; history: { previousStart: string | null; nextStart: string | null; status: string; actor: string; createdAt: string }[] }
 export type SchedulingOverview = { timeZone:string; today:number; upcoming:number; pending:number; cancellations:number; meetings:MeetingSummary[]; activity:{action:string;createdAt:string}[] }
 export type IntegrationResult<T> = {state:'ready';data:T} | {state:'setup'|'forbidden'|'error';message:string}
 export async function requireLegacyLeadTenant(db: Pick<NodePgDatabase,'execute'>, scope: AdminScope) {
@@ -25,8 +26,8 @@ export async function findSchedulingLead(db: Pick<NodePgDatabase,'execute'>,scop
 export async function schedulingLeadHistory(db:NodePgDatabase,scope:AdminScope,leadId:string) {
   await findSchedulingLead(db,scope,leadId)
   if(!await notificationSchemaReady(db)) throw new Error('SCHEDULING_SETUP_REQUIRED')
-  const rows=await db.execute(sql`SELECT b.id,b.reference,b.customer_name AS name,b.start_time AS start,b.status FROM rrd_scheduling.bookings b JOIN rrd_scheduling.lead_links l ON l.tenant_id=b.tenant_id AND l.booking_id=b.id WHERE b.tenant_id=${scope.tenantId} AND l.tenant_id=${scope.tenantId} AND l.lead_id=${leadId}::uuid ORDER BY b.start_time DESC LIMIT 50`)
-  return rows.rows.map(r=>({...r,start:new Date(String(r.start)).toISOString()})) as MeetingSummary[]
+  const rows=await db.execute(sql`SELECT b.id,b.reference,b.customer_name AS name,b.start_time AS start,b.status,b.time_zone AS "timeZone",b.internal_notes AS "internalNotes",coalesce((SELECT jsonb_agg(jsonb_build_object('previousStart',h.previous_start,'nextStart',h.next_start,'status',h.next_status,'actor',h.actor_kind,'createdAt',h.created_at) ORDER BY h.created_at) FROM rrd_scheduling.booking_changes h WHERE h.tenant_id=b.tenant_id AND h.booking_id=b.id),'[]'::jsonb) AS history FROM rrd_scheduling.bookings b JOIN rrd_scheduling.lead_links l ON l.tenant_id=b.tenant_id AND l.booking_id=b.id WHERE b.tenant_id=${scope.tenantId} AND l.tenant_id=${scope.tenantId} AND l.lead_id=${leadId}::uuid ORDER BY b.start_time DESC LIMIT 50`)
+  return rows.rows.map(r=>({...r,start:new Date(String(r.start)).toISOString()})) as LeadMeeting[]
 }
 export async function schedulingOverview(db:NodePgDatabase,scope:AdminScope):Promise<SchedulingOverview> {
   const tenant=await db.execute(sql`SELECT time_zone FROM rrd_scheduling.tenants WHERE id=${scope.tenantId}`)
