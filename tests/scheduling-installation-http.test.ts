@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ resolve: vi.fn(), budget: vi.fn(), create: vi.fn(), customer: vi.fn(), slots: vi.fn(), change: vi.fn() }))
+const mocks = vi.hoisted(() => ({ resolve: vi.fn(), management: vi.fn(), budget: vi.fn(), create: vi.fn(), customer: vi.fn(), slots: vi.fn(), change: vi.fn() }))
 vi.mock('@/lib/email-workspace-db', () => ({ emailDb: {} }))
-vi.mock('@/modules/scheduling/hosted-postgres', () => ({ hostedScheduling: mocks.resolve }))
+vi.mock('@/modules/scheduling/hosted-postgres', () => ({ hostedScheduling: mocks.resolve, hostedManagement: mocks.management }))
+vi.mock('@/modules/scheduling/platform-entitlements', () => ({ recordOperation: vi.fn() }))
 vi.mock('@/modules/scheduling/customer-postgres', () => ({ createCustomerBooking: mocks.create, customerBooking: mocks.customer, publicCustomerAppointment: (b: unknown) => b, customerAvailability: mocks.slots, changeCustomerBooking: mocks.change }))
 import { tenantPublicGet, tenantPublicPost } from '@/modules/scheduling/hosted-http'
 const appointment = { key: 'consultation', name: 'Synthetic consultation', description: '', durationMinutes: 30, meetingMode: 'online', timeZone: 'UTC', maximumHorizonDays: 30, cancellationMinutes: 0, reschedulingMinutes: 0, approval: 'automatic' }
@@ -10,6 +11,7 @@ const request = (body: unknown, origin = 'https://example.com') => new Request('
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubEnv('NODE_ENV', 'development'); vi.stubEnv('VERCEL', ''); vi.stubEnv('ADMIN_DASHBOARD_KEY', 'synthetic-domain-proof-secret-32-characters')
   mocks.budget.mockResolvedValue(true); mocks.resolve.mockResolvedValue({ tenant: { id: 'server-resolved-a', slug: 'synthetic-a' }, context: { appointments: [appointment], store: { consumeRequestBudget: mocks.budget } } })
+  mocks.management.mockResolvedValue({ tenant: { id: 'server-resolved-a', slug: 'synthetic-a' }, store: { consumeRequestBudget: mocks.budget } })
   mocks.create.mockResolvedValue({ reference: 'BOOK-synthetic', start: input.start, end: '2026-12-01T13:30:00.000Z', status: 'confirmed', tokens: { view: 'view-capability', cancel: 'cancel-capability', reschedule: 'reschedule-capability' } })
 })
 describe('tenant public HTTP adapters', () => {
@@ -23,5 +25,21 @@ describe('tenant public HTTP adapters', () => {
   it('enforces persistent public rate budgets', async () => { mocks.budget.mockResolvedValue(false); const result = await tenantPublicPost(request(input), 'synthetic-a'); expect(result.status).toBe(429); expect(result.headers.get('retry-after')).toBe('60'); expect(mocks.create).not.toHaveBeenCalled() })
   it('rejects honeypot spam and unconfirmed submissions', async () => { expect((await tenantPublicPost(request({ ...input, website: 'spam' }), 'synthetic-a')).status).toBe(400); expect((await tenantPublicPost(request({ ...input, confirmed: false }), 'synthetic-a')).status).toBe(400) })
   it('binds every management operation to the resolved tenant', async () => { mocks.customer.mockResolvedValue({ reference: 'synthetic' }); expect((await tenantPublicPost(request({ action: 'view', token: 'opaque', purpose: 'cancel' }), 'synthetic-a')).status).toBe(200); expect(mocks.customer.mock.calls[0].slice(1)).toEqual(['opaque', 'cancel', 'server-resolved-a']); mocks.slots.mockResolvedValue([]); await tenantPublicPost(request({ action: 'availability', token: 'opaque', date: '2026-12-01' }), 'synthetic-a'); expect(mocks.slots.mock.calls[0][3]).toBe('server-resolved-a'); mocks.change.mockResolvedValue({}); await tenantPublicPost(request({ action: 'cancel', token: 'opaque', confirmed: true }), 'synthetic-a'); expect(mocks.change.mock.calls[0][4]).toBe('server-resolved-a') })
+  it('resolves existing appointment management independently of paused public bookings', async () => {
+    mocks.resolve.mockResolvedValue(null); mocks.customer.mockResolvedValue({ reference: 'synthetic' })
+    expect((await tenantPublicPost(request({ action: 'view', token: 'opaque' }), 'synthetic-a')).status).toBe(200)
+    expect(mocks.resolve).not.toHaveBeenCalled(); expect(mocks.management).toHaveBeenCalledWith('synthetic-a')
+    expect(mocks.customer).toHaveBeenCalledWith({}, 'opaque', 'view', 'server-resolved-a')
+  })
+  it('retains rate limits for existing appointment management', async () => {
+    mocks.budget.mockResolvedValue(false)
+    expect((await tenantPublicPost(request({ action: 'cancel', token: 'opaque', confirmed: true }), 'synthetic-a')).status).toBe(429)
+    expect(mocks.change).not.toHaveBeenCalled()
+  })
+  it('fails closed when no management tenant is resolved', async () => {
+    mocks.management.mockResolvedValue(null)
+    expect((await tenantPublicPost(request({ action: 'view', token: 'opaque' }), 'synthetic-a')).status).toBe(409)
+    expect(mocks.customer).not.toHaveBeenCalled()
+  })
   it('never exposes database diagnostics', async () => { mocks.resolve.mockRejectedValue(new Error('postgres://secret-password@db')); const response = await tenantPublicGet(new Request('https://example.com/api/scheduling/public/synthetic-a'), 'synthetic-a'); expect(JSON.stringify(await response.json())).not.toContain('secret-password') })
 })
