@@ -7,6 +7,7 @@ import { accountStatuses, planKeys, analyticsRange, confirmAction, validateEntit
 import { SchedulingError } from './types'
 import { createInstallationService } from './installation-postgres'
 import { retryAllowed } from './notifications'
+import { auditedPlatformOperation } from './platform-operations'
 function uuid(v:string) { if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v)) throw new SchedulingError('invalid','Choose a valid tenant or record.'); return v }
 function version(v:number) { if(!Number.isSafeInteger(v)||v<1) throw new SchedulingError('invalid','Refresh before saving.') }
 export function createPlatformService(db:NodePgDatabase,identity:IdentityProvider) {
@@ -14,7 +15,7 @@ export function createPlatformService(db:NodePgDatabase,identity:IdentityProvide
     if(!await platformSchemaReady(executor)) throw new SchedulingError('unavailable','Apply approved migrations 001–009 to the selected environment before using platform management.')
     return requirePlatformAccess(executor,await identity())
   }
-  return {
+  const service = {
     async directory(query='',tenantId?:string) {
       await authorize()
       if(query.length>100) throw new SchedulingError('invalid','Search is too long.')
@@ -109,5 +110,16 @@ export function createPlatformService(db:NodePgDatabase,identity:IdentityProvide
       ])
       return {timeZone:range.timeZone,totals:totals.rows[0],types:types.rows,trends:trends.rows,days:days.rows,hours:hours.rows,source:'Not recorded in Phases 1–4C; no inferred attribution.'}
     },
+  }
+  const failureAudit = (actor: string, action: string, metadata: { code: string }, outcome: 'denied' | 'failed') =>
+    platformAudit(db, null, actor, action, metadata, outcome)
+  return {
+    ...service,
+    updateSettings: auditedPlatformOperation('platform_settings_change_attempted', service.updateSettings, identity, failureAudit),
+    updatePlan: auditedPlatformOperation('plan_entitlements_change_attempted', service.updatePlan, identity, failureAudit),
+    account: auditedPlatformOperation('account_lifecycle_change_attempted', service.account, identity, failureAudit),
+    closure: auditedPlatformOperation('account_closure_attempted', service.closure, identity, failureAudit),
+    support: auditedPlatformOperation('support_configuration_inspection_attempted', service.support, identity, failureAudit),
+    retry: auditedPlatformOperation('notification_retry_attempted', service.retry, identity, failureAudit),
   }
 }

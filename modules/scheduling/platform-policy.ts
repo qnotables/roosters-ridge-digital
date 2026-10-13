@@ -25,7 +25,10 @@ export function validatePlatformSettings(input: unknown): PlatformSettings {
   return {defaultPlan:v.defaultPlan as PlanKey,trialDays:integer(v.trialDays,1,90),bookingRequestsPerMinute:integer(v.bookingRequestsPerMinute,1,60),notificationJobsPerTenant:integer(v.notificationJobsPerTenant,1,20),notificationTenantLimit:integer(v.notificationTenantLimit,1,100),operationalRetentionDays:integer(v.operationalRetentionDays,7,365),customerRetentionDays:integer(v.customerRetentionDays,30,3650),alertFailurePercent:integer(v.alertFailurePercent,1,100),supportedBookingDomains:[...new Set(v.supportedBookingDomains as string[])],platformName:v.platformName.trim(),suspensionBehavior:'pause_new_bookings',features:result}
 }
 export function effectiveStatus(status: AccountStatus, trialEndsAt: unknown, now=new Date()): AccountStatus {
-  if(status==='trial' && (!trialEndsAt || new Date(String(trialEndsAt)).getTime()<=now.getTime())) return 'expired'
+  if(status==='trial') {
+    const deadline = trialEndsAt instanceof Date ? trialEndsAt.getTime() : Date.parse(String(trialEndsAt))
+    if(!trialEndsAt || !Number.isFinite(deadline) || deadline<=now.getTime()) return 'expired'
+  }
   return status
 }
 export function allowsNewBookings(status: AccountStatus) { return ['trial','active','past_due'].includes(status) }
