@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CheckCircle2, Clock, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { siteConfig } from '@/lib/site-config'
 import { buttonVariants } from '@/components/ui/button'
@@ -22,7 +22,8 @@ export default async function ThankYouPage({
   const { ref, type, emailWarning } = await searchParams
   const isCheckup = type === 'checkup'
   const handoff = await readLeadHandoff()
-  const bookingHref = handoff ? `/book?source=${handoff.type}` : '/book'
+  const bookingSource = handoff?.type ?? (type === 'quote' || type === 'checkup' ? type : undefined)
+  const bookingHref = bookingSource ? `/book?source=${bookingSource}` : '/book'
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center gap-8 px-4 py-20 text-center sm:px-6">
@@ -73,7 +74,18 @@ export default async function ThankYouPage({
         </div>
       </div>
 
-      <Card className="w-full"><CardContent className="flex flex-col items-center gap-3 pt-6"><h2 className="text-lg font-semibold">Want to talk through your next step?</h2><p className="text-sm text-muted-foreground">Your request is already saved. Booking a free consultation is optional and does not submit another lead request.</p><Link href={bookingHref} className={buttonVariants({ size: 'lg' })}>Schedule a Consultation</Link></CardContent></Card>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle><h2>{type === 'quote' ? 'Talk through your website project' : 'Want to talk through your next step?'}</h2></CardTitle>
+          <CardDescription>Your request is already saved. Booking a free consultation is optional and does not submit another lead request.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href={bookingHref} prefetch={false} className={buttonVariants({ size: 'lg' })}>Schedule a Consultation</Link>
+        </CardContent>
+        <CardFooter className="justify-center">
+          <p className="text-xs text-muted-foreground">Prefer not to book? We&apos;ll follow up personally about your request.</p>
+        </CardFooter>
+      </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button render={<Link href="/" />}>Back to home</Button>

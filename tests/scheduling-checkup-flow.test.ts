@@ -57,6 +57,19 @@ describe('checkup handoff security and appointment selection', () => {
     expect(page.props.children.props.preferredAppointment).toBe(rrdBookingPreferences.checkup)
     expect(await readLeadHandoff()).toBeNull()
   })
+  it('selects the configured website consultation using a saved quote handoff without exposing identifiers', async () => {
+    mocks.runtime.mockResolvedValue({ appointments: [{ key: rrdBookingPreferences.quote }] })
+    mocks.get.mockReturnValue({ value: cookie({ id, type: 'quote', expires: Date.now() + 60000 }) })
+    const page = await BookPage({ searchParams: Promise.resolve({ source: 'checkup' }) })
+    expect(page.props.children.props.preferredAppointment).toBe(rrdBookingPreferences.quote)
+    expect(JSON.stringify(page)).not.toContain(id)
+  })
+  it('preserves website consultation selection without claiming association when cookies are unavailable', async () => {
+    mocks.runtime.mockResolvedValue({ appointments: [{ key: rrdBookingPreferences.quote }] })
+    const page = await BookPage({ searchParams: Promise.resolve({ source: 'quote' }) })
+    expect(page.props.children.props.preferredAppointment).toBe(rrdBookingPreferences.quote)
+    expect(await readLeadHandoff()).toBeNull()
+  })
   it('never invents an appointment type when checkup scheduling is unavailable', async () => {
     mocks.runtime.mockResolvedValue(null)
     const page = await BookPage({ searchParams: Promise.resolve({ source: 'checkup' }) })

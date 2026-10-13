@@ -42,7 +42,8 @@ export default async function SchedulingPage({
         initial={initial}
         initialDate={date}
         section={section ?? "calendar"}
-        create={create === '1'}
+        create={create === '1' && (!lead || leadResult?.state === 'ready')}
+        leadError={leadResult && leadResult.state !== 'ready' ? leadResult.message : undefined}
         initialStatus={status === 'pending' ? 'pending' : 'all'}
         leadPrefill={leadResult?.state === 'ready' ? leadResult.data : undefined}
       />
