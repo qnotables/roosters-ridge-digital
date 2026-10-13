@@ -314,4 +314,132 @@ Test subprocesses alone receive `SCHEDULING_TEST_DATABASE_URL` and `SCHEDULING_M
 - **Booking unavailable / 429:** confirm protection configuration and trusted Vercel IP headers, refresh availability after a conflict, retain the same idempotency key for the same submission, and respect retry delays. A changed payload requires a new submission key.
 - **No notification email:** check tenant sender/reply-to, authorized sender domain/provider verification, recipient/policy configuration, cron/outbox health, and separately approved delivery gate. Saving settings does not enable delivery; confirmation management links remain available without email.
 
-**Readiness assessment:** Phase 4B supplies the tenant onboarding, centrally maintained public/embedded booking and installation configuration foundation for Phase 4C branding work. It is not a production launch sign-off. Phase 4C can build on validated `branding.installation` fields without rewriting scheduling; outstanding authenticated/external-frame/live-delivery verification and production approvals remain release gates. Custom-domain serving, a published headless SDK, full white-label editor, iframe auto-resizing, multi-business CRM, retention automation and additional live businesses are outside this implementation.
+**Readiness assessment at the Phase 4B handoff:** Phase 4B supplies the tenant onboarding, centrally maintained public/embedded booking and installation configuration foundation for Phase 4C branding work. It is not a production launch sign-off. The following Phase 4C report supersedes the earlier branding-editor and custom-domain implementation boundaries; authenticated/external-frame/live-delivery verification and production approvals remain release gates. A published headless SDK, iframe auto-resizing, multi-business CRM, retention automation and additional live businesses remain outside this implementation.
+
+## Phase 4C — white-label tenant experience and validation report
+
+### Scope, prerequisites and approval boundaries
+
+Phase 4C reuses the Phase 4A tenant resolution, persisted memberships, appointment engine and notification outbox, and the Phase 4B onboarding, DNS proofs, domain registry and installation configuration. It retains native Next.js, Neon PostgreSQL/Drizzle, managed Neon Auth, Resend, Tailwind/shadcn and the existing private Vercel Blob integration. There is no external scheduling provider, alternate authentication system or per-tenant database.
+
+Implementation was carried forward in `6675951`; resumed validation and this report are on the separate feature branch **`v0/scheduling-phase-4c-validation`**. This is a development handoff, not production launch approval. No production deployment, production migration, production environment-variable change, additional live business activation or live customer email was performed. Synthetic PostgreSQL fixtures run only on the previously approved isolated compute and are disabled, along with delivery, during cleanup.
+
+The connected preview still lacks approved scheduling migration prerequisites and therefore shows an infrastructure approval gate at both new editor routes. No auth bypass or sample tenant is substituted behind that gate. The outstanding Phase 4B authenticated browser, externally embedded frame and actual delivery checks remain blockers for production release, not reasons to weaken the security boundary.
+
+### Configuration schema and persistence
+
+Existing `tenants.branding.installation` and `_provisioning` are preserved. New presentation state lives in **`tenants.branding.customization`**:
+
+```ts
+{
+  version: number,
+  draft: BrandingConfiguration | null,
+  published: BrandingConfiguration | null,
+  publishedAt: string | null,
+  presets: Array<{ name: string; configuration: BrandingConfiguration }>
+}
+```
+
+`BrandingConfiguration` contains:
+
+- **brand:** display name, description, tagline, contact email/phone, public HTTPS website and up to six social links; tenant-owned logo/favicon/header asset paths; primary, secondary, accent, background, text and button six-digit hex colors; approved `sans`/`serif` typography and `rounded`/`square` button style.
+- **page:** title, welcome, layout (`classic`, `modern`, `compact`), left/center logo placement, outline/soft cards, booking button text, form introduction, confirmation/cancellation/rescheduling copy, footer and branding visibility.
+- **emails:** bounded plain-text subject, greeting, introduction, footer and signature for `confirmed`, `reminder`, `cancelled`, `rescheduled`, `pending`, `approved` and `admin_booking`.
+
+Related tenant-owned metadata remains in the same JSON document: `media` stores opaque private Blob path registrations; `entitlements.whiteLabel` and `brandingPublishers` are platform-controlled; `bookingRouting` stores one approved hostname/path; `authorizedSenderDomains` stores platform/provider-approved identities. Only validated published presentation is projected publicly. Memberships, drafts, presets, storage metadata, licensing grants and provisioning fingerprints are not part of the public projection.
+
+Save/publish/discard/preset operations lock the tenant row, recheck current server authorization, compare the supplied revision and append tenant audit records. Every accepted operation advances the revision; stale concurrent editors must refresh. Installation metadata is not replaced. Published defaults fall back to validated legacy installation branding when no custom configuration has been published.
+
+### Branding editor usage and preview workflow
+
+1. Sign in with a verified managed Neon Auth session and an active authorized tenant membership. Open `/admin/scheduling/branding`; select only an authorized business. `/admin/scheduling/email-templates` opens the same studio on its email panel.
+2. Edit **Identity**, **Colors**, **Images**, **Booking**, **Email**, **Forms** and **Publish** panels. Individual identity/color/appearance settings can be reset; approved starter templates and private tenant presets are available in Publish.
+3. Use desktop/tablet/mobile preview widths and booking/form/confirmation/email surfaces. Preview data is representative sample content, never real customer records. Email preview is sandboxed and contains no management capability.
+4. **Save draft** persists private changes. Public pages, widgets, favicon metadata and future notification payload construction continue using published settings.
+5. Review and explicitly **Publish** the saved revision. Unsaved local edits cannot be published. The server revalidates text, asset ownership, colors, template variables and white-label entitlement.
+6. **Discard changes** removes the saved draft and resets local branding to published settings. It does not unpublish or roll back the public configuration. To change an already-published brand, save and publish a new reviewed revision.
+
+Intake questions deliberately use their own explicit **Save questions** action. They are appointment-type configuration, not a deferred branding draft; saved question changes apply to future bookings. Historical booking answers are not rewritten.
+
+### Accessibility, validation and safe images
+
+Text is bounded plain text without HTML or unsafe control characters. URLs must be HTTPS without credentials/ports; arbitrary CSS, scripts, fonts and executable uploads are not accepted. Publish requires at least 4.5:1 text/background, primary/background and text/secondary contrast, plus 3:1 accent/background contrast. Button foreground is selected from black/white. These checks support accessible contrast but do not constitute a full accessibility certification; keyboard/screen-reader and custom-copy review remain release tasks.
+
+Raster uploads accept only PNG/JPEG/WebP up to 2 MiB, matching MIME signatures, at most 16 million pixels and 4096×4096 dimensions. `sharp` safely decodes, rotates and resizes within 1920×1080, strips metadata/trailing content and re-encodes PNG. SVG, corrupt images, executable content and unsupported animation are rejected. Uploads require fresh editing permission and a persistent tenant-scoped request budget. At most 60 registered images per tenant are retained; removal from a draft does not automatically delete Blob data.
+
+Files use the existing **private** Blob store and opaque `/api/scheduling/brand-media/[tenant]/[image]` application URLs. Unpublished image reads require branding-preview permission. Anonymous reads are allowed only for an enabled tenant's currently published assets. The public configuration cannot reference another tenant's registration. Unused-asset cleanup, retention and historic email-logo availability require an operator policy; replacing a published logo may make an older email's logo URL unavailable.
+
+### Layouts, forms and historical response storage
+
+Classic, Modern and Compact change presentation only. The shared booking wizard, customer-local availability, server-side inventory validation, consent/privacy notices, cancellation policies, capabilities and transactional locking remain authoritative. Service descriptions remain appointment-type configuration. Layouts do not permit hidden scheduling controls or arbitrary HTML.
+
+Each appointment type supports up to ten ordered questions: short text, long text, email, telephone, dropdown, single-choice multiple choice, checkbox and optional HTTPS URL. Stable IDs are unique and bounded; labels are limited to 200 characters, selection options to 2–20 unique values of at most 120 characters. Long-text responses are limited to 2000 characters, other string responses to 500; phone and URL formats have additional validation. Required checkboxes must be true. Unknown answer keys, malformed contacts, invalid options, HTML and missing required responses are rejected server-side. URLs cannot be required. Legacy string questions are normalized to stable optional short-text questions.
+
+Migration **`008_branding_responses.sql`** adds `rrd_scheduling.booking_responses` with a `(tenant_id, booking_id)` primary key, composite booking foreign key, encrypted JSON payload and creation timestamp. At booking time the exact validated question definitions and answers are sealed using the existing customer-security encryption and stored in the booking transaction. Editing/removing questions never changes this snapshot. Authorized appointment detail views decrypt it using tenant and assigned-host scoping; access from another tenant yields no response data. The current secret and its encryption-rotation/backup procedure remain required. Sensitive or regulated-data collection is not enabled or certified.
+
+### Email templates and delivery controls
+
+Supported variables are `{{customer_name}}`, `{{business_name}}`, `{{appointment_type}}`, `{{appointment_date}}`, `{{appointment_time}}`, `{{business_timezone}}`, `{{appointment_duration}}` and `{{management_link}}`. Unknown/malformed variables, HTML and subject newlines are rejected. Management links cannot appear in subjects or administrator notifications. Interpolated customer values are HTML-escaped; previews never generate or display a real private capability.
+
+Published branding is applied when a notification's payload is first constructed. Pending-approval and approval use distinct templates over the existing outbox protocol. Retry payloads remain encrypted and frozen; delivery uses existing idempotency keys, attempts, suppression checks, tenant/recipient authorization, stale-booking checks and delivery logs. Existing uncustomized RRD email rendering remains the fallback.
+
+Publishing branding does **not** authorize a sender or enable delivery. A platform operator must first verify tenant DNS ownership and use `/admin/scheduling/branding/platform` to check that the exact domain is verified for sending in the connected Resend account. Sender authorization is then recorded for that tenant and checked again against current domain ownership and frozen sender settings during branded delivery. Tenants cannot select arbitrary unapproved sending domains. Provider revocation after approval still needs operational monitoring/reconciliation; it is not polled on every job.
+
+The test-email control uses only Resend's `delivered@resend.dev` simulator, requires an approved sender and the explicitly approved isolated backend, and is disabled in production and the shared preview. Its idempotency key includes tenant, revision and template kind, and provider acceptance is audited. No simulator or real customer email was sent during this validation; provider authorization/delivery checks use test doubles.
+
+### Verified custom domains, URLs and HTTPS setup
+
+Platform-hosted `/book/[tenantSlug]` and `/embed/[tenantSlug]` URLs remain supported. Custom hostname routing reuses Phase 4B tenant-bound DNS TXT proof and the globally unique domain registry. A platform operator may map one verified hostname per tenant to `/`, `/book`, `/appointments` or `/schedule` in the platform branding screen. Another tenant cannot claim that hostname or mapping. RRD's canonical `/book` route is preserved.
+
+Before saving a mapping, an approved operator must separately attach the exact hostname to the intended Vercel project, follow Vercel's DNS instructions, wait for domain validation/HTTPS, and confirm the deployment target. **This implementation does not provision Vercel domains/certificates or change customer DNS automatically.** Production configuration changes require separate approval.
+
+`proxy.ts` uses the request Host and the verified persisted mapping to rewrite only approved booking paths to the central tenant route. It ignores untrusted tenant selectors, rejects unavailable mappings and preserves admin/API/static route boundaries and framing policy. Cancellation/rescheduling management remains capability-bound to the resolved tenant; management links continue using the trusted central booking origin. Do not add blanket host rewrites or permissive CORS. Canonical SEO links intentionally remain central platform URLs. Custom hostname routing requires the supported Vercel HTTPS/host trust boundary and deployment-level smoke testing before a client launch.
+
+### Visibility, templates and permissions
+
+- **RRD branded:** public booking/email attribution displays “Powered by Roosters Ridge Digital.”
+- **Co-branded:** public booking footer includes the business identity and small RRD attribution.
+- **Fully white-label:** promotional attribution is removed only with platform-approved `entitlements.whiteLabel`. Revocation downgrades new public projection to co-branded. Required privacy, consent, policies and accessibility protections remain unchanged.
+
+Tenant administrators can edit, save and publish their own businesses. Scheduling managers may preview but cannot edit/publish unless the platform grants that active member explicit publisher permission. Staff do not receive tenant-wide branding access; separately authorized staff may view historical intake only for assigned appointments. Platform role is checked server-side for entitlements, grants, shared templates, sender authorization and domain mappings. Platform role alone does not imply tenant booking access.
+
+Six built-in starters cover professional services, home services, healthcare-adjacent, solar/energy, nonprofit and general small businesses. They apply visual defaults and copy without importing another tenant's identity. Up to twelve named full presets remain private to each tenant. Platform administrators manage up to twelve shared visual/copy templates at `/admin/scheduling/branding/platform`; only approved name/title/welcome/color fields are shared, stored on the existing RRD platform configuration tenant. Applying a starter still requires save/publish and contrast validation.
+
+### Files changed and new dependencies
+
+Phase 4C touches the following feature groups relative to the Phase 4B documentation revision `34f1731`:
+
+- **Routes:** `app/admin/scheduling/branding/{page,actions}.tsx/ts`, `branding/platform/page.tsx`, `email-templates/page.tsx`; `app/api/scheduling/brand-media/[tenant]/{route.ts,[image]/route.ts}`; tenant management page and `proxy.ts`.
+- **Admin UI:** `components/admin/scheduling/branding-{editor,controls,preview,platform}.tsx`, `intake-{editor,responses}.tsx`; installation dashboard, type editor and appointment panel.
+- **Branding services:** `modules/scheduling/branding.ts`, `branding-{page,postgres,platform,email,delivery,media,media-validation,responses}.ts/tsx`, `intake.ts` and migration `008_branding_responses.sql`.
+- **Engine/presentation integration:** admin/public/hosted projections and types, configuration validation/persistence, booking service/validation/store, tenant permissions, customer notifications/worker, hosted metadata and `ui/{booking-contact,booking-options,booking-wizard,intake-fields,tenant-booking,tenant-management}.tsx`.
+- **Tests:** `scheduling-branding.test.ts`, `scheduling-branding.integration.test.ts`, `scheduling-branding-delivery.test.ts`; configuration UI, public catalog and notification worker regression tests.
+- **Dependency/documentation files:** `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and this README. `sharp` is the only newly declared direct dependency; its native build is allowed explicitly in pnpm policy. No new environment variable, database resource or auth provider was added. Use the reviewed GitHub feature branch/revision for installation.
+
+### Validation results — 2026-10-13
+
+- **Full serialized suite:** 635 tests passed, one pre-existing opt-in live-network test skipped, across 52 passing files and one skipped file. All approved isolated PostgreSQL suites were enabled, including the new Phase 4C tenant/draft/intake tests. Synthetic delivery providers prohibit live email.
+- **Real PostgreSQL evidence:** two-tenant draft/public isolation; unauthorized/unverified access; manager/staff restrictions; concurrent save conflict/stale publish; contrast rejection/discard; entitlement revocation and explicit publisher grants; private presets/preserved installation metadata; domain ownership/conflict/path handling; encrypted immutable historical answers; tenant/assigned-host response scoping; pending-approval outbox integration; unchanged RRD baseline. Existing scheduling/onboarding/concurrency regressions also passed.
+- **Deterministic evidence:** color/URL/template injection checks, safe raster decoding, MIME/corrupt/size rejection, entitlement/public projection, all seven email kinds, sender/provider authorization gates, all three layout renderings, required notices, sample surfaces and all intake kinds. These are not a full authenticated browser/accessibility audit.
+- **Regression fixes:** configuration UI tests now mock the new response-viewer server-action boundary rather than loading Neon Auth into Node unit rendering; the assertion matches the structured intake editor. Public catalog tests include the new safe `questions: []` field.
+- **TypeScript/build:** standalone `pnpm exec tsc --noEmit` and `pnpm build` completed successfully with exit code 0. All new editor, asset and tenant routes generated. The existing `ignoreBuildErrors` build setting is unchanged, so the separate type check remains required.
+- **Dependency/repository checks:** `pnpm install --frozen-lockfile --ignore-scripts` passed with lockfile supply-chain policy validation; the already-installed native `sharp` decoder was exercised by tests. `git diff --check` passed. No dependency consistency tool is configured.
+- **Browser smoke:** real dark-mode preview at 1638×986 and 375×812 confirms the branding and email-template routes present the safe infrastructure gate without overflow or unauthorized forms. A separate inert sample-layout browser attempt did not establish evidence: its optional bundler command was unavailable and navigation was routed to the main preview. Its temporary verifier was removed. Do not record that attempt as responsive layout validation.
+- **Still unverified:** authenticated tenant/platform editing, upload-to-Blob and draft/publish browser journeys; desktop/tablet/mobile screenshots of active layouts; complete keyboard/screen-reader audit; real DNS/Vercel custom hostname and external-frame behavior; provider-backed test email and webhook reconciliation. Those require an approved configured staging runtime and verified identities, not production mutations.
+
+### Migration, deployment and rollback instructions
+
+1. Obtain separate release/migration approval, review backup/restore and encryption-secret handling, and retain current RRD IDs, tenant settings and disabled gates. Migrations 001–007 and managed auth remain prerequisites.
+2. Review/apply additive **008** only on the approved target under that approval. It has already been applied only to the isolated verification branch. Branding draft/published/media/template metadata otherwise reuse existing JSON columns; no other Phase 4C DDL is required.
+3. New nonempty intake configuration checks for 008 and fails closed if absent. Deploy the reviewed feature revision only after approval; do not enable intake first or bypass setup gates.
+4. Retain current server-only database/auth/protection/cron/Resend/Blob variables. Verify the Blob store supports private access and `sharp` native binaries are installed on the deployment platform. No production variable was changed by this work.
+5. Separately obtain DNS/Vercel hostname/HTTPS approval and Resend sender verification. Confirm tenant-specific permissions, route mapping, legal/privacy copy, contrast, retention and white-label licensing. Scheduling activation and email delivery remain independently approved actions.
+6. Complete the outstanding staging browser, responsive/accessibility, domain/frame and provider checks above with synthetic data. Publish only an explicitly reviewed tenant revision. No production release sign-off is implied by unit/SQL/build results.
+7. For rollback, pause affected scheduling/delivery gates, clear any newly enabled routing through an approved operator procedure, and restore the prior application release. Keep additive 008, encrypted responses, tenant identities, assets, audit/outbox records and capability keys. Before reverting to an older question parser, disable new custom intake questions under approval while retaining their historical responses. Older applications may ignore custom branding; communicate the resulting presentation fallback.
+8. Do not automatically drop the response table, delete private media, rotate encryption secrets or restore/reassign customer records. Destructive data operations require backup-based approval and a reviewed retention procedure.
+
+### Known limitations and Phase 4D requirements
+
+One custom hostname/path per tenant is supported; deployment/DNS/TLS provisioning is operator-managed. Canonical metadata and capability links remain at the central origin. The portable widget still uses fixed-height iframe scrolling. Structured multiple choice is single selection. Images and full tenant presets have bounded storage but no automatic garbage collection. Provider authorization is recorded after verification, with later revocation requiring operational monitoring. Template/delivery previews are presentation-only, and old email logos can become unavailable after replacement. No healthcare compliance or sensitive-data certification is claimed.
+
+**Phase 4D has not begun.** Before it begins, review this report and approve the remaining scope: configured staging/authenticated end-to-end tests, active responsive/accessibility validation, custom hostname/frame/HTTPS smoke checks, verified sender/provider delivery and webhook reconciliation, media/customer retention and encryption rotation, observability and operator recovery procedures. Obtain explicit approval for production migration/deployment and separately for every live business and delivery activation.

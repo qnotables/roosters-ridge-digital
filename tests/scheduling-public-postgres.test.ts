@@ -22,7 +22,7 @@ describe('public catalog visibility and tenant isolation SQL protocol', () => {
     expect(queries[2].sql).toContain('l.enabled AND t.enabled AND h.active AND a.active AND NOT a.archived AND a.price_cents=0')
     expect(queries[2].sql).not.toContain('private_notes')
     expect(queries[2].sql).not.toContain('customer_email')
-    expect(result?.appointments).toEqual([{ key: 'public-key', name: 'Public type' }])
+    expect(result?.appointments).toEqual([{ key: 'public-key', name: 'Public type', questions: [] }])
   })
   it('binds public resolution to the trusted tenant even if the visitor guesses another business link', async () => {
     mocks.execute.mockResolvedValue({ rows: [] })
