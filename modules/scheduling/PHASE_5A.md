@@ -141,7 +141,7 @@ Record applied filenames/content hashes and source SHA in an operator-controlled
 
 Review deployment artifacts/env scope separately, then obtain explicit deployment approval. Before Phase 5B, require active authenticated desktop/tablet/mobile/keyboard booking/admin acceptance; negative tenant/staff tests; approved DNS/HTTPS/iframe tests; and approved test-only Resend delivery/reconciliation. Obtain separate tenant/public activation and delivery approvals after all release blockers are closed.
 
-## Required database test matrix — pending fresh execution
+## Required database test matrix — fresh execution recorded; release acceptance separate
 
 Use real `pg` pools with multiple connections and the actual Drizzle/service adapters. Assertions must inspect committed rows and original reservation integrity, not just returned promises:
 
@@ -153,7 +153,7 @@ Use real `pg` pools with multiple connections and the actual Drizzle/service ada
 - Different tenants same wall-clock slot: both can commit where independently valid; forged tenant/host/type/token/staff reads/writes fail without leaked rows.
 - Reminder/job creation and concurrent worker executions: unique event key, one effective claim, fixed encrypted payload/idempotency key, retry window, lease recovery, superseded claim, cancellation/reschedule suppression, terminal review and verified webhook replay.
 
-Existing suites hard-allowlist earlier isolated endpoints. The new production-derived endpoint is not currently admitted. Add only the exact approved disposable endpoint (never a general wildcard or removal of safeguards) before running suites there, or execute explicitly approved tests on the earlier branch and label them separately from the new migration rehearsal.
+Fresh execution is recorded in the Task 3 and Task 4 evidence above: the approved production-derived endpoint `ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech` is admitted by exact hostname in the five PostgreSQL suites. Task 4 reran 82 tests across those suites with zero skips; the subsequent approved fixture run passed 21 installation tests. Preserve these hard allowlists; never add a wildcard or production hostname, or remove endpoint checks. These test runs establish the recorded assertions on the disposable branch, not production migration, live delivery or complete authenticated/browser acceptance.
 
 ## Notification reliability and provider acceptance
 
@@ -186,6 +186,46 @@ Isolated test URLs (`SCHEDULING_TEST_DATABASE_URL`, `SCHEDULING_MULTITENANT_TEST
 - **Recovery destination:** restore/branch into an isolated reviewed destination and reconcile separately before switching runtime connections. Do not overwrite unrelated production leads/mail/estimates blindly. Database branch recovery does not recover Blob objects, managed-auth configuration, external messages or secrets; preserve those through their own custody/retention plans.
 - **Incident handling:** assign an incident lead, pause affected booking/delivery paths, restrict access, retain sanitized application/provider/Neon logs and immutable audit, classify affected tenants, reconcile accepted-versus-delivered jobs and booking history, follow privacy notification policy, remediate, rehearse and obtain explicit recovery authorization before reopening.
 - **Unverified recovery readiness:** actual PITR retention, backup restore, RPO/RTO, off-platform backup custody, secret recovery and Blob recovery have not been tested in this audit. They remain release blockers rather than assumed guarantees.
+
+## Task 5: production readiness and recovery decision
+
+**Decision: NOT READY / NO-GO.** Readiness documentation is complete for this audit; the release gates below are not complete. Task 4 remains partially complete because the isolated active-booking server was reachable from the application sandbox but not the browser. Documentation completion does not authorize migrations, deployment, tenant/public activation or sending email. Production catalog observations are a recorded baseline, not a fresh assertion about current production state; re-inspect at approved preflight.
+
+### Gate register and required evidence
+
+Owner roles below are required responsibilities, not assignments to an identified person. Name the accountable operator and independent reviewer in the release record before execution. Record the exact source SHA, artifact, environment, timestamp, sanitized evidence and approval for each gate; a blank or failed gate keeps the release NO-GO.
+
+| Gate | Current evidence/status | Required closing evidence | Accountable role |
+| --- | --- | --- | --- |
+| Dependency/build | Production audit, frozen install, TypeScript and build passed; one high development-only `braces` advisory remains | Recheck exact release lockfile; documented remediation or explicit security-owner risk disposition for unresolved tooling advisory, without suppression | Engineering/security |
+| Database migration | Nine-file isolated rehearsal and postflight complete; production baseline lacked scheduling schema | Fresh production catalog comparison, verified recovery point, immutable file hashes/source SHA, approved migration window and postflight | Database/release operator |
+| Data isolation/access | 82 real PostgreSQL tests passed; application scoping rather than RLS | Least-privilege runtime role and access review; documented defense-in-depth decision; legitimate tenant/staff/platform positive and negative acceptance | Security/auth owner |
+| Booking/accessibility | Markup checks passed; secondary preview routing blocked active browser acceptance | Browser-reachable isolated/staging runtime; desktop/tablet/mobile keyboard booking, validation, month switching, management, focus, touch targets and measured contrast | Product/accessibility reviewer |
+| Domains/embedding | Operator-attested registry and proxy policies reviewed | Ownership proof, HTTPS and allowed/disallowed origins/iframe tests on approved staging deployment | Domain/release operator |
+| Notifications | Simulated-provider reliability passed; live transport not accepted | Separately approved simulator/test-recipient delivery, signed webhook/reconciliation evidence, retries/suppression review; no production-variable spoofing | Messaging operator |
+| Recovery/key custody | Procedures documented; restore, retention and secret recovery untested | Actual retention/quota evidence, isolated restore and reconciliation drill, approved measured RPO/RTO, separate Blob/auth/key recovery custody | Database/security/storage owners |
+| Operations/policy | Dashboard warnings and bounded queries reviewed; no complete paging/retention automation | Named incident lead, external alerts/escalation exercise, retention/legal-hold and break-glass policies, reviewed capacity thresholds | Operations/privacy owner |
+
+### Recovery drill acceptance — not yet executed
+
+1. Obtain separate restore/drill authorization with the exact source recovery point and disposable destination. Confirm production writes, shared environment variables, external delivery and original customer history will not be changed by the drill.
+2. Capture a privacy-preserving baseline: schema/content hashes, counts, audit invariants and synthetic booking UTC instants/versions. Verify restore retention and recoverability rather than assuming branch creation is backup validation.
+3. Restore only into the approved isolated destination and compare schema, constraints, triggers, bookings, capabilities, jobs and attempt history with the baseline. Use the original protected key through approved custody; never log it or rotate it to make the drill pass.
+4. Rehearse application rollback compatibility there with scheduling/delivery paused. Confirm how existing customer view/cancellation behaves under the chosen lifecycle controls; do not assume every pause preserves management access. Preserve append-only audit, original reservations and UTC instants.
+5. Reconcile externally accepted messages separately from restored database jobs; an older snapshot can lose acceptance evidence. Do not blindly replay uncertain jobs or regenerate idempotency keys. Keep provider transport disabled throughout a database-only drill.
+6. Test separate Blob object, managed-auth configuration and secret recovery under their own approvals. A successful PostgreSQL restore does not restore these dependencies or unsend provider messages.
+7. Record elapsed recovery and data-loss boundary against approved RPO/RTO, exceptions and reviewer sign-off. Disable synthetic tenants/delivery, stop isolated processes, and verify cleanup counts. A failed drill requires reviewed repair and another authorized drill before launch.
+
+### Explicit approval sequence
+
+1. Close the gate register or obtain an explicit, scoped security-owner risk disposition where appropriate; unresolved active acceptance and recovery checks must not be silently waived.
+2. Request production migration approval separately, identifying branch/database, ordered migration hashes, recovery point and maintenance controls. Deploying source or approving a test fixture is not migration permission.
+3. Request deployment approval for the reviewed artifact/environment. Keep tenant/public and delivery gates disabled until deployed acceptance and postflight pass.
+4. Request tenant/public activation approval for exact tenants/domains/types. Review existing customer-management behavior and rollback/shutdown verification separately.
+5. Request email-delivery activation approval for exact tenants/senders and allowed event types after transport/reconciliation acceptance. Persisted delivery gates and cron controls are separate operational controls.
+6. Require fresh incident-lead/release-owner authorization to reopen after rollback or an incident. No approval in this report transfers to a different database, tenant, environment or delivery scope.
+
+No restore, backup export, secret rotation, production mutation, deployment, activation or provider send was performed by Task 5. All pending gates remain operational work, not claims of tested recovery.
 
 ## Monitoring and next approval
 
