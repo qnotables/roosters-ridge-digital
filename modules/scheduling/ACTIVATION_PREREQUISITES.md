@@ -6,6 +6,8 @@ Status: **NOT READY FOR PRODUCTION**. Isolated database acceptance now passes: s
 
 **Production remains unauthorized / NOT READY.** This assessment carries forward the successful exact-LSN comparison, without repeating recovery tests or resuming historical computes. Fresh work was limited to read-only project/Auth metadata, current source inspection, first-party documentation and a process-environment boolean check. No database SQL, login, fixture write, key rotation, deployment, migration, retention change, purchase, email or Stripe operation was performed.
 
+**User disposition:** Finalize with blockers. Administrator authorization and all fresh authenticated dashboard acceptance paths remain **BLOCKED / NOT EXECUTED**. No staging identity handoff was provided; no session, membership, configuration or production change is authorized by this disposition. Retained database/synthetic results keep only their previously documented scope.
+
 ### Separate readiness verdicts
 
 | Gate | Verdict | Evidence and boundary |
