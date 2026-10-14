@@ -1,5 +1,47 @@
 # Phase 5C — Stripe sandbox billing implementation
 
+## Latest validation follow-up — 2026-10-13
+
+**PARTIAL ACCEPTANCE: PostgreSQL billing acceptance passed; actual Stripe delivery and preview acceptance remain incomplete. Phase 5B remains NO-GO.** Historical sections below describe earlier implementation stages; this section supersedes their database-approval, migration and validation status.
+
+### Approved isolated target
+
+The user approved a disposable branch copied from the existing Phase 5A test branch, billing migration 010, synthetic database fixtures, a sandbox-only preview, and a separate sandbox webhook destination. Created `phase5c-sandbox-validation-20261013` (`br-lively-wildflower-au7n9r4k`) from `br-dawn-sea-aucw8o2d`. Its compute is `ep-floral-unit-auxvhhf6.c-10.us-east-1.aws.neon.tech`. Migration 010 was applied successfully there as a single transactional PostgreSQL DO statement; no production migration was applied. Account-specific suspend settings were rejected on the first branch-create attempt; creation succeeded with supported settings.
+
+The test connection was derived securely at runtime from inherited credentials with the hostname replaced by the approved disposable compute. No connection string, signing secret or API credential was printed or committed. The integration suite additionally rejects any connection hostname other than this approved endpoint before fixture setup.
+
+### Passed checks
+
+| Check | Result |
+| --- | --- |
+| Isolated `tests/scheduling-billing.integration.test.ts` | **12 passed**, real PostgreSQL; Stripe responses explicitly simulated |
+| Full suite with the isolated billing connection enabled | **639 passed, 83 skipped**, 55 files passed / 6 skipped |
+| `pnpm exec tsc --noEmit` | **Passed**, independently of the build |
+| `pnpm build` | **Passed**, both billing routes included |
+
+PostgreSQL acceptance covers subscription persistence and professional-plan entitlements; persisted-customer tenant ownership despite conflicting metadata; cross-tenant authorization denial; concurrent duplicate delivery with exactly one reconciliation/ledger entry; simultaneous distinct tenant events; transaction rollback and subsequent retry after simulated provider failure; past-due grace, unpaid suspension and cancellation; canonical state reconciliation; ignored unknown customers and checkout expiration; immutable event ledger and unique customer binding; and preservation of the existing scheduling tenant and booking count. These are real storage/locking tests, **not** real Stripe subscription or webhook-delivery evidence.
+
+Fixture cleanup restores the original disabled billing settings, unenrolls the synthetic billing accounts, keeps synthetic tenants disabled and deactivates the synthetic platform administrator. Synthetic records and immutable audit/event evidence remain only on the disposable branch. No real customer subscription, charge, live billing, production environment-variable edit or production deployment was performed.
+
+The existing HTTP acceptance tests verify all six configured event types using SDK-generated signatures and simulated processing. The runtime route records request IDs, verified event IDs/types, HTTP status and processed/duplicate/failed outcomes without payloads, customer details or credentials. Real successful or failed provider deliveries have not been observed in this follow-up.
+
+### Webhook and preview findings
+
+The implemented route is **`POST /api/webhooks/stripe`**. The inspected existing sandbox destination was **`https://roostersridgedigital.com/api/stripe/webhook`**, a different path on the production domain. It was left unchanged. Its six configured types are `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` and `invoice.paid`. `checkout.session.expired` is intentionally ignored by the reconciler; `invoice.payment_failed` is supported by the application but missing from this destination's configuration. Before provider acceptance, register a separate preview destination with the correct path and reviewed handled event list.
+
+An approved preview deployment was attempted with explicit sandbox Stripe keys, the disposable database URL and database URL aliases, and disabled outbound email/blob/auth/cron credentials. The CLI subprocess timed out after 90 seconds without returning a deployment URL. A targeted `vercel ls ... --environment preview` inspection succeeded and showed no newly created deployment from this attempt (the newest listed preview predated it). **No successful sandbox-isolated preview is confirmed.** Existing previews must not be treated as isolated substitutes.
+
+Because there is no confirmed isolated deployed target, no new sandbox webhook destination was registered and no actual six-event provider-delivery test was run. Generating subscription events against this account could also deliver to the existing production-domain destination; that risk was avoided. Endpoint signing-secret correspondence, public/provider reachability, provider retry and duplicate behavior, real Stripe subscription lifecycle and tenant-specific entitlement delivery remain unverified. Preview protection must not be disabled for this work; establish an approved narrowly scoped webhook access arrangement if protection prevents provider delivery.
+
+### Remaining production-readiness requirements
+
+1. Resolve the preview deployment blocker and confirm its database and sandbox credential overrides; verify the exact deployed `/api/webhooks/stripe` URL.
+2. Register a separate sandbox-only destination, securely configure its own signing secret, and verify actual delivery/retry for the six configured events plus the missing failed-payment lifecycle case. Avoid generating events that can mutate the existing production-domain destination; use a properly isolated sandbox account or approved safe event replay strategy.
+3. Exercise real sandbox Checkout/Portal and subscription lifecycle, cancellation, renewal, payment failure/dunning, upgrades/downgrades and risk cases. Current provider behavior in PostgreSQL tests is simulated. Review the intentional past-due grace policy.
+4. Resolve the 83 skipped tests under their own required targets/credentials; they are not passing evidence. Existing dependency SSL-mode warning should be addressed before future pg major-version upgrades.
+5. Close the existing Phase 5B release gates below, including runtime least privilege, recovery/monitoring, authenticated and accessibility journeys, and approved reconciliation/dunning policies.
+6. Obtain separate production migration/deployment and live-billing approvals. Sandbox key/event guards remain intact. Retain the disposable branch only for acceptance evidence and explicitly approve cleanup when no longer needed.
+
 ## Decision and scope
 
 **GATED IMPLEMENTATION; SANDBOX ACCEPTANCE INCOMPLETE. Phase 5B remains NO-GO.**
