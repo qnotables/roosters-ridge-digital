@@ -1,6 +1,6 @@
 # RRD scheduling — final activation prerequisites
 
-Status: **NOT READY FOR PRODUCTION**. Preparation and identity-confirmation code only. No production schema, secrets, memberships, deployment aliases, public booking, email delivery or live billing have changed. This document supplements `ACTIVATION_RUNBOOK.md`; its earlier source/hash manifest and production approval boundaries still apply.
+Status: **NOT READY FOR PRODUCTION**. Isolated database acceptance now passes: see `STAGING_VALIDATION.md` for the retained branch, committed 001–010 ledger, 573 passing scheduling tests, safety postflight and preserved failed checks. No production schema, secrets, memberships, deployment aliases, public booking, email delivery or live billing have changed. This document supplements `ACTIVATION_RUNBOOK.md`; its earlier source/hash manifest and production approval boundaries still apply.
 
 ## 1. Exact failing variables and safe rotation
 
@@ -61,7 +61,7 @@ Workflow:
 
 ## 4. Isolated acceptance of pinned 001–010
 
-`activation/staging-plan.mjs` adds a fail-closed, offline workflow around the existing release-pinned preparer. `activation/staging-target.json` is intentionally **AWAITING_EXPLICIT_APPROVAL**, with no guessed branch or compute. It accepts only the reviewed project, direct nonproduction compute, approval ID and source `788fff0ed3691c977a2ca32ac138b0b9a9795637`, release `sandbox`. No CLI/environment override chooses a target. Changing its reviewed approval record is a code review, not a substitute for operator authorization. The tool only emits requests; it has no database client/execution path.
+`activation/staging-plan.mjs` adds a fail-closed, offline workflow around the existing release-pinned preparer. `activation/staging-target.json` is now **APPROVED_ISOLATED**, recording the expressly approved disposable branch `br-plain-king-au7ub8t2` and direct compute `ep-delicate-heart-autbb00i`. This approval permits database-only rehearsal, not production activation or a public staging deployment. It accepts only the reviewed project, direct nonproduction compute, approval ID and source `788fff0ed3691c977a2ca32ac138b0b9a9795637`, release `sandbox`. No CLI/environment override chooses a target. Changing its reviewed approval record is a code review, not a substitute for operator authorization. The tool only emits requests; it has no database client/execution path.
 
 After authorization:
 
@@ -88,13 +88,13 @@ Acceptance evidence table (do not mark completed from unit tests or historical r
 
 | Area | Required isolated evidence | Current status |
 | --- | --- | --- |
-| Migration parity | ordered 001–010 committed hash/transaction ledger; catalog/constraints/index/function/trigger checks | Pending isolated target authorization |
+| Migration parity | ordered 001–010 committed hash/transaction ledger; catalog/constraints/index/function/trigger checks | PASS on approved disposable branch; see `STAGING_VALIDATION.md` |
 | Appointment configuration | exact four-type manifest, duration/buffers/notice/horizon/price/mode, policy/version retry checks | Pending real PostgreSQL |
-| Tenant membership | real approved Neon UUID association; active tenant_admin owner/admin; no platform grant; cross-tenant/suspended denial | Unit denial coverage only; authenticated acceptance pending |
-| Availability | weekly windows/exceptions, notice/horizon, DST gaps/repeats, blocked and occupied slots | Pending isolated acceptance |
-| Conflict prevention | real concurrent buffered overlap, booking/block common-host lock, daily limit, cancellation release, optimistic version conflicts | Pending isolated races; old results not reused |
+| Tenant membership | real approved Neon UUID association; active tenant_admin owner/admin; no platform grant; cross-tenant/suspended denial | Synthetic PostgreSQL permissions PASS; genuine authenticated association/bootstrap pending |
+| Availability | weekly windows/exceptions, notice/horizon, DST gaps/repeats, blocked and occupied slots | PASS — current isolated PostgreSQL acceptance |
+| Conflict prevention | real concurrent buffered overlap, booking/block common-host lock, daily limit, cancellation release, optimistic version conflicts | PASS — current isolated races; old results not reused |
 | Dashboard | real approved user's branch-bound login, calendar load, config persistence, denial paths, no tenant/data leakage | Pending independent staging keys, auth and approved user |
-| Delivery/public/billing | zero real provider calls; RRD tenant/host/link/delivery off, billing disabled/unenrolled after fixtures | Pending postflight; live activation prohibited |
+| Delivery/public/billing | zero real provider calls; all tenant scheduling/delivery off, billing disabled/unenrolled after fixtures | PASS postflight; live activation prohibited |
 
 Finish with the runbook's tenant-scoped read-only checks plus 010 `billing_settings.enabled=false` and zero RRD billing enrollment. Check all suite cleanup outcomes; customer fixtures may leave synthetic bookings. Retain/decommission the isolated branch only under approved policy; never merge fixture state into production. A passing mocked server action test is not authenticated dashboard/browser acceptance.
 
@@ -112,7 +112,8 @@ Finish with the runbook's tenant-scoped read-only checks plus 010 `billing_setti
 
 - [ ] Scope independent strong staging keys and branch-bound DB/Auth; deploy only an approved isolated preview.
 - [ ] Proposed administrator personally authenticates; operator records/approves immutable ID and target host/role/manifest.
-- [ ] Isolated target IDs/test endpoint pins, clean 001–010 replay, actual six-suite PostgreSQL run and dashboard browser evidence.
+- [x] Isolated target IDs/test endpoint pins, clean 001–010 replay, actual six-suite PostgreSQL run and disabled-controls postflight; see `STAGING_VALIDATION.md`.
+- [ ] Genuine authenticated dashboard browser evidence; database-only acceptance does not satisfy this gate.
 - [ ] Snapshot/backup artifact plus real isolated restore, same-point critical-data/schema comparison, owner/expiry sign-off.
 - [ ] Production-scoped secret validity, versioned encryption-key migration if needed, source/deployment compatibility and default-off server controls.
 

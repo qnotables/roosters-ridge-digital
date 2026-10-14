@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
@@ -12,7 +13,7 @@ import { brandingDefaults } from '@/modules/scheduling/branding'
 import { hostedScheduling } from '@/modules/scheduling/hosted-postgres'
 import { createCustomerBooking } from '@/modules/scheduling/customer-postgres'
 import { readBrandResponses } from '@/modules/scheduling/branding-responses'
-const connection = process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL
+const connection = process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL) : undefined
 const pool = new Pool({ connectionString: connection, max: 5, connectionTimeoutMillis: 15000, options: '-c statement_timeout=20000 -c lock_timeout=10000' }), db = drizzle(pool)
 const suffix = randomUUID(), platform = `synthetic-brand-platform-${suffix}`, owner = `synthetic-brand-owner-${suffix}`, manager = `synthetic-brand-manager-${suffix}`, staff = `synthetic-brand-staff-${suffix}`
 const identity = (userId: string, verified = true) => async () => ({ userId, verified })
@@ -24,7 +25,7 @@ const previousSecret = process.env.ADMIN_DASHBOARD_KEY
 async function baseline() { return (await db.execute(sql`SELECT md5(to_jsonb(t)::text) AS baseline FROM rrd_scheduling.tenants t WHERE slug='roosters-ridge-digital'`)).rows }
 describe.skipIf(!connection)('Phase 4C real isolated PostgreSQL boundaries', () => {
   beforeAll(async () => {
-    if (new URL(connection!).hostname !== 'ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech') throw new Error('Only the approved isolated compute is allowed.')
+    assertIsolatedConnection(connection)
     process.env.ADMIN_DASHBOARD_KEY = 'synthetic-brand-test-secret-32-characters'; before = await baseline()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)
     a = await install.provision({ name: 'Synthetic Brand A', slug: slugA, timeZone: 'UTC', administratorUserId: owner, requestKey: randomUUID() }); b = await install.provision({ name: 'Synthetic Brand B', slug: slugB, timeZone: 'UTC', administratorUserId: owner, requestKey: randomUUID() })

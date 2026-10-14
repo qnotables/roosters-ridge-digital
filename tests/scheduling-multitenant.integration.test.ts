@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
@@ -16,7 +17,7 @@ import { readNotificationSettings, recentNotificationJobs } from '@/modules/sche
 import { customerNotificationDetails } from '@/modules/scheduling/customer-notifications'
 import { requestClientKey } from '@/modules/scheduling/security'
 
-const connection=process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL
+const connection=process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL) : undefined
 const isolated=describe.skipIf(!connection)
 const pool=new Pool({connectionString:connection,max:8,connectionTimeoutMillis:15000,options:'-c statement_timeout=20000 -c lock_timeout=10000'})
 const db=drizzle(pool), suffix=randomUUID(), platform=`synthetic-platform-${suffix}`, owner=`synthetic-owner-${suffix}`, staff=`synthetic-staff-${suffix}`, manager=`synthetic-manager-${suffix}`
@@ -35,7 +36,7 @@ async function rrdIntegrity() {
 }
 isolated('Phase 4A on the approved isolated Neon branch',()=>{
   beforeAll(async()=>{
-    if (!connection || new URL(connection).hostname!=='ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech') throw new Error('Only approved Phase 4A isolated compute is allowed.')
+    assertIsolatedConnection(connection)
     rrdSnapshot=await rrdIntegrity()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)
     a=await management.create({name:'Synthetic Tenant A',slug:`synthetic-a-${suffix}`,timeZone:'UTC'})

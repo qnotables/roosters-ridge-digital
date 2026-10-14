@@ -1,0 +1,94 @@
+{
+  "startedAt": "2026-10-14T02:39:36.526Z",
+  "target": {
+    "status": "APPROVED_ISOLATED",
+    "projectId": "royal-bonus-04874440",
+    "branchId": "br-plain-king-au7ub8t2",
+    "computeId": "ep-delicate-heart-autbb00i",
+    "database": "neondb",
+    "approvalId": "user-approved-isolated-001-010-2026-10-13",
+    "sourceCommit": "788fff0ed3691c977a2ca32ac138b0b9a9795637",
+    "release": "sandbox",
+    "purpose": "Disposable isolated 001-010 acceptance only; never production"
+  },
+  "host": "ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "exact endpoint and scrubbed child environment",
+      "passed": true,
+      "details": "No DATABASE_URL, PG*, auth, email, Stripe, Blob or admin production credentials forwarded."
+    },
+    {
+      "name": "migrations 001–010 schema present",
+      "passed": true,
+      "details": [
+        "admin_audit",
+        "appointment_types",
+        "availability_exceptions",
+        "billing_accounts",
+        "billing_events",
+        "billing_prices",
+        "billing_settings",
+        "booking_changes",
+        "booking_conversions",
+        "booking_requests",
+        "booking_responses",
+        "bookings",
+        "calendar_blocks",
+        "configuration",
+        "customer_tokens",
+        "domains",
+        "hosts",
+        "lead_links",
+        "management_tokens",
+        "members",
+        "notification_attempts",
+        "notification_events",
+        "notification_jobs",
+        "notification_outbox",
+        "notification_settings",
+        "operational_events",
+        "platform_accounts",
+        "platform_administrators",
+        "platform_audit",
+        "platform_plans",
+        "platform_settings",
+        "public_links",
+        "request_limits",
+        "tenant_audit",
+        "tenants",
+        "weekly_availability"
+      ]
+    },
+    {
+      "name": "synthetic scheduling acceptance",
+      "passed": true,
+      "details": {
+        "exitCode": 0,
+        "signal": null,
+        "error": null,
+        "evidence": "modules/scheduling/activation/vitest-2026-10-14T02-39-36-524Z.json"
+      }
+    },
+    {
+      "name": "copied non-synthetic legacy rows unchanged",
+      "passed": true,
+      "details": "Compared aggregate digests; no copied customer content exported."
+    },
+    {
+      "name": "scheduling, delivery and billing disabled after acceptance",
+      "passed": true,
+      "details": {
+        "enabled_tenants": 0,
+        "enabled_delivery": 0,
+        "billing_enabled": false
+      }
+    }
+  ],
+  "liveEmail": false,
+  "livePayments": false,
+  "productionWrites": false,
+  "branchRetained": true,
+  "finishedAt": "2026-10-14T02:41:32.599Z"
+}

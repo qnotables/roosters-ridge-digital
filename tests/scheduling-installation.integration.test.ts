@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
@@ -15,7 +16,7 @@ import { publicMonthAvailability } from '@/modules/scheduling/public-service'
 import { requestClientKey } from '@/modules/scheduling/security'
 
 const originalProtectionSecret = process.env.ADMIN_DASHBOARD_KEY
-const connection = process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL
+const connection = process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL) : undefined
 const pool = new Pool({ connectionString: connection, max: 8, connectionTimeoutMillis: 15000, options: '-c statement_timeout=20000 -c lock_timeout=10000' }), db = drizzle(pool)
 const suffix = randomUUID(), platform = `synthetic-install-platform-${suffix}`, owner = `synthetic-install-owner-${suffix}`
 const identity = (userId: string) => async () => ({ userId, verified: true })
@@ -31,7 +32,7 @@ async function baseline() { return (await db.execute(sql`SELECT md5(coalesce(jso
 
 describe.skipIf(!connection)('Phase 4B isolated PostgreSQL installation', () => {
   beforeAll(async () => {
-    if (!connection || new URL(connection).hostname !== 'ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech') throw new Error('Only the approved isolated Neon compute is allowed.')
+    assertIsolatedConnection(connection)
     process.env.ADMIN_DASHBOARD_KEY = 'synthetic-installation-secret-32-characters'
     rrdBefore = await baseline()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${platform},true)`)

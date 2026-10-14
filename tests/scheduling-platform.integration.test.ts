@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
@@ -11,7 +12,7 @@ import { createTenantManagement,createTenantScheduling } from '@/modules/schedul
 import { accountEntitlements,assertFeature,assertNewBookings,recordOperation } from '@/modules/scheduling/platform-entitlements'
 import { hostedScheduling,hostedManagement } from '@/modules/scheduling/hosted-postgres'
 import { customerBooking,issueCustomerTokens,changeCustomerBooking } from '@/modules/scheduling/customer-postgres'
-const connection=process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL,pool=new Pool({connectionString:connection,max:6,connectionTimeoutMillis:15000,options:'-c statement_timeout=20000 -c lock_timeout=10000'}),db=drizzle(pool)
+const connection=process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_MULTITENANT_TEST_DATABASE_URL) : undefined,pool=new Pool({connectionString:connection,max:6,connectionTimeoutMillis:15000,options:'-c statement_timeout=20000 -c lock_timeout=10000'}),db=drizzle(pool)
 const suffix=randomUUID(),operator=`synthetic-4d-platform-${suffix}`,owner=`synthetic-4d-owner-${suffix}`,identity=(userId:string)=>async()=>({userId,verified:true})
 const platform=createPlatformService(db,identity(operator)),tenantManagement=createTenantManagement(db,identity(owner)),installation=createInstallationService(db,identity(operator))
 let a:string,b:string,host:string,typeId:string,jobId:string,baseline:unknown,originalSecret=process.env.ADMIN_DASHBOARD_KEY
@@ -21,7 +22,7 @@ async function integrity(){return(await db.execute(sql`SELECT md5(to_jsonb(t)::t
 async function account(plan:'starter'|'professional'|'business',status:'trial'|'active'|'suspended'|'past_due'='trial'){const current=await accountEntitlements(db,a);await platform.account(a,plan,status,current!.version,'CHANGE ACCOUNT')}
 describe.skipIf(!connection)('Phase 4D on the approved isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if(new URL(connection!).hostname!=='ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech')throw new Error('Isolated endpoint required.')
+    assertIsolatedConnection(connection)
     process.env.ADMIN_DASHBOARD_KEY='synthetic-phase-4d-verification-secret-32-characters';baseline=await integrity()
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${operator},true)`)
     a=await installation.provision({name:'Synthetic Phase 4D A',slug:businessSlug,timeZone:'America/Chicago',administratorUserId:owner,requestKey:randomUUID()})

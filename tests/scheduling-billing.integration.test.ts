@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
@@ -10,8 +11,7 @@ import { createInstallationService } from '@/modules/scheduling/installation-pos
 import { createBillingService } from '@/modules/scheduling/billing-service'
 import { accountEntitlements, assertNewBookings } from '@/modules/scheduling/platform-entitlements'
 
-const connection = process.env.SCHEDULING_BILLING_TEST_DATABASE_URL
-const approvedHost = 'ep-floral-unit-auxvhhf6.c-10.us-east-1.aws.neon.tech'
+const connection = process.env.SCHEDULING_BILLING_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_BILLING_TEST_DATABASE_URL) : undefined
 const pool = new Pool({ connectionString: connection, max: 6, connectionTimeoutMillis: 15000, options: '-c statement_timeout=20000 -c lock_timeout=10000' })
 const db = drizzle(pool)
 const suffix = randomUUID().replaceAll('-', '')
@@ -37,7 +37,7 @@ async function integrity() { return (await db.execute(sql`SELECT md5(to_jsonb(t)
 
 describe.skipIf(!connection)('Phase 5C billing on the explicitly approved disposable PostgreSQL branch', () => {
   beforeAll(async () => {
-    if (new URL(connection!).hostname !== approvedHost) throw new Error('Approved disposable billing endpoint required.')
+    assertIsolatedConnection(connection)
     baseline = await integrity()
     originalSettings = (await db.execute(sql`SELECT enabled,stripe_account_id,return_origin,portal_configuration_id FROM rrd_scheduling.billing_settings WHERE id=1`)).rows[0]
     await db.execute(sql`INSERT INTO rrd_scheduling.platform_administrators(user_id,active) VALUES(${operator},true)`)

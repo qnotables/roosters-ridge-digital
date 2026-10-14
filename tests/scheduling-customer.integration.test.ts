@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
@@ -18,7 +19,7 @@ import { createPostgresSchedulingStore } from '@/modules/scheduling/postgres-sto
 import { createSchedulingService } from '@/modules/scheduling/service'
 import { recordSchedulingDelivery } from '@/modules/scheduling/notification-webhook'
 
-const connection = process.env.SCHEDULING_TEST_DATABASE_URL
+const connection = process.env.SCHEDULING_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_TEST_DATABASE_URL) : undefined
 const isolated = describe.skipIf(!connection)
 const hostId=randomUUID(), typeId=randomUUID(), link=`test-customer-${randomUUID()}`
 const clientKey=(label:string)=>requestFingerprint(`${hostId}:${label}`)
@@ -30,7 +31,7 @@ const day=(days:number,hour=13)=>{const d=new Date();d.setUTCDate(d.getUTCDate()
 
 isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech', 'ep-twilight-brook-auwk6z9c.c-10.us-east-1.aws.neon.tech', 'ep-fragrant-moon-auwkhgo1.c-10.us-east-1.aws.neon.tech', 'ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
+    assertIsolatedConnection(connection)
     const tenant=await db.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`)
     tenantId=String(tenant.rows[0].id);zone=String(tenant.rows[0].time_zone)
     original=(await db.execute(sql`SELECT t.enabled,c.policies,c.version,n.delivery_enabled,n.preferences,n.customer_confirmation,n.host_notification,n.cancellation_notice FROM rrd_scheduling.tenants t JOIN rrd_scheduling.configuration c ON c.tenant_id=t.id JOIN rrd_scheduling.notification_settings n ON n.tenant_id=t.id WHERE t.id=${tenantId}`)).rows[0]
