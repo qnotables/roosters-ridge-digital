@@ -239,7 +239,13 @@ No restore, backup export, secret rotation, production mutation, deployment, act
 - A one-hour error-level Vercel log query returned no logs. This does not establish absence of errors, functioning external alerting, monitoring coverage or tested escalation.
 - Active browser acceptance, legitimate authenticated acceptance, live notification/reconciliation acceptance, least-privilege review, tooling-advisory disposition and recovery/operational gates remain open. Public booking functionality and current production activation status were not established by this preflight.
 
-Next checkpoint: reconcile and approve the exact production database read target and candidate release SHA, then close staging/browser, recovery and operational gates. Only afterward request separately scoped migration authorization. No RRD catalog or business settings were created, existing lead forms were not changed, and other businesses were not activated.
+### Read-only target reconciliation follow-up
+
+Fresh Neon endpoint metadata maps `ep-divine-scene-au7rxgk5` to branch `br-solitary-grass-au781exk` in project `royal-bonus-04874440`. A sanitized inspection of the current Vercel **production project configuration** confirms `DATABASE_URL` targets its pooled host `ep-divine-scene-au7rxgk5-pooler.c-10.us-east-1.aws.neon.tech`, database `neondb`. Credentials were consumed only in memory for URL parsing and were not printed, saved or changed. The list API no longer decrypts values; its documented per-variable read endpoint supplied the destination. This resolves current project-configuration identity, not the environment snapshot of the already-built deployment.
+
+The production alias still points to `dpl_4cpZE25UZByREuE66t8SVo1i6zjm`; repository main remains `f819a9aaf1848f88d329b2157d461d8256e32fa5`. The validated application branch remains distinct. No production catalog query was issued against the new target under the obsolete branch approval, and no release artifact has been newly approved. Next approval is limited to read-only catalog inspection of this exact current target; migration, activation, deployment and delivery remain excluded.
+
+Next checkpoint: approve the reconciled exact production database read target and candidate release SHA, then close staging/browser, recovery and operational gates. Only afterward request separately scoped migration authorization. No RRD catalog or business settings were created, existing lead forms were not changed, and other businesses were not activated.
 
 ## Monitoring and next approval
 
