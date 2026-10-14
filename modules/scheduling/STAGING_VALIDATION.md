@@ -65,7 +65,17 @@ Machine-readable successful evidence: [acceptance safety results](activation/acc
 
 ## Remaining production blockers
 
-### Latest `rrd-pitr-test` recovery verification — 2026-10-14, continued from `8d0ef16`
+### Latest production/Console mismatch investigation — 2026-10-14, continued from `4e2e4e5`
+
+Read-only Vercel production configuration inspection establishes **`royal-bonus-04874440` → `br-solitary-grass-au781exk` → `ep-divine-scene-au7rxgk5` / `neondb`** as the website's configured database. Decrypted production `DATABASE_URL` was reduced in memory to hostname/database; `NEON_PROJECT_ID`, production Auth hostname and fresh Neon endpoint metadata corroborate the mapping. Production variables have unchanged timestamps predating current production deployment `dpl_4cpZE25UZByREuE66t8SVo1i6zjm` (source `f819a9aaf1848f88d329b2157d461d8256e32fa5`), which owns the RRD custom-domain aliases. Its deployed DB selector uses `DATABASE_URL`. The API exposes deployment variable names, not immutable snapshot values; no runtime SQL attestation is claimed.
+
+The user-reported Console project **`roosterridgedigital` / `autumn-pond-04030…` is a different project**, so its reported `rrd-pitr-test` branch does not prove recovery of this configured production database. Full autumn project/branch IDs and lineage remain unverified. The Vercel team has two Neon installations (external and Marketplace), but their resource mapping was unavailable. The current Neon validation key is explicitly scoped to royal and rejected project enumeration; it cannot inspect autumn merely by changing a project parameter. No production integration was replaced.
+
+Recovery remains **BLOCKED**. Corrected plan: confirm the full Console record, then obtain explicit approval/isolation/retention controls for a historical recovery branch or native snapshot/new-branch restore sourced from royal's verified main branch; pin the returned target ID and selected point before read-only verification. If secure deployment evidence instead establishes autumn as production, authorize a separate project-scoped agent connection—not a production connection change—before inspection. Full evidence boundaries and steps: [corrected mismatch report](ACTIVATION_PREREQUISITES.md#production-versus-console-project-mismatch--2026-10-14-continuation-from-4e2e4e5).
+
+No SQL/database connection, resource creation, credentials/env changes, migrations, deployment or provider actions occurred. Only documentation changed; investigation stopped at identification and planning. No secrets or connection strings were displayed. No application tests/build/browser checks were needed for this metadata-only report.
+
+### Earlier `rrd-pitr-test` recovery verification — 2026-10-14, continued from `8d0ef16`
 
 **FAIL / BLOCKED: recovery verification stopped at the exact branch-identity gate.** Live project metadata matches `royal-bonus-04874440` (`neon-violet-tree`), but the complete active inventory contains eight branches and none named `rrd-pitr-test`. A second exact-name query including deleted branches returned `[]`. This is absence from the connected scoped project's visible metadata, not proof that the administrator failed to create a branch elsewhere or that data is corrupt. No substitute branch was used.
 
