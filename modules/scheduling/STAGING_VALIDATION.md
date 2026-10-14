@@ -6,6 +6,8 @@
 
 The user approved a restricted disposable clone, exact endpoint pinning, migrations 001–010, synthetic acceptance, retention of failed checks, and no production mutation, real email, live payment or public scheduling activation.
 
+Latest blocker assessment: [separate readiness verdicts, exact JWKS discrepancy, release migrations, seven-day retention options and fresh staging identity STOP](ACTIVATION_PREREQUISITES.md#final-activation-blocker-assessment--2026-10-14). No recovery comparison or synthetic suite was repeated; authenticated browser acceptance remains BLOCKED by current application isolation/key checks and missing approved identity.
+
 ## Target and scope
 
 - Project: `royal-bonus-04874440`.
