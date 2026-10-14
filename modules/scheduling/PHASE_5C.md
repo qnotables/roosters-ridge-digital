@@ -8,6 +8,12 @@ Stripe reports connected in v0. The integration/environment inventory was checke
 
 The connected production database schema inventory contains no scheduling tables. This change therefore supplies a migration draft and explicit schema/configuration gates, rather than attempting to install scheduling into production. An exact approved isolated database target and its scoped test connection are still required for database acceptance. Previous isolated scheduling approvals do not authorize production migrations or new tenant activation.
 
+## Configuration follow-up
+
+The refreshed integration inventory now lists `STRIPE_SECRET_KEY`, Stripe publishable keys, and the user-supplied `STRIPE_WEBHOOK_SECRET`. A secret-safe local check confirmed a test-key prefix, webhook-secret format, and a successful Stripe SDK signature generation/verification round trip using the configured signing secret. No credential values were printed and no provider request was made. This clears the missing-environment configuration blocker described in the original implementation evidence below; it does **not** prove that the secret matches a registered Stripe endpoint or that provider delivery succeeds.
+
+Real sandbox acceptance remains blocked on the exact approved isolated database target, migration approval, sandbox account/price/Portal settings and named synthetic tenant enrollment. No migration, deployment, tenant activation, charge, or live-billing change was performed in this follow-up. Phase 5B remains NO-GO.
+
 ## Prerequisites inspected
 
 - `tenant-permissions.ts` and `rrd-adapter.ts`: existing verified managed-auth identity, active membership, tenant-scoped permissions. Billing requires `tenant_admin`; platform membership is not a tenant-billing bypass. Existing authentication is reused, not replaced or mocked in runtime code.
