@@ -263,6 +263,16 @@ This refreshes the scheduling-schema baseline on the reconciled production targe
 
 Next checkpoint: identify and approve the candidate release SHA, then close staging/browser, runtime least-privilege, recovery and operational gates. Production migration remains separately approval-gated and **NO-GO**; the catalog-read approval is not migration permission. No RRD catalog or business settings were created, existing lead forms were not changed, and other businesses were not activated.
 
+### Release candidate comparison — review, not approval
+
+Read-only GitHub comparison identifies application candidate `e2de1d5a2ccf492b075396905f335897bdd16702` on `v0/scheduling-phase-4c-validation`: **29 commits ahead, zero behind** current main `f819a9aaf1848f88d329b2157d461d8256e32fa5`. Main is the merge base, so there is no divergent-history conflict indicated at this checkpoint. The change spans **137 files, 5,559 additions and 550 deletions**; this is a substantial multi-tenant/platform release, not a dependency-only patch. No PR in any state for the exact head branch was returned.
+
+The candidate has a successful Vercel deployment status and successful `Vercel Preview Comments` check. These are deployment/integration signals, not an independent test-suite, security review, reviewer approval or active-booking acceptance. Only `modules/scheduling/PHASE_5A.md` differs between dependency-tested SHA `984d5d233f53d6dd0c3f26d99e61a09e2f273e40` and the candidate; recorded application test evidence therefore covers unchanged application source, but blocked acceptance remains blocked. Subsequent evidence-only commits likewise require their final SHA to be pinned before release.
+
+Direct configuration review confirms that the global `X-Frame-Options` removal is paired with `SAMEORIGIN` in the live proxy for normal routes, and tenant-specific `frame-ancestors` CSP for embed routes; it is not an unconditional removal of framing protection. This is source evidence, not deployed iframe/origin testing. The diff also updates analytics exclusions for booking/embed/admin, Next.js and Sharp patches, development-only shadcn tooling, and Sharp build permission, alongside new scheduling migrations 007–009, tenant management, branding and platform features. Nine-file migration ordering and current production's absent scheduling schema still apply.
+
+No merge, PR creation, deployment, migration, activation, key change or customer-record read was performed. Candidate identification does not grant release approval. The next executable acceptance work is a supported browser-reachable isolated staging surface and a separately authorized recovery drill; production remains **NO-GO**.
+
 ## Monitoring and next approval
 
 Before launch, configure accountable alerts for route 5xx/429/conflicts, availability latency, PostgreSQL pool/lock waits/deadlocks, outbox backlog/old leases/review jobs/retries, acceptance vs delivery/bounce/suppression, webhook verification failures, cron execution, trial expiry/capacity, stale versions/denied support, domain/sender revocation and retention backlog. Use external logs/alerts for outages that cannot insert database events. Current dashboard thresholds are not automatic paging or contractual SLOs.
