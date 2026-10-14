@@ -65,7 +65,26 @@ Machine-readable successful evidence: [acceptance safety results](activation/acc
 
 ## Remaining production blockers
 
-### Latest historical production recovery validation — 2026-10-14, continued from `3f85f52`
+### Latest remaining-gap assessment — 2026-10-14, continued from `a294b0c`
+
+| Requirement | Status | Scope / next requirement |
+| --- | --- | --- |
+| Historical recovery capability | **PASS** | Verified same production lineage and historical `19:00:00Z` / `0/4DAF628` recovery, read-only access. Not complete app/service recovery. |
+| Recovered data integrity | **BLOCKED** | Additional read-only FK scans PASS: zero orphans in all six declared `neon_auth` relationships; no declared public FKs. Representative recovered counts reconfirmed, but independent same-point record/schema/migration parity is unverified. |
+| Recovery retention | **FAIL** | Actual plan `free_v3`, configured history **six hours**, **zero snapshots**, **no production snapshot schedule**; branch expires **Oct 15, 19:18:14 UTC**. No verified seven-day artifact/PITR. |
+| Scheduling tenant isolation | **PASS — historical approved database scope** | Machine report confirms **573/573, zero failed/pending** on `br-plain-king-au7ub8t2`; 17 multitenant PostgreSQL assertions plus 21 installation, 11 branding and 16 platform assertions include cross-tenant denial, host/staff restrictions, suspension, capability/domain/cache/job/report scoping and concurrency constraints. Does not prove real sessions/production. |
+| Administrator authorization | **BLOCKED** | Genuine verified immutable UUID, branch-bound Auth mapping, separate reviewed tenant/host/role approval and bootstrap pending. |
+| Authenticated dashboard acceptance | **BLOCKED** | Real session/browser denial and persistence/conflict acceptance on approved isolated deployment pending; existing 010 branch is incompatible with exact production bootstrap. |
+
+Recovery integrity SQL at **2026-10-14T19:32:46.268Z** was pinned to `br-old-lake-ausa6oe8` / `ep-super-cell-aurzbtir`, confirmed read-only, and returned aggregates only. Counts: leads **1**, suppressions **0**, messages **36**, send requests **6**, prospects **33**, estimates **0**. Comparing these with earlier reads of the SAME branch does not establish original source parity. No migration-named ledger or scheduling tables were found; migration chronology requires independent evidence.
+
+**Reliable comparison method identified:** read-only Time Travel on root parent at exact **`0/4DAF628`**, not current production HEAD. It creates temporary **0.50-CU compute**, consumes quota and auto-cleans after 30 seconds idle; resource/routing approval required before execution. Nominal source-history horizon approximately **Oct 15, 01:00 UTC**, subject to actual retention/volume; if unavailable, a previously captured same-point independent reference is required. No such reference was found. No historical resource was implicitly created.
+
+**Retention alternatives evaluated:** retain the existing checkpoint branch through at least **Oct 21, 19:18:14 UTC** within Free quotas (recommended checkpoint option, requires expiry/access/owner approval; not sliding PITR); Launch configured for seven-day PITR (**$0.106/CU-hour**, **$0.35/GB-month DB**, **$0.20/GB-month history**, no published monthly minimum); Scale supports up to 30 days (**$0.222/CU-hour**, same storage/history rates). Manual root snapshot: one permitted on Free, 100 paid, published **$0.09/GB-month** (Free/Marketplace fee exemption not attested), expiry explicit or none. Paid schedules: daily/weekly/monthly, retention up to 35 days, same snapshot storage rate with incremental scheduled snapshots. Encrypted independently stored logical backup is another checkpoint option; actual storage/key/restore costs and prerequisites remain unverified. No upgrade, retention change, snapshot, export or paid resource was performed. Full operational limits/cost examples and evidence: [remaining-gap report](ACTIVATION_PREREQUISITES.md#remaining-recovery-readiness-gaps--2026-10-14-continuation-from-a294b0c).
+
+**Overall production readiness: BLOCKED.** Remaining dashboard work must prove genuine login, reviewed identity/membership, exact compatible bootstrap, calendar/four-type persistence/conflicts and logged-out/unverified/nonmember/suspended/cross-tenant/host denials using synthetic isolated fixtures. No fixture writes on recovery or live data, no production SQL/migrations/config changes, public activation, emails or payments occurred. This is a documentation/metadata/recovery-SELECT assessment; earlier successful application tests were reviewed, not rerun.
+
+### Earlier historical production recovery validation — 2026-10-14, continued from `3f85f52`
 
 **Partial technical PASS; overall recovery readiness FAIL / BLOCKED.** Correct project `royal-bonus-04874440`, recovery branch `rrd-production-pitr-verify` / `br-old-lake-ausa6oe8`, parent `br-solitary-grass-au781exk` (corrects supplied `…au781ekx` transposition). Provider records selected point **2026-10-14 19:00:00 UTC**, LSN **`0/4DAF628`**, preceding branch creation at **19:18:13 UTC** by **18m13s**. This resolves the earlier identity/mismatch blocker for this new target, not the unrelated autumn recovery branch.
 
