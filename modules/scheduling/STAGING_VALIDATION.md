@@ -65,7 +65,17 @@ Machine-readable successful evidence: [acceptance safety results](activation/acc
 
 ## Remaining production blockers
 
-### Latest recovery and independent-preparation checkpoint — 2026-10-14, continued from `5417083`
+### Latest `rrd-pitr-test` recovery verification — 2026-10-14, continued from `8d0ef16`
+
+**FAIL / BLOCKED: recovery verification stopped at the exact branch-identity gate.** Live project metadata matches `royal-bonus-04874440` (`neon-violet-tree`), but the complete active inventory contains eight branches and none named `rrd-pitr-test`. A second exact-name query including deleted branches returned `[]`. This is absence from the connected scoped project's visible metadata, not proof that the administrator failed to create a branch elsewhere or that data is corrupt. No substitute branch was used.
+
+No credentials were retrieved and no SQL/database connection, catalog/integrity/count comparison, restore, compute start or mutation was attempted. The selected historical point, branch-specific access, approved same-point baseline and reported expiry remain unverified. The user-reported October 15, 2026 approximately 13:50 EDT deletion deadline is 17:50 UTC; even if verified, that next-day lifetime alone does not satisfy the existing seven-day retained-artifact requirement.
+
+Production `main` retains observed ID `br-solitary-grass-au781exk`, root/default/ready status. **PASS: this turn performed no production write or configuration/deployment/provider action. NOT VERIFIED: global production-record immutability**, which would require independent before/after or audit evidence. No customer data or secrets were exposed. No application code changed or unrelated test suite was rerun.
+
+Resume only after confirming the non-secret recovery **project ID, `br-…` branch ID, parent ID and selected UTC timestamp/LSN**, then verified restricted credential/endpoint access and approved same-point baseline. Further recovery/backup verification remains required before production scheduling migration approval; an additional identical restore need not be repeated if this genuine historical branch can be identified and successfully validated, but retention and recovery coverage still must pass. Full PASS/FAIL matrix and continuation gates: [recovery verification report](ACTIVATION_PREREQUISITES.md#rrd-pitr-test-recovery-verification-report--2026-10-14-continuation-from-8d0ef16).
+
+### Earlier recovery and independent-preparation checkpoint — 2026-10-14, continued from `5417083`
 
 Read-only account inspection confirms Free (`free_v3`), Vercel-managed organization, six-hour configured history, 8 current branches against a 10-branch limit, no snapshots and no production snapshot schedule. First-party documentation supports one manual snapshot on Free and **Multi-step restore into a new branch without changing the current branch**. Native support is therefore documented, not absent; actual Console permissions, clone restrictions, retention/cost controls and successful recovery are still unverified. The current preferred procedure is the manual administrator handoff in [ACTIVATION_PREREQUISITES.md](ACTIVATION_PREREQUISITES.md#native-recovery-readiness-and-administrator-handoff--2026-10-14-continuation-from-5417083). No backup/restore script was added and no production data exported.
 
