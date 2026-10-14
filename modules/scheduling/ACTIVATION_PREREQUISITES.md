@@ -275,6 +275,57 @@ No production migrations, records, credentials, configuration, shared environmen
 
 **Stopped after mismatch identification and corrected plan.** No database connections/SQL, migrations, branch/snapshot creation, credential rotation, variable changes, deployment, scheduling activation, email or billing actions occurred. Documentation only changed; no application behavior changed. Production mapping checks were read-only metadata inspections; no recovery integrity check or global production-record immutability claim is made.
 
+### Historical production recovery validation — 2026-10-14, continuation from `3f85f52`
+
+**Overall recovery readiness: FAIL / BLOCKED (partial technical PASS).** A real historical child branch of the correct production project is now identified and readable. This supersedes the earlier missing-branch/project-mismatch blocker for this NEW target only; it does not retroactively validate the autumn project or `rrd-pitr-test`. Historical provenance, read access and basic catalog health pass. Same-point source/data parity, complete recovery coverage, seven-day retained-artifact controls and owner sign-off remain unverified; no production migration approval follows from this rehearsal.
+
+#### Verified identity, procedure and point
+
+- Project `royal-bonus-04874440`; recovery branch `rrd-production-pitr-verify`, ID **`br-old-lake-ausa6oe8`**, database `neondb`, compute **`ep-super-cell-aurzbtir`**, role `neondb_owner`.
+- Provider metadata: `creation_source=console`, `init_source=parent-data`, `current_state=ready`, `primary=false`, `default=false`, parent **`br-solitary-grass-au781exk`**. This matches the independently verified production `main` branch. The supplied `br-solitary-grass-au781ekx` was a transposition, not a second source; metadata resolves it explicitly.
+- Selected historical point **`2026-10-14T19:00:00Z`**, parent LSN **`0/4DAF628`**. Branch created **`2026-10-14T19:18:13Z`**, ready **`19:18:14Z`**: selected point is **18 minutes 13 seconds before creation**. This establishes a provider-recorded historical fork rather than an unspecified HEAD clone. It does not independently demonstrate that any particular row changed between that point and creation.
+- Actual expiration **`2026-10-15T19:18:14Z`** (**15:18:14 EDT**), `ttl_interval_seconds=86401`; no expiry changes were made. A roughly one-day disposable branch **does not meet the existing seven-day retention requirement**.
+- Operator created the historical branch outside this validation turn. This turn inspected metadata and connected through the managed Neon SQL transport with **explicit project + recovery branch + database + role + compute IDs**. Provider-side connection credentials were never retrieved, printed, stored or substituted from production environment variables. This confirms branch-scoped routing, **not independently rotated branch-only passwords or least privilege**: `neondb_owner` is an owner role, and branch metadata says `protected=false`. Network/access isolation and inherited-role credential separation remain separate controls.
+
+#### Executed read-only checks and results
+
+Two bounded transactions used `SET TRANSACTION READ ONLY`, 15-second local statement timeout and 2-second lock timeout. The first returned `transaction_read_only=on`, PostgreSQL **18.6**, database `neondb`, expected owner role and SQL check time **`2026-10-14T19:25:47.952Z`**. All SQL was pinned to the recovery compute; no production SQL or application/provider call was used. Output was catalogs, definitions/fingerprints and aggregate counts only, never customer/auth rows, emails, tokens or passwords.
+
+| Check | Verdict | Verified scope / limitation |
+| --- | --- | --- |
+| Correct project, parent, target and historical point | **PASS** | Explicit IDs and metadata above; historical point precedes branch creation. |
+| Usable read-only historical database | **PASS** | Successful managed branch-scoped SQL, read-only transaction confirmed. No independent password/access-isolation attestation. |
+| Recovered relation/column inventory | **PASS — inventory** | **21 public tables, 9 `neon_auth` tables**; public column types/nullability/defaults inspected. Public tables include leads, suppressions, business profile, email, platform, portfolio and pricing objects. This agrees in broad shape with the earlier pre-scheduling production inventory, not a same-point completeness comparison. |
+| Constraint/index catalog health | **PASS — basic catalog health** | Public: **238 constraints, 0 unvalidated; 35 indexes, 0 invalid/unready**. Managed auth: **71 constraints, 0 unvalidated; 21 indexes, 0 invalid/unready**. Public constraint definitions and index fingerprints were inspected. Catalog flags do not replace table/index physical verification, foreign-key orphan scans or an independent baseline. |
+| Functions/triggers/extensions | **PASS — inventory** | **No public functions**, **0 non-internal public triggers**; installed extension `plpgsql` version `1.0`. No function/extension was installed or invoked for repair. Managed-auth behavior and extension completeness versus an independent historical source are not proven. |
+| Migration-history inventory | **PASS — absence observed; history parity BLOCKED** | No non-system table matching migration-ledger naming and no schema matching migration/scheduling naming. Full relation inventory contains no scheduling tables. This does not prove all historical migrations ran or that an externally stored/custom-named ledger never existed. No 001–010 ledger or scheduling install was expected from the earlier production observation; none was fabricated. |
+| Representative aggregate reads | **PASS — recovered counts only** | Six tables counted successfully, below. No raw representative records were disclosed. |
+| Same-point production baseline / data parity | **FAIL / BLOCKED** | No approved independent catalog/count/digest reference at `19:00:00Z` / `0/4DAF628` was available. Current moving production HEAD and older synthetic acceptance are not substitutes. No production query, extra historical branch or resource was created to manufacture a reference. Representative-record equality and complete recovery integrity are NOT proven by readable counts. |
+| Scheduling/tenant isolation | **NOT APPLICABLE to absent scheduling schema; NOT VERIFIED for application isolation** | No scheduling schema, booking/appointment/tenant-named tables or scheduling data found. No tenant/booking fixtures, migrations, cross-tenant sessions or dashboard calls were executed. Public and managed-auth inventory report RLS disabled; owner-role reads cannot establish application tenant isolation or an authorization PASS. |
+| Production unchanged by these actions | **PASS — action scope only** | Both SQL transactions target recovery IDs and are read-only. Production identity metadata remains root/default `main`; no production writes, credentials/config changes, migration, default swap, reset, deployment or provider activation was performed. Global production-record immutability is **NOT VERIFIED** without an independent before/after fingerprint or audit; other actors may write normally. |
+| Retention / complete recovery readiness | **FAIL / BLOCKED** | One-day expiry does not meet seven-day artifact window. Durable artifact/retention controls, managed Auth service recovery, external assets/key coverage and recovery-owner sign-off still required. |
+
+Recovered aggregate counts (as observed during this validation, **not a source-parity assertion**):
+
+| Table | Rows |
+| --- | ---: |
+| `public.leads` | 1 |
+| `public.email_suppressions` | 0 |
+| `public.email_messages` | 36 |
+| `public.email_send_requests` | 6 |
+| `public.platform_prospects` | 33 |
+| `public.pricing_estimates` | 0 |
+
+#### Remaining approval gates and safe continuation
+
+1. Establish an approved **independent same-point baseline** for the returned timestamp/LSN, including schema/migration coverage and privacy-safe critical-record counts/comparisons. A pre-recorded source reference or separately approved supported historical reference can qualify; do not compare with moving HEAD or create/start historical resources without approval. If no independent reference exists, report that limitation and obtain an approved verification plan rather than claim parity. No additional identical restore is automatically necessary just to repeat successful historical provenance/readability.
+2. Resolve seven-day retention with an approved durable artifact/expiry arrangement and cleanup/cost owner; this report alone does not retain data. Do not silently extend the branch, create snapshots or delete another artifact. Reassess freshness and remaining retention immediately before any later execution.
+3. Attest restricted access, branch-specific credential custody and inert services, managed Auth recovery, Blob/external asset coverage and encryption-key availability; SQL Auth-table presence does not prove service configuration/session or sign-in recoverability. Complete deeper integrity/source comparisons and recovery-owner sign-off as required by the approved coverage plan.
+4. Independently finish genuine administrator identity, scoped staging configuration, bootstrap/manifest rehearsal and authenticated scheduling acceptance. None of the earlier synthetic 573-test acceptance or offline tests was rerun/reclassified as historical recovery parity.
+5. Obtain separate production release/migration approval only after all applicable gates pass. **Public scheduling, customer email and live Stripe billing remain unactivated by this work.**
+
+Only the two existing readiness documents were changed. No application source, schema, credentials, shared environment variables or resources were mutated. No browser/build/application-test rerun was appropriate for this documentation-only change; actual recovery SQL evidence above is the relevant validation. Documentation whitespace/diff validation is recorded in the completion summary.
+
 ## 3. Administrator identity confirmation — implemented, grants nothing
 
 New read-only endpoint: **`GET /api/admin/scheduling/identity`**. No scheduling schema is required and it performs no database mutation. It requires strong configured keys, independent existing dashboard authorization, and **`getAuthSession(true)`**, bypassing the cookie cache and checking with Neon Auth. Only `session.user.id` is used; verified status must be true and the immutable ID must be a UUID. It does not accept an email/user ID/role from the caller. No session token, cookie, email or secret is returned or logged. Cross-origin requests are rejected; responses use private/no-store and noindex headers; upstream errors are sanitized.

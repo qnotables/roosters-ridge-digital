@@ -65,7 +65,19 @@ Machine-readable successful evidence: [acceptance safety results](activation/acc
 
 ## Remaining production blockers
 
-### Latest production/Console mismatch investigation — 2026-10-14, continued from `4e2e4e5`
+### Latest historical production recovery validation — 2026-10-14, continued from `3f85f52`
+
+**Partial technical PASS; overall recovery readiness FAIL / BLOCKED.** Correct project `royal-bonus-04874440`, recovery branch `rrd-production-pitr-verify` / `br-old-lake-ausa6oe8`, parent `br-solitary-grass-au781exk` (corrects supplied `…au781ekx` transposition). Provider records selected point **2026-10-14 19:00:00 UTC**, LSN **`0/4DAF628`**, preceding branch creation at **19:18:13 UTC** by **18m13s**. This resolves the earlier identity/mismatch blocker for this new target, not the unrelated autumn recovery branch.
+
+Managed SQL routed explicitly to recovery compute `ep-super-cell-aurzbtir` / `neondb` / `neondb_owner`, with read-only transactions and bounded timeouts; first SQL check time **19:25:47.952 UTC**. No credentials/customer rows were retrieved or printed. Catalog: **21 public + 9 managed-auth tables**, public **238 validated constraints / 35 valid-ready indexes**, auth **71 validated constraints / 21 valid-ready indexes**, zero unvalidated/invalid/unready objects. No public functions or user triggers; `plpgsql 1.0` installed. No scheduling schema/tables or migration-named ledger found; tenant isolation is not established by owner-role reads or absent scheduling data.
+
+Aggregate reads succeeded: leads **1**, suppressions **0**, email messages **36**, send requests **6**, platform prospects **33**, pricing estimates **0**. These are recovered counts, **not independently verified source parity**: no approved reference at the captured timestamp/LSN was available. Complete record/schema integrity and managed-service recovery remain unproven. No production SQL or baseline-resource creation was attempted. All executed validation SQL was read-only and recovery-scoped; global production-data immutability remains unverified without independent audit evidence.
+
+Verified branch expiry **2026-10-15 19:18:14 UTC / 15:18:14 EDT**, approximately one day: **fails existing seven-day retention requirement**. No expiry/access/password configuration changed; `protected=false` and owner-role transport do not establish independent branch-password/network isolation. Required next steps: approved same-point comparison, durable retention/coverage/access attestations and owner sign-off, then independent administrator/authenticated scheduling acceptance and separate production approval. Full procedure/results/limitations: [historical recovery report](ACTIVATION_PREREQUISITES.md#historical-production-recovery-validation--2026-10-14-continuation-from-3f85f52).
+
+No migrations, production data/credential/env changes, deployment, scheduling activation, email or billing actions occurred. Documentation only changed; no browser/build/application suites were rerun or claimed as recovery proof. Historical blocker narratives below are retained as prior execution history, not statements that this newly verified branch is missing.
+
+### Earlier production/Console mismatch investigation — 2026-10-14, continued from `4e2e4e5`
 
 Read-only Vercel production configuration inspection establishes **`royal-bonus-04874440` → `br-solitary-grass-au781exk` → `ep-divine-scene-au7rxgk5` / `neondb`** as the website's configured database. Decrypted production `DATABASE_URL` was reduced in memory to hostname/database; `NEON_PROJECT_ID`, production Auth hostname and fresh Neon endpoint metadata corroborate the mapping. Production variables have unchanged timestamps predating current production deployment `dpl_4cpZE25UZByREuE66t8SVo1i6zjm` (source `f819a9aaf1848f88d329b2157d461d8256e32fa5`), which owns the RRD custom-domain aliases. Its deployed DB selector uses `DATABASE_URL`. The API exposes deployment variable names, not immutable snapshot values; no runtime SQL attestation is claimed.
 
