@@ -275,7 +275,43 @@ No production migrations, records, credentials, configuration, shared environmen
 
 **Stopped after mismatch identification and corrected plan.** No database connections/SQL, migrations, branch/snapshot creation, credential rotation, variable changes, deployment, scheduling activation, email or billing actions occurred. Documentation only changed; no application behavior changed. Production mapping checks were read-only metadata inspections; no recovery integrity check or global production-record immutability claim is made.
 
-### Remaining recovery readiness gaps — 2026-10-14, continuation from `a294b0c`
+### Approved Time Travel comparison — 2026-10-14
+
+**Result: public database parity PASS; complete recovery readiness remains BLOCKED.** The operator explicitly approved read-only Time Travel at **`0/4DAF628`**, including ephemeral **0.50-CU compute** and Free-plan quota consumption, without a plan upgrade or production writes. This section supersedes the earlier unexecuted same-point comparison gate below; it does not waive retention, migration provenance, managed Auth, administrator or dashboard gates.
+
+#### Verified routing and execution
+
+- Refreshed metadata confirms project **`royal-bonus-04874440`**, production parent **`br-solitary-grass-au781exk`**, recovery **`br-old-lake-ausa6oe8`**, recorded parent LSN **`0/4DAF628`**, parent timestamp **`2026-10-14T19:00:00Z`**, recovery compute **`ep-super-cell-aurzbtir`** and unchanged expiry **`2026-10-15T19:18:14Z`**.
+- The managed `compare_database_schema` attempt returned `unknown internal server error`; it supplies no parity result. No success or resource-cleanup inference is made from that failure.
+- First-party [Time Travel documentation](https://neon.com/docs/guides/time-travel-assist) and the [official CLI routing implementation](https://github.com/neondatabase/neon-pkgs/blob/main/packages/cli/src/commands/connection_string.ts) establish the exact transport: replace the verified source endpoint label with its **branch ID**, retaining the verified regional proxy suffix, and send startup option **`neon_lsn:0/4DAF628`**. This is not a query against the production endpoint at HEAD.
+- Used existing project credentials only in process memory: no credential-retrieval tool, password reset, URL/secret output, env change or installation. Historical host **`br-solitary-grass-au781exk.c-10.us-east-1.aws.neon.tech`**; recovery host **`ep-super-cell-aurzbtir.c-10.us-east-1.aws.neon.tech`**; database **`neondb`**, role **`neondb_owner`**. The initial probe at **19:41:40.102Z** confirmed historical `transaction_read_only=on`; successful exact-LSN execution establishes availability at the check time, not a future retention guarantee. Explicit TLS `verify-full` used for the comparisons.
+- Comparison snapshots began **19:43:22.977Z** (historical source) and **19:43:23.038Z** (recovery), both **REPEATABLE READ, READ ONLY**, with **15-second statement / 2-second lock timeouts**, UTC normalization and fixed search path; transactions ended with `ROLLBACK`. A preliminary comparison correctly stopped record reads on a schema discrepancy; the subsequent bounded check localized it and compared only tables whose discovered column contracts matched.
+- Every compared table used explicit catalog-discovered columns and canonical JSONB row projections. Random-key HMAC row multisets were compared only in process memory, preserving duplicates and ignoring row order. Only counts, equality flags and schema object/field names were output; no customer records, credentials, private keys, session tokens or row digests were emitted or written to project files. Counts were bounded at 10,000 rows/table; every compared table was below that limit.
+
+#### Same-point results and limits
+
+| Check | Historical source vs recovery result |
+| --- | --- |
+| Public relation/column inventory | **PASS:** 21 tables, 328 columns, matching discovered column types/defaults/nullability/identity/generated attributes and table RLS flags. |
+| Public constraints/indexes | **PASS:** 238 constraint definitions/validation flags; 35 index definitions/valid-ready flags match. |
+| Auth relation inventory/constraints/indexes | **PASS for checked objects:** 9 tables, 71 constraints, 21 indexes match. Auth column inventory does **not** match; see below. |
+| Functions/user triggers/views/policies | **PASS for catalog inventory:** zero in both checked schemas on both views. |
+| Extensions | **PASS:** one matching installed name/version. |
+| Public records | **PASS:** all **21/21 tables**, all discovered columns, counts and canonical row multisets match. No public columns were excluded. Includes email lifecycle/suppression, leads, prospects, pricing and profile/portfolio data. |
+| Auth non-secret records | **PASS for checked projections:** **8/8 schema-compatible tables** have matching counts and canonical non-secret row multisets. Does not attest credential/key material. |
+| `neon_auth.jwks` | **DISCREPANCY:** source has 76 total Auth columns, recovery 78. Recovery alone has nullable `text` columns **`alg`** and **`crv`**, both without defaults. JWKS count **1 vs 1**; JWKS row/key projections intentionally skipped because the schema differs. No repair performed; cause/provider migration provenance is unverified. |
+| Declared FK integrity | **PASS:** follow-up read-only snapshots at **19:44:38.226Z / 19:44:38.622Z** found the same six validated MATCH SIMPLE Auth relationships and **zero orphans in each, on both views**. No declared public FKs; intended unconstrained application relationships remain a separate review. |
+| Migration/scheduling ledger discovery | Matching absence: no non-system migration/schema-version or scheduling/tenant/booking/appointment candidates under the catalog naming search on either view. Does not establish migration chronology or rule out externally stored/custom-named evidence. |
+
+All public table counts (historical source = recovery): `business_profile` **1**, `email_attachments` **0**, `email_events` **42**, `email_inbound_attachments` **4**, `email_messages` **36**, `email_send_requests` **6**, `email_settings` **1**, `email_suppressions` **0**, `email_templates` **0**, `leads` **1**, `platform_checks` **33**, `platform_discovery_cache` **1**, `platform_prospects` **33**, `platform_scan_limits` **1**, `portfolio_projects` **3**, `pricing_capabilities` **38**, `pricing_estimate_items` **0**, `pricing_estimates` **0**, `pricing_industry_matrix` **0**, `pricing_platforms` **5**, `pricing_recurring_services` **10**. These are now independently queried same-point source comparisons, not repeated recovery-only counts.
+
+Auth projection counts (source = recovery): `account` **2**, `invitation` **0**, `member` **0**, `organization` **0**, `project_config` **1**, `session` **22**, `user` **2**, `verification` **0**. Excluded `account` access/refresh/ID tokens, their expiry columns and password; `project_config.email_and_password`; `session.token`; `verification.value`; all JWKS row fields. Equality applies only to the explicitly checked projections, not these exclusions or working Auth/session recovery.
+
+**Remaining gates:** explain/approve the Auth JWKS schema discrepancy through provider or independent migration evidence without altering the recovery artifact; verify managed Auth/service/configuration/key recoverability and external attachment bytes; review undeclared public relationships and migration chronology; establish approved seven-day artifact controls; complete genuine administrator/session/dashboard acceptance. Physical consistency beyond these logical/catalog checks, sequence state, role/grant parity and exhaustive application semantics were not attested. This is the same provider's historical source, not an off-provider backup.
+
+Only SELECT/catalog reads and transaction-local read-only controls were used; no production data/schema writes, provider delivery, login, fixture mutation, plan/retention changes, durable branch creation, restore finalization or deployment. Time Travel consumed ephemeral compute under the explicit approval. Neon documents automatic removal after 30 seconds idle; cleanup is not inferred merely from closing clients. See the subsequent operation verification when available. Overall production activation remains **unauthorized / BLOCKED**.
+
+### Earlier remaining recovery readiness gaps — 2026-10-14, continuation from `a294b0c`
 
 This assessment supersedes earlier unresolved-method/plan-limit statements, not the retained execution history. No production SQL, migration, retention change, upgrade, snapshot creation, deployment, login, provider call or fixture mutation was performed. Metadata reads and additional SELECT-only recovery integrity checks were authorized; additional resource creation is not implicit authorization.
 

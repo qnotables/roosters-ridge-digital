@@ -65,7 +65,18 @@ Machine-readable successful evidence: [acceptance safety results](activation/acc
 
 ## Remaining production blockers
 
-### Latest remaining-gap assessment — 2026-10-14, continued from `a294b0c`
+### Latest approved Time Travel comparison — 2026-10-14
+
+**Public same-point parity PASS; complete recovery / production activation remains BLOCKED.** With explicit approval for ephemeral 0.50-CU compute and quota use, securely routed read-only Time Travel to **`br-solitary-grass-au781exk@0/4DAF628`**, comparing **`br-old-lake-ausa6oe8`**. The official CLI branch-host/startup-option contract was verified; existing credentials stayed in process memory, TLS verification was enabled and historical read-only mode confirmed before comparisons. Managed schema-diff returned an internal error and supplies no evidence; direct exact-LSN PostgreSQL comparison succeeded.
+
+- **19:43:22.977Z / 19:43:23.038Z:** bounded REPEATABLE READ / READ ONLY snapshots; **21/21 public tables**, **328 columns**, **238 constraints**, **35 indexes** match. All public counts and complete canonical row multisets match, not just representative counts. Private keyed digests were compared only in memory; no records, secrets or digests were emitted.
+- **Auth: partial PASS, discrepancy unresolved.** Nine matching table identities, 71 constraints, 21 indexes; eight schema-compatible tables have matching non-secret projections/counts. Recovery alone has two extra nullable `text` JWKS columns, **`alg` / `crv`**, without defaults (**78 vs 76 Auth columns**). JWKS count is **1 vs 1**, but its row/key content was not compared. Credential/token/key material and `project_config.email_and_password` were excluded. Do not treat this as full Auth/session recoverability or silently repair it.
+- **19:44:38.226Z / 19:44:38.622Z:** all six validated Auth FKs have zero orphans on both views; no declared public FKs. No catalog-named migration/schema-version/scheduling candidates on either; independent migration chronology and unconstrained relationship semantics remain unverified.
+- Matched zero functions/user triggers/views/policies in the two checked schemas and the installed extension name/version. No physical/sequence/role-grant, external attachment-byte or end-to-end service acceptance claim follows.
+
+No production data/schema writes, plan/retention changes, durable resource creation, fixture writes, provider calls, login or deployment. Recovery expiry remains **Oct 15, 19:18:14 UTC**; seven-day retention still **FAIL**. Ephemeral cleanup follows Neon's documented idle lifecycle, not an assumed durable backup. Administrator authorization and authenticated dashboard acceptance remain **BLOCKED**; earlier isolated tenant-testing PASS is unchanged. Full routing, equality evidence, counts, exclusions and remaining gates: [approved Time Travel report](ACTIVATION_PREREQUISITES.md#approved-time-travel-comparison--2026-10-14).
+
+### Earlier remaining-gap assessment — 2026-10-14, continued from `a294b0c`
 
 | Requirement | Status | Scope / next requirement |
 | --- | --- | --- |
