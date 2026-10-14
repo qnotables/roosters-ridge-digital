@@ -7,6 +7,7 @@ import { setCustomerCookies } from '@/modules/scheduling/customer-http'
 import { emailDb } from '@/lib/email-workspace-db'
 import { readLeadHandoff, associateRrdLead } from '@/lib/scheduling-lead-handoff'
 import { registerBookingConversion } from '@/modules/scheduling/marketing-postgres'
+import { recordOperation } from '@/modules/scheduling/platform-entitlements'
 
 export const runtime = 'nodejs'
 const unavailable = () => Response.json({ state: 'unavailable', message: 'Online booking is not available right now. Contact us and we will help arrange a time.' }, { status: 503, headers: publicHeaders })
@@ -15,23 +16,28 @@ async function budget(context: NonNullable<Awaited<ReturnType<typeof rrdPublicSc
   if (!await context.store.consumeRequestBudget(context.tenantId, key)) throw new SchedulingError('rate_limited', 'Too many requests. Please wait a minute and try again.')
 }
 export async function GET(request: Request) {
+  let tenantId:string|null=null
   try {
     const context = await rrdPublicScheduling()
     if (!context) return unavailable()
+    tenantId=context.tenantId
     const query = new URL(request.url).searchParams
     await budget(context, request, query.has('appointment') ? 'availability' : 'catalog')
     if (query.has('tenantId') || query.has('hostId')) throw new SchedulingError('invalid', 'Invalid booking request.')
     if (!query.has('appointment')) return Response.json({ state: 'ready', appointments: context.appointments }, { headers: publicHeaders })
     const appointment = publicAppointment(context.appointments, query.get('appointment'))
     const availability = await publicMonthAvailability(context.engine, appointment, query.get('month') ?? '', query.get('timeZone') ?? '')
+    await recordOperation(emailDb,tenantId,'availability','success')
     return Response.json(availability, { headers: publicHeaders })
-  } catch (error) { return publicError(error) }
+  } catch (error) { await recordOperation(emailDb,tenantId,'availability',error instanceof SchedulingError?error.code:'error'); return publicError(error) }
 }
 export async function POST(request: Request) {
+  let tenantId:string|null=null
   try {
     assertBookingOrigin(request)
     const context = await rrdPublicScheduling()
     if (!context) return unavailable()
+    tenantId=context.tenantId
     await budget(context, request, 'submission')
     const input = await boundedBookingBody(request)
     const booking = validatePublicSubmission(input)
@@ -45,7 +51,8 @@ export async function POST(request: Request) {
         await registerBookingConversion(db, context.tenantId, bookingId, consent)
       },
     })
+    await recordOperation(emailDb,tenantId,'booking','success')
     await setCustomerCookies(result.tokens, true)
     return Response.json({ reference: result.reference, start: result.start, end: result.end, status: result.status, confirmationPath: '/book/confirmed' }, { status: 201, headers: publicHeaders })
-  } catch (error) { return publicError(error) }
+  } catch (error) { await recordOperation(emailDb,tenantId,'booking',error instanceof SchedulingError?error.code:'error'); return publicError(error) }
 }

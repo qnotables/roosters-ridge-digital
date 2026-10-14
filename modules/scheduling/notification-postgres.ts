@@ -4,6 +4,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import type { AdminScope } from './admin-types'
 import { defaultPreferences, validateNotifications, type DeliveryRow, type NotificationSettings } from './notifications'
 import { SchedulingError } from './types'
+import { assertFeature } from './platform-entitlements'
 
 export async function notificationSchemaReady(db: Pick<NodePgDatabase, 'execute'>) {
   const result = await db.execute(sql`SELECT to_regclass('rrd_scheduling.notification_jobs') IS NOT NULL AS ready`)
@@ -15,13 +16,13 @@ export async function readNotificationSettings(db: Pick<NodePgDatabase, 'execute
   if (!row) throw new SchedulingError('forbidden', 'Notification settings not found in this tenant.')
   const preferences = row.preferences as Partial<typeof defaultPreferences>
   let inherited = { sender: '', incoming_address: '', email: '', last_received_at: null as unknown }
-  const tenant = await db.execute(sql`SELECT slug FROM rrd_scheduling.tenants WHERE id=${tenantId}`)
+  const tenant = await db.execute(sql`SELECT slug,name FROM rrd_scheduling.tenants WHERE id=${tenantId}`)
   if (tenant.rows[0]?.slug === 'roosters-ridge-digital') {
     const business = await db.execute(sql`SELECT e.sender,e.incoming_address,e.last_received_at,b.email FROM public.email_settings e LEFT JOIN public.business_profile b ON b.id=1 WHERE e.id=1`)
     inherited = { ...inherited, ...business.rows[0] } as typeof inherited
   }
   return {
-    ...defaultPreferences, ...preferences, templates: { ...defaultPreferences.templates, ...preferences.templates },
+    ...defaultPreferences, ...preferences, senderName: preferences.senderName || String(tenant.rows[0]?.name ?? defaultPreferences.senderName), templates: { ...defaultPreferences.templates, ...preferences.templates },
     senderAddress: preferences.senderAddress || inherited.sender || '', replyTo: preferences.replyTo || (inherited.last_received_at ? inherited.incoming_address : '') || inherited.email || '',
     customerConfirmation: Boolean(row.customer_confirmation), hostNotification: Boolean(row.host_notification), cancellationNotice: Boolean(row.cancellation_notice),
     reminderMinutes: (row.policies as { reminderMinutes?: number[] }).reminderMinutes ?? [], version: Number(row.version), deliveryEnabled: Boolean(row.delivery_enabled),
@@ -34,7 +35,13 @@ export async function recentNotificationJobs(db: Pick<NodePgDatabase, 'execute'>
 export async function saveNotificationSettings(db: NodePgDatabase, scope: AdminScope, input: unknown) {
   const settings = validateNotifications(input)
   await db.transaction(async tx => {
-    await tx.execute(sql`SELECT id FROM rrd_scheduling.tenants WHERE id=${scope.tenantId} FOR UPDATE`)
+    const tenant = await tx.execute(sql`SELECT id,slug,to_jsonb(t)->'branding' AS branding FROM rrd_scheduling.tenants t WHERE id=${scope.tenantId} FOR UPDATE`)
+    if (tenant.rows[0]?.slug !== 'roosters-ridge-digital' && (tenant.rows[0]?.branding as Record<string, unknown>)?.installation && settings.senderAddress) {
+      const senderDomain = settings.senderAddress.split('@')[1].toLowerCase()
+      const approved = await tx.execute(sql`SELECT hostname FROM rrd_scheduling.domains WHERE tenant_id=${scope.tenantId} AND hostname=${senderDomain} AND active AND approved_at IS NOT NULL AND approved_by IS NOT NULL`)
+      if (!approved.rows.length) throw new SchedulingError('forbidden', 'Verify and approve this tenant sender domain before saving notification settings.')
+    }
+    if(settings.reminderMinutes.length) await assertFeature(tx,scope.tenantId,'reminders')
     await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} ORDER BY id FOR UPDATE`)
     const changed = await tx.execute(sql`UPDATE rrd_scheduling.configuration SET version=version+1,policies=policies || ${JSON.stringify({ customerConfirmation: settings.customerConfirmation, hostNotification: settings.hostNotification, cancellationNotice: settings.cancellationNotice, reminderMinutes: settings.reminderMinutes })}::jsonb WHERE tenant_id=${scope.tenantId} AND version=${settings.version} RETURNING version`)
     if (!changed.rows.length) throw new SchedulingError('unavailable', 'Settings changed. Refresh before saving.')

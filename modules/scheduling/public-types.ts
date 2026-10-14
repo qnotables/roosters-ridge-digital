@@ -11,11 +11,12 @@ export type PublicAppointment = {
   cancellationMinutes: number
   reschedulingMinutes: number
   approval: 'automatic' | 'manual'
+  questions?: import('./intake').IntakeQuestion[]
 }
 export type PublicCatalog = { state: 'ready'; appointments: PublicAppointment[] } | { state: 'unavailable'; message: string }
 export type PublicAvailability = { month: string; timeZone: string; days: Record<string, Slot[]> }
-export type PublicConfirmation = Slot & { reference: string; status: 'pending' | 'confirmed' }
-export type BookingBrand = { name: string; eyebrow: string; heading: string; description: string; contactHref: string }
+export type PublicConfirmation = Slot & { reference: string; status: 'pending' | 'confirmed'; managementLinks?: { view: string; cancel: string; reschedule: string } }
+export type BookingBrand = { name: string; eyebrow: string; heading: string; description: string; contactHref: string; appearance?: import('./branding').BookingAppearance; buttonColor?: string }
 export const bookingSteps = ['Appointment', 'Date', 'Time', 'Your details', 'Review'] as const
 export function displaySlot(start: string, timeZone: string) {
   return new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit', timeZoneName: 'shortOffset' }).format(new Date(start))

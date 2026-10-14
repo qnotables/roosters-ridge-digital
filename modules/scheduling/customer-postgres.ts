@@ -10,6 +10,8 @@ import { SchedulingError } from './types'
 import { assertCustomerPolicy, assertIdempotencyKey, customerToken, customerTokenValid, openCustomerValue, requestFingerprint, sealCustomerValue, type CustomerPurpose, type SealedValue } from './customer-security'
 import type { CustomerAppointment } from './customer-types'
 import { validateDate } from './validation'
+import { accountEntitlements } from './platform-entitlements'
+import { allowsNewBookings } from './platform-policy'
 
 type Executor = Pick<NodePgDatabase, 'execute'>
 export type Capabilities = Partial<Record<CustomerPurpose, string>>
@@ -29,16 +31,20 @@ export async function issueCustomerTokens(db: Executor, booking: { tenantId: str
   }
   return tokens
 }
-export async function customerBooking(db: Executor, token: string, purpose: CustomerPurpose) {
+export async function customerBooking(db: Executor, token: string, purpose: CustomerPurpose, tenantId?: string) {
   const hash = tokenHash(token)
-  const result = await db.execute(sql`SELECT b.id,b.tenant_id,b.host_id,b.appointment_type_id,b.version,b.customer_name,b.reference,b.status,b.start_time,b.end_time,b.updated_at,b.time_zone,a.name,a.location,a.meeting_mode,a.duration_minutes,c.policies,k.purpose,k.booking_version,k.expires_at,k.used_at
+  const result = await db.execute(sql`SELECT b.id,b.tenant_id,b.host_id,b.appointment_type_id,b.version,b.customer_name,b.reference,b.status,b.start_time,b.end_time,b.updated_at,b.time_zone,a.name,a.location,a.meeting_mode,a.duration_minutes,c.policies,t.enabled AS tenant_enabled,k.purpose,k.booking_version,k.expires_at,k.used_at
     FROM rrd_scheduling.customer_tokens k JOIN rrd_scheduling.bookings b ON b.tenant_id=k.tenant_id AND b.host_id=k.host_id AND b.id=k.booking_id
     JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id
     JOIN rrd_scheduling.appointment_types a ON a.tenant_id=b.tenant_id AND a.id=b.appointment_type_id
     JOIN rrd_scheduling.configuration c ON c.tenant_id=b.tenant_id
-    WHERE k.token_hash=${hash} AND t.slug='roosters-ridge-digital' AND t.enabled`)
+    WHERE k.token_hash=${hash} AND ${tenantId ? sql`t.id=${tenantId}` : sql`t.slug='roosters-ridge-digital'`}`)
   const b = result.rows[0]
   if (!b || !customerTokenValid({ purpose: String(b.purpose), expiresAt: iso(b.expires_at), usedAt: b.used_at, tokenVersion: Number(b.booking_version), bookingVersion: Number(b.version) }, purpose)) return denied()
+  if(b.tenant_enabled===false || purpose==='reschedule') {
+    const account=await accountEntitlements(db,String(b.tenant_id))
+    if(b.tenant_enabled===false && !account || purpose==='reschedule' && (b.tenant_enabled===false || account && !allowsNewBookings(account.status))) return denied()
+  }
   const policies = b.policies as { cancellationMinutes?: number; reschedulingMinutes?: number }
   return { tenantId: String(b.tenant_id), hostId: String(b.host_id), typeId: String(b.appointment_type_id), hash, id: String(b.id), version: Number(b.version), start: iso(b.start_time), end: iso(b.end_time), updatedAt: iso(b.updated_at), customerName: String(b.customer_name), reference: String(b.reference), status: String(b.status), appointmentType: String(b.name), location: String(b.location) || `Meeting format: ${String(b.meeting_mode).replaceAll('_', ' ')}. Our team will provide joining instructions.`, durationMinutes: Number(b.duration_minutes), timeZone: String(b.time_zone), cancellationMinutes: policies.cancellationMinutes ?? 720, reschedulingMinutes: policies.reschedulingMinutes ?? 720 }
 }
@@ -47,7 +53,7 @@ export function publicCustomerAppointment(b: Awaited<ReturnType<typeof customerB
   return safe
 }
 export type BookingIntegration = { key: string; associate: (db: Pick<NodePgDatabase, 'execute'>, bookingId: string) => Promise<void> }
-export async function createCustomerBooking(tenantId: string, link: string, input: unknown, key: unknown, clientKey: string, db: NodePgDatabase = emailDb, integration?: BookingIntegration) {
+export async function createCustomerBooking(tenantId: string, link: string, input: unknown, key: unknown, clientKey: string, db: NodePgDatabase = emailDb, integration?: BookingIntegration, referencePrefix = 'RRD') {
   assertIdempotencyKey(key)
   if (!await customerSchemaReady(db)) throw new SchedulingError('unavailable', 'Customer appointment management setup is required.')
   const requestHash = requestFingerprint(key), payloadHash = requestFingerprint({ link, input, integration: integration?.key })
@@ -58,7 +64,7 @@ export async function createCustomerBooking(tenantId: string, link: string, inpu
       if (prior.rows[0].payload_hash !== payloadHash || Date.parse(iso(prior.rows[0].expires_at)) <= Date.now()) throw new SchedulingError('invalid', 'This booking request has already been used. Please refresh.')
       return openCustomerValue<{ reference: string; start: string; end: string; status: 'pending' | 'confirmed'; tokens: Capabilities }>(prior.rows[0].sealed_result as SealedValue, secret())
     }
-    const engine = createSchedulingService(createPostgresSchedulingStore(tx as unknown as NodePgDatabase, tenantId))
+    const engine = createSchedulingService(createPostgresSchedulingStore(tx as unknown as NodePgDatabase, tenantId), () => new Date(), referencePrefix)
     await tx.execute(sql`SELECT set_config('rrd_scheduling.customer_change','true',true)`)
     const result = await engine.book(link, input, clientKey)
     const booking = await tx.execute(sql`SELECT id,host_id,version FROM rrd_scheduling.bookings WHERE tenant_id=${tenantId} AND reference=${result.reference}`)
@@ -70,9 +76,9 @@ export async function createCustomerBooking(tenantId: string, link: string, inpu
     return saved
   })
 }
-export async function customerAvailability(token: string, date: string, db: NodePgDatabase = emailDb) {
+export async function customerAvailability(token: string, date: string, db: NodePgDatabase = emailDb, tenantId?: string) {
   validateDate(date)
-  const b = await customerBooking(db, token, 'reschedule')
+  const b = await customerBooking(db, token, 'reschedule', tenantId)
   assertCustomerPolicy(b.start,b.status,b.reschedulingMinutes)
   const context = await readAdminContext(db,b,b.typeId,date)
   if (!context) return []
@@ -84,11 +90,11 @@ export async function exchangeCustomerLink(token: string, purpose: CustomerPurpo
   const tokens = await issueCustomerTokens(db,b,['view'])
   return { ...tokens, [purpose]: token }
 }
-export async function changeCustomerBooking(token: string, purpose: 'reschedule' | 'cancel', start?: string, db: NodePgDatabase = emailDb) {
-  const scope = await customerBooking(db,token,purpose)
+export async function changeCustomerBooking(token: string, purpose: 'reschedule' | 'cancel', start?: string, db: NodePgDatabase = emailDb, tenantId?: string) {
+  const scope = await customerBooking(db,token,purpose,tenantId)
   return db.transaction(async tx => {
     await tx.execute(sql`SELECT id FROM rrd_scheduling.hosts WHERE tenant_id=${scope.tenantId} AND id=${scope.hostId} FOR UPDATE`)
-    const b = await customerBooking(tx,token,purpose)
+    const b = await customerBooking(tx,token,purpose,tenantId)
     assertCustomerPolicy(b.start,b.status,purpose === 'cancel' ? b.cancellationMinutes : b.reschedulingMinutes)
     await tx.execute(sql`SELECT set_config('rrd_scheduling.customer_change','true',true)`)
     if (purpose === 'reschedule') {

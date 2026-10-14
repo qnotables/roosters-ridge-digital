@@ -1,0 +1,6 @@
+import Link from 'next/link'
+export function TenantNavigation({tenantId,admin=true}:{tenantId:string;admin?:boolean}) {
+  const q=`?tenant=${encodeURIComponent(tenantId)}`
+  const links=admin?[['/admin/scheduling/account'+q,'Calendar'],['/admin/scheduling/account'+q+'&section=appointments','Appointments'],['/admin/scheduling/install'+q+'&section=availability','Availability'],['/admin/scheduling/install'+q+'&section=types','Appointment Types'],['/admin/scheduling/install'+q+'&section=preview','Booking Page'],['/admin/scheduling/branding'+q,'Branding'],['/admin/scheduling/install'+q+'&section=notifications','Notifications'],['/admin/scheduling/account'+q+'&section=staff','Staff'],['/admin/scheduling/analytics'+q,'Analytics'],['/admin/scheduling/install'+q,'Installation'],['/admin/scheduling/account'+q+'&section=settings','Account Settings']]:[['/admin/scheduling/account'+q,'Calendar'],['/admin/scheduling/account'+q+'&section=appointments','Appointments']]
+  return <nav aria-label="Your business scheduling" className="flex flex-wrap gap-3">{links.map(([href,label])=><Link key={label} href={href} className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted">{label}</Link>)}</nav>
+}

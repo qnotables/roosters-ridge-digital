@@ -6,7 +6,7 @@ import type {
   WeeklyWindow,
 } from "./types";
 
-export type AdminScope = { tenantId: string; userId: string };
+export type AdminScope = { tenantId: string; userId: string; assignedOnly?: true; preserveTenantTimeZone?: true };
 export type Host = {
   id: string;
   name: string;
@@ -35,6 +35,7 @@ export type CalendarBlock = {
   label: string;
 };
 export type AdminCatalog = {
+  tenantId?: string;
   timeZone: string;
   enabled: boolean;
   configuration?: { version: number; policies: import('./configuration').BookingPolicies };

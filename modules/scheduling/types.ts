@@ -16,6 +16,7 @@ export type AppointmentType = {
   slotIntervalMinutes: number
   priceCents: number
   meetingMode: MeetingMode
+  intakeQuestions?: import('./intake').IntakeQuestion[]
 }
 export type Reservation = {
   kind?: 'booking' | 'block'
@@ -36,8 +37,8 @@ export type AvailabilityContext = Scope & {
   policies?: import('./configuration').BookingPolicies
 }
 export type Slot = { start: string; end: string }
-export type CustomerIntake = { businessName: string; websiteUrl: string; reason: string; notes: string; customerTimeZone: string }
-export type BookingRequest = { start: string; name: string; email: string; phone: string; website: string; intake?: CustomerIntake }
+export type CustomerIntake = { businessName: string; websiteUrl: string; reason: string; notes: string; customerTimeZone: string; responses?: import('./intake').IntakeAnswer[] }
+export type BookingRequest = { start: string; name: string; email: string; phone: string; website: string; intake?: CustomerIntake; answers?: Record<string, string | boolean> }
 export type NewBooking = Reservation & Scope & {
   appointmentTypeId: string
   reference: string

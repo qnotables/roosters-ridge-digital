@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ access: vi.fn(), lead: vi.fn(), calendar: vi.fn() }))
 vi.mock('@/lib/admin-auth', () => ({ hasDashboardAccess: mocks.access }))
+vi.mock('@/lib/email-workspace-db',()=>({emailDb:{}}))
+vi.mock('@/modules/scheduling/rrd-adapter',()=>({schedulingIdentity:async()=>null}))
 vi.mock('@/app/admin/scheduling/integration-actions', () => ({ loadSchedulingLead: mocks.lead }))
 vi.mock('@/app/admin/scheduling/actions', () => ({ loadSchedulingCalendar: mocks.calendar }))
 vi.mock('@/components/admin/admin-shell', () => ({ AdminShell: () => null }))

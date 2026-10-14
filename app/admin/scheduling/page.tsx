@@ -7,6 +7,9 @@ import { SchedulingDashboard } from "@/components/admin/scheduling/scheduling-da
 import { loadSchedulingCalendar } from "./actions";
 import { calendarRange } from "@/modules/scheduling/calendar";
 import { loadSchedulingLead } from './integration-actions';
+import { emailDb } from '@/lib/email-workspace-db';
+import { schedulingIdentity } from '@/modules/scheduling/rrd-adapter';
+import { requirePlatformAccess } from '@/modules/scheduling/tenant-permissions';
 
 export const metadata: Metadata = {
   title: "Scheduling | RRD Admin",
@@ -36,8 +39,10 @@ export default async function SchedulingPage({
       initial = await loadSchedulingCalendar(range.from, range.to);
     }
   }
+  let schedulingPlatform=false;
+  try { await requirePlatformAccess(emailDb,await schedulingIdentity()); schedulingPlatform=true } catch {}
   return (
-    <AdminShell>
+    <AdminShell schedulingPlatform={schedulingPlatform}>
       <SchedulingDashboard
         initial={initial}
         initialDate={date}

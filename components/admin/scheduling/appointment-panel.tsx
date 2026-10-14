@@ -25,7 +25,7 @@ import {
   FieldLabel,
   FieldDescription,
 } from "@/components/ui/field";
-import { manageScheduling } from "@/app/admin/scheduling/actions";
+import { useCalendarManagement } from './calendar-management-context';
 import {
   instantLocalInput,
   localInputInstant,
@@ -39,6 +39,7 @@ import type {
 } from "@/modules/scheduling/admin-types";
 import type { BookingStatus } from "@/modules/scheduling/types";
 import { StatusBadge, statusLabels } from "./calendar-views";
+import { IntakeResponses } from './intake-responses';
 
 export function SchedulingSelect({
   id,
@@ -80,6 +81,7 @@ export function ConfirmCalendarAction({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const manageScheduling=useCalendarManagement();
   const [busy, setBusy] = useState(false);
   async function confirm() {
     if (!command) return;
@@ -142,6 +144,7 @@ export function AppointmentPanel({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const manageScheduling=useCalendarManagement();
   const row = booking && booking !== "new" ? booking : null;
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState<ManagementCommand | null>(
@@ -231,6 +234,7 @@ export function AppointmentPanel({
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>{row ? row.name : "New appointment"}</SheetTitle>
+            {row && catalog.tenantId && <IntakeResponses tenantId={catalog.tenantId} bookingId={row.id} />}
             <SheetDescription>
               {row
                 ? `${row.reference} · ${calendarTime(row.start, catalog.timeZone)}`
@@ -456,6 +460,7 @@ export function BlockPanel({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const manageScheduling=useCalendarManagement();
   const [host, setHost] = useState(catalog.hosts[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

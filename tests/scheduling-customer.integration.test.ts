@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
+import { assertIsolatedConnection } from '@/modules/scheduling/activation/isolated-target.mjs'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'
-import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/email-workspace-db', () => ({ emailDb: {} }))
 vi.mock('@/lib/email-workspace-provider', () => ({ emailProvider: () => { throw new Error('Live email is prohibited in isolated integration tests.') } }))
@@ -14,22 +15,26 @@ import { tokenHash } from '@/modules/scheduling/security'
 import { associateRrdLead } from '@/lib/scheduling-lead-handoff'
 import { registerBookingConversion, claimBookingConversion } from '@/modules/scheduling/marketing-postgres'
 import { schedulingLeadHistory, findSchedulingLead } from '@/modules/scheduling/integration-postgres'
+import { createPostgresSchedulingStore } from '@/modules/scheduling/postgres-store'
+import { createSchedulingService } from '@/modules/scheduling/service'
+import { recordSchedulingDelivery } from '@/modules/scheduling/notification-webhook'
 
-const connection = process.env.SCHEDULING_TEST_DATABASE_URL
+const connection = process.env.SCHEDULING_TEST_DATABASE_URL ? assertIsolatedConnection(process.env.SCHEDULING_TEST_DATABASE_URL) : undefined
 const isolated = describe.skipIf(!connection)
 const hostId=randomUUID(), typeId=randomUUID(), link=`test-customer-${randomUUID()}`
 const clientKey=(label:string)=>requestFingerprint(`${hostId}:${label}`)
 const pool=new Pool({connectionString:connection,max:6,connectionTimeoutMillis:15000,options:'-c statement_timeout=20000 -c lock_timeout=10000'})
 const db=drizzle(pool)
 let tenantId:string, zone:string
+let original: Record<string, unknown> | undefined
 const day=(days:number,hour=13)=>{const d=new Date();d.setUTCDate(d.getUTCDate()+days);d.setUTCHours(hour,0,0,0);return d.toISOString()}
 
 isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
   beforeAll(async()=>{
-    if (!connection || !['ep-old-meadow-au7p9iee.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4-pooler.c-10.us-east-1.aws.neon.tech', 'ep-billowing-art-au6ohxh4.c-10.us-east-1.aws.neon.tech', 'ep-cool-scene-aud2ukhs.c-10.us-east-1.aws.neon.tech'].includes(new URL(connection).hostname)) throw new Error('These integration tests may run only on an approved isolated scheduling branch.')
-    vi.stubEnv('ADMIN_DASHBOARD_KEY','isolated-customer-test-secret-32-characters')
+    assertIsolatedConnection(connection)
     const tenant=await db.execute(sql`SELECT id,time_zone FROM rrd_scheduling.tenants WHERE slug='roosters-ridge-digital'`)
     tenantId=String(tenant.rows[0].id);zone=String(tenant.rows[0].time_zone)
+    original=(await db.execute(sql`SELECT t.enabled,c.policies,c.version,n.delivery_enabled,n.preferences,n.customer_confirmation,n.host_notification,n.cancellation_notice FROM rrd_scheduling.tenants t JOIN rrd_scheduling.configuration c ON c.tenant_id=t.id JOIN rrd_scheduling.notification_settings n ON n.tenant_id=t.id WHERE t.id=${tenantId}`)).rows[0]
     await db.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=true WHERE id=${tenantId}`)
     await db.execute(sql`UPDATE rrd_scheduling.configuration SET policies=${JSON.stringify({approval:'automatic',cancellationMinutes:720,reschedulingMinutes:720,allowMultiple:true,reminderMinutes:[]})}::jsonb WHERE tenant_id=${tenantId}`)
     await db.execute(sql`UPDATE rrd_scheduling.notification_settings SET delivery_enabled=false,customer_confirmation=true,cancellation_notice=true,preferences=preferences || '{"reschedulingNotice":true}'::jsonb WHERE tenant_id=${tenantId}`)
@@ -38,7 +43,17 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
     await db.execute(sql`INSERT INTO rrd_scheduling.public_links(tenant_id,host_id,appointment_type_id,slug,enabled) VALUES(${tenantId},${hostId},${typeId},${link},true)`)
     for(let weekday=1;weekday<=7;weekday++) await db.execute(sql`INSERT INTO rrd_scheduling.weekly_availability(tenant_id,host_id,weekday,start_minute,end_minute) VALUES(${tenantId},${hostId},${weekday},0,1440)`)
   },60000)
-  afterAll(async()=>{vi.unstubAllEnvs();await pool.end()})
+  beforeEach(()=>vi.stubEnv('ADMIN_DASHBOARD_KEY','isolated-customer-test-secret-32-characters'))
+  afterAll(async()=>{
+    vi.unstubAllEnvs()
+    try {
+      if (original) await db.transaction(async tx => {
+        await tx.execute(sql`UPDATE rrd_scheduling.tenants SET enabled=${original!.enabled} WHERE id=${tenantId}`)
+        await tx.execute(sql`UPDATE rrd_scheduling.configuration SET policies=${JSON.stringify(original!.policies)}::jsonb,version=${original!.version} WHERE tenant_id=${tenantId}`)
+        await tx.execute(sql`UPDATE rrd_scheduling.notification_settings SET delivery_enabled=${original!.delivery_enabled},preferences=${JSON.stringify(original!.preferences)}::jsonb,customer_confirmation=${original!.customer_confirmation},host_notification=${original!.host_notification},cancellation_notice=${original!.cancellation_notice} WHERE tenant_id=${tenantId}`)
+      })
+    } finally { await pool.end() }
+  })
 
   async function book(days:number=3,hour:number=13) {
     return createCustomerBooking(tenantId,link,{start:day(days,hour),name:'Synthetic Test Customer',email:`synthetic-${randomUUID()}@example.invalid`,phone:'',timeZone:zone},randomUUID(),requestFingerprint(randomUUID()),db)
@@ -160,6 +175,77 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
     expect((await customerBooking(db,result.tokens.view!,'view')).version).toBe(original.version)
     await db.execute(sql`UPDATE rrd_scheduling.appointment_types SET active=true WHERE tenant_id=${tenantId} AND id=${typeId}`)
   },30000)
+  async function bookAt(start: string, label: string) {
+    return createCustomerBooking(tenantId,link,{start,name:'Synthetic clock boundary customer',email:`synthetic-${randomUUID()}@example.invalid`,phone:'',timeZone:zone},randomUUID(),clientKey(label),db)
+  }
+  it('persists elapsed duration across the spring DST gap without offering nonexistent local times',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    vi.setSystemTime(new Date('2027-03-13T12:00:00Z'))
+    try {
+      expect(zone).toBe('America/New_York')
+      const engine=createSchedulingService(createPostgresSchedulingStore(db,tenantId))
+      const slots=await engine.availability(link,'2027-03-14')
+      const localHour=(start:string)=>new Intl.DateTimeFormat('en-US',{timeZone:zone,hour:'2-digit',hourCycle:'h23'}).format(new Date(start))
+      expect(slots.some(slot=>localHour(slot.start)==='02')).toBe(false)
+      expect(slots.map(slot=>slot.start)).toContain('2027-03-14T07:00:00.000Z')
+      const result=await bookAt('2027-03-14T06:30:00.000Z','spring-gap')
+      const saved=await customerBooking(db,result.tokens.view!,'view')
+      expect(saved.start).toBe('2027-03-14T06:30:00.000Z')
+      expect(saved.end).toBe('2027-03-14T07:00:00.000Z')
+      expect(localHour(saved.start)).toBe('01');expect(localHour(saved.end)).toBe('03')
+      expect(Date.parse(saved.end)-Date.parse(saved.start)).toBe(30*60000)
+      expect((await engine.availability(link,'2027-03-14')).map(slot=>slot.start)).not.toContain(saved.start)
+    } finally { vi.useRealTimers() }
+  },30000)
+  it('persists both repeated fall DST instants as distinct nonconflicting appointments',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    vi.setSystemTime(new Date('2027-11-06T12:00:00Z'))
+    try {
+      const starts=['2027-11-07T05:30:00.000Z','2027-11-07T06:30:00.000Z']
+      const engine=createSchedulingService(createPostgresSchedulingStore(db,tenantId))
+      expect((await engine.availability(link,'2027-11-07')).map(slot=>slot.start)).toEqual(expect.arrayContaining(starts))
+      const results=await Promise.all(starts.map((start,index)=>bookAt(start,`fall-repeat-${index}`)))
+      const saved=await Promise.all(results.map(result=>customerBooking(db,result.tokens.view!,'view')))
+      expect(saved.map(booking=>booking.start)).toEqual(starts)
+      expect(saved[0].id).not.toBe(saved[1].id)
+      for(const booking of saved) {
+        expect(new Intl.DateTimeFormat('en-US',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(booking.start))).toBe('01:30')
+        expect(Date.parse(booking.end)-Date.parse(booking.start)).toBe(30*60000)
+      }
+      const remaining=(await engine.availability(link,'2027-11-07')).map(slot=>slot.start)
+      for(const start of starts) expect(remaining).not.toContain(start)
+    } finally { vi.useRealTimers() }
+  },30000)
+  it('enforces the exact advance-notice boundary through a real booking transaction',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    const start='2027-02-02T13:00:00.000Z', boundary=Date.parse(start)-60*60000
+    try {
+      vi.setSystemTime(boundary+1)
+      await expect(bookAt(start,'notice-after')).rejects.toMatchObject({code:'unavailable'})
+      vi.setSystemTime(boundary)
+      const result=await bookAt(start,'notice-exact')
+      expect((await customerBooking(db,result.tokens.view!,'view')).start).toBe(start)
+    } finally { vi.useRealTimers() }
+  },30000)
+  it('allows cancellation just before and at the cutoff but rejects cancellation and rescheduling one millisecond after',async()=>{
+    vi.useFakeTimers({toFake:['Date']})
+    const start='2027-02-04T13:00:00.000Z', cutoff=Date.parse(start)-720*60000
+    try {
+      for(const [label,offset] of [['before',-1],['exact',0]] as const) {
+        vi.setSystemTime(cutoff-60*60000)
+        const result=await bookAt(start,`cutoff-${label}`)
+        vi.setSystemTime(cutoff+offset)
+        expect((await changeCustomerBooking(result.tokens.cancel!,'cancel',undefined,db)).status).toBe('cancelled')
+      }
+      vi.setSystemTime(cutoff-60*60000)
+      const result=await bookAt(start,'cutoff-after')
+      vi.setSystemTime(cutoff+1)
+      await expect(changeCustomerBooking(result.tokens.cancel!,'cancel',undefined,db)).rejects.toMatchObject({code:'forbidden'})
+      await expect(changeCustomerBooking(result.tokens.reschedule!,'reschedule','2027-02-05T13:00:00.000Z',db)).rejects.toMatchObject({code:'forbidden'})
+      const unchanged=await customerBooking(db,result.tokens.cancel!,'cancel')
+      expect(unchanged.status).toBe('confirmed');expect(unchanged.version).toBe(1);expect(unchanged.start).toBe(start)
+    } finally { vi.useRealTimers() }
+  },30000)
   it('persists provider failures and retries the identical payload and key without sending real email',async()=>{
     const result=await book(21), booking=await customerBooking(db,result.tokens.view!,'view')
     await db.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='skipped' WHERE tenant_id=${tenantId} AND booking_id<>${booking.id} AND state IN ('pending','sending')`)
@@ -182,5 +268,56 @@ isolated('customer management on an explicitly isolated PostgreSQL branch',()=>{
       await db.execute(sql`UPDATE rrd_scheduling.notification_settings SET delivery_enabled=false WHERE tenant_id=${tenantId}`)
       vi.unstubAllEnvs()
     }
+  },30000)
+  async function acceptedJob(days:number) {
+    const result=await book(days), booking=await customerBooking(db,result.tokens.view!,'view')
+    const providerId=`isolated-webhook-${randomUUID()}`, recipient=`synthetic-webhook-${randomUUID()}@example.invalid`
+    const saved=await db.execute(sql`UPDATE rrd_scheduling.notification_jobs SET state='accepted',provider_id=${providerId},frozen_payload=${JSON.stringify({to:[recipient]})}::jsonb WHERE tenant_id=${tenantId} AND booking_id=${booking.id} AND event='confirmed' RETURNING id`)
+    expect(saved.rows).toHaveLength(1)
+    return {id:String(saved.rows[0].id),providerId,recipient}
+  }
+  async function deliveryState(id:string) {
+    const saved=await db.execute(sql`SELECT delivery_status,delivery_event_at FROM rrd_scheduling.notification_jobs WHERE tenant_id=${tenantId} AND id=${id}`)
+    return saved.rows[0]
+  }
+  it('persists exactly one event for concurrent webhook replays',async()=>{
+    const job=await acceptedJob(22), event={id:randomUUID(),providerId:job.providerId,type:'email.delivered',occurred:new Date()}
+    expect(await Promise.all([recordSchedulingDelivery(db,event),recordSchedulingDelivery(db,event)])).toEqual([true,true])
+    const count=await db.execute(sql`SELECT count(*)::int AS count FROM rrd_scheduling.notification_events WHERE tenant_id=${tenantId} AND job_id=${job.id} AND id=${event.id}`)
+    expect(count.rows[0].count).toBe(1)
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.delivered')
+  },30000)
+  it('records late events without regressing delivery state and preserves terminal complaints',async()=>{
+    const job=await acceptedJob(23), now=Date.now()
+    const emit=(type:string,offset:number)=>recordSchedulingDelivery(db,{id:randomUUID(),providerId:job.providerId,type,occurred:new Date(now+offset),recipients:[job.recipient]})
+    await emit('email.delivered',0)
+    await emit('email.sent',-60000)
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.delivered')
+    await emit('email.complained',-120000)
+    await emit('email.delivered',60000)
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.complained')
+    const count=await db.execute(sql`SELECT count(*)::int AS count FROM rrd_scheduling.notification_events WHERE tenant_id=${tenantId} AND job_id=${job.id}`)
+    expect(count.rows[0].count).toBe(4)
+    const suppression=await db.execute(sql`SELECT reason FROM public.email_suppressions WHERE email=${job.recipient}`)
+    expect(suppression.rows).toEqual([{reason:'email.complained'}])
+  },30000)
+  it('suppresses only actual frozen recipients after a hard bounce and deduplicates suppression',async()=>{
+    const job=await acceptedJob(24), outsider=`synthetic-outsider-${randomUUID()}@example.invalid`
+    const event={id:randomUUID(),providerId:job.providerId,type:'email.bounced',occurred:new Date(),hardBounce:true,recipients:[job.recipient.toUpperCase(),outsider]}
+    await recordSchedulingDelivery(db,event)
+    await recordSchedulingDelivery(db,event)
+    await recordSchedulingDelivery(db,{...event,id:randomUUID()})
+    const suppressed=await db.execute(sql`SELECT email,reason FROM public.email_suppressions WHERE email IN (${job.recipient},${outsider})`)
+    expect(suppressed.rows).toEqual([{email:job.recipient,reason:'email.bounced'}])
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.bounced')
+  },30000)
+  it('does not suppress a soft bounce and persists explicit provider suppression',async()=>{
+    const job=await acceptedJob(25)
+    const event={id:randomUUID(),providerId:job.providerId,type:'email.bounced',occurred:new Date(),hardBounce:false,recipients:[job.recipient]}
+    await recordSchedulingDelivery(db,event)
+    expect((await db.execute(sql`SELECT email FROM public.email_suppressions WHERE email=${job.recipient}`)).rows).toEqual([])
+    await recordSchedulingDelivery(db,{...event,id:randomUUID(),type:'email.suppressed'})
+    expect((await db.execute(sql`SELECT reason FROM public.email_suppressions WHERE email=${job.recipient}`)).rows).toEqual([{reason:'email.suppressed'}])
+    expect((await deliveryState(job.id)).delivery_status).toBe('email.suppressed')
   },30000)
 })

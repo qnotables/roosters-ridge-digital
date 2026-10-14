@@ -61,5 +61,10 @@ export function validateBookingRequest(input: unknown): BookingRequest {
     }
     intake = { businessName: text(details.businessName, 160, true), websiteUrl, reason: text(details.reason, 1000, true), notes: multiline(details.notes ?? '', 2000), customerTimeZone: validateTimeZone(text(details.customerTimeZone, 100, true)) }
   }
-  return { start, name: text(record.name, 160, true), email, phone, website, ...(intake ? { intake } : {}) }
+  let answers: BookingRequest['answers']
+  if (record.answers !== undefined) {
+    if (!record.answers || typeof record.answers !== 'object' || Array.isArray(record.answers) || Object.keys(record.answers).length > 10 || JSON.stringify(record.answers).length > 24000) return invalid()
+    answers = record.answers as BookingRequest['answers']
+  }
+  return { start, name: text(record.name, 160, true), email, phone, website, ...(intake ? { intake } : {}), ...(answers ? { answers } : {}) }
 }

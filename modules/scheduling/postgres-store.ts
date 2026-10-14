@@ -11,6 +11,9 @@ import {
   type SchedulingStore,
 } from "./types";
 import { validateDate } from "./validation";
+import { validateQuestions } from './intake';
+import { sealCustomerValue } from './customer-security';
+import { assertNewBookings, platformConfiguration } from './platform-entitlements';
 
 type Executor = Pick<NodePgDatabase, "execute">;
 async function readPolicies(db: Executor, tenantId: string) {
@@ -22,7 +25,7 @@ async function readPolicies(db: Executor, tenantId: string) {
 }
 const appointmentJson = sql`json_build_object('id',a.id,'slug',a.slug,'name',a.name,'durationMinutes',a.duration_minutes,
   'bufferBeforeMinutes',a.buffer_before_minutes,'bufferAfterMinutes',a.buffer_after_minutes,'minimumNoticeMinutes',a.minimum_notice_minutes,
-  'maximumHorizonDays',a.maximum_horizon_days,'slotIntervalMinutes',a.slot_interval_minutes,'priceCents',a.price_cents,'meetingMode',a.meeting_mode)`;
+  'maximumHorizonDays',a.maximum_horizon_days,'slotIntervalMinutes',a.slot_interval_minutes,'priceCents',a.price_cents,'meetingMode',a.meeting_mode,'intakeQuestions',coalesce(to_jsonb(a)->'intake_questions','[]'::jsonb))`;
 type LinkRow = {
   tenant_id: string;
   host_id: string;
@@ -44,7 +47,9 @@ async function linkRow(
     WHERE l.slug=${slug} AND l.enabled AND t.enabled AND h.active AND a.active
     ${trustedTenantId ? sql`AND l.tenant_id=${trustedTenantId} AND NOT a.archived` : sql``}
     ${scope ? sql`AND l.tenant_id=${scope.tenantId} AND l.host_id=${scope.hostId}` : sql``}`);
-  return result.rows[0] as LinkRow | undefined;
+  const row=result.rows[0] as LinkRow | undefined;
+  if(row) await assertNewBookings(db,row.tenant_id);
+  return row;
 }
 function iso(value: unknown) {
   return value instanceof Date
@@ -108,11 +113,13 @@ async function contextWithConfiguration(
     ? await db.execute(sql`SELECT id,start_time,end_time FROM rrd_scheduling.calendar_blocks
     WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND start_time < ${end}::timestamptz AND end_time > ${start}::timestamptz`)
     : { rows: [] };
+  let intakeQuestions = validateQuestions(link.appointment.intakeQuestions ?? []);
+  if (intakeQuestions.length) { const ready = await db.execute(sql`SELECT to_regclass('rrd_scheduling.booking_responses') IS NOT NULL AS ready`); if (!ready.rows[0]?.ready) intakeQuestions = [] }
   return {
     ...scope,
     timeZone: link.time_zone,
     dailyLimit: link.daily_limit,
-    appointmentType: link.appointment,
+    appointmentType: { ...link.appointment, intakeQuestions },
     policies: await readPolicies(db, scope.tenantId),
     weekly: weekly.rows as AvailabilityContext["weekly"],
     exceptions: exceptions.rows as AvailabilityContext["exceptions"],
@@ -165,18 +172,19 @@ export function createPostgresSchedulingStore(
     },
     readContext: (scope, slug, date) => context(db, scope, slug, date, trustedTenantId),
     async consumeRequestBudget(tenantId, clientKey) {
+      const limit=(await platformConfiguration(db))?.configuration.bookingRequestsPerMinute ?? 5;
       const result =
         await db.execute(sql`INSERT INTO rrd_scheduling.request_limits (tenant_id,client_key,window_start,attempts)
         VALUES (${tenantId},${clientKey},clock_timestamp(),1)
         ON CONFLICT (tenant_id,client_key) DO UPDATE SET
           attempts=CASE WHEN rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' THEN 1 ELSE rrd_scheduling.request_limits.attempts+1 END,
           window_start=CASE WHEN rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' THEN clock_timestamp() ELSE rrd_scheduling.request_limits.window_start END
-        WHERE rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' OR rrd_scheduling.request_limits.attempts < 5 RETURNING attempts`);
+        WHERE rrd_scheduling.request_limits.window_start <= clock_timestamp()-interval '1 minute' OR rrd_scheduling.request_limits.attempts < ${limit} RETURNING attempts`);
       return result.rows.length === 1;
     },
     async findManagementScope(hash) {
       const result = await db.execute(
-        sql`SELECT tenant_id,host_id FROM rrd_scheduling.management_tokens WHERE token_hash=${hash} AND used_at IS NULL AND expires_at > now()`,
+        sql`SELECT tenant_id,host_id FROM rrd_scheduling.management_tokens WHERE token_hash=${hash} AND used_at IS NULL AND expires_at > now() ${trustedTenantId ? sql`AND tenant_id=${trustedTenantId}` : sql``}`,
       );
       const row = result.rows[0];
       return row
@@ -207,6 +215,7 @@ export function createPostgresSchedulingStore(
                     "forbidden",
                     "Invalid booking scope.",
                   );
+                await assertNewBookings(tx,scope.tenantId);
                 const policies = await readPolicies(tx, scope.tenantId);
                 if (policies && !policies.allowMultiple) {
                   const email = booking.email.toLowerCase();
@@ -219,6 +228,11 @@ export function createPostgresSchedulingStore(
                 if (booking.intake) {
                   const details = booking.intake;
                   const customerNotes = `Website: ${details.websiteUrl || 'Not provided'}\nReason: ${details.reason}\nAdditional notes: ${details.notes || 'None'}\nCustomer time zone: ${details.customerTimeZone}`;
+                  if (details.responses?.length) {
+                    const ready = await tx.execute(sql`SELECT to_regclass('rrd_scheduling.booking_responses') IS NOT NULL AS ready`);
+                    if (!ready.rows[0]?.ready) throw new SchedulingError('unavailable', 'Custom intake storage requires approved Phase 4C migration.');
+                    await tx.execute(sql`INSERT INTO rrd_scheduling.booking_responses(tenant_id,booking_id,sealed_responses) VALUES(${scope.tenantId},${booking.id},${JSON.stringify(sealCustomerValue(details.responses,process.env.ADMIN_DASHBOARD_KEY ?? ''))}::jsonb)`);
+                  }
                   await tx.execute(sql`UPDATE rrd_scheduling.bookings SET business_name=${details.businessName},private_notes=${customerNotes} WHERE tenant_id=${scope.tenantId} AND host_id=${scope.hostId} AND id=${booking.id}`);
                 }
                 await tx.execute(
@@ -228,6 +242,7 @@ export function createPostgresSchedulingStore(
                   sql`INSERT INTO rrd_scheduling.booking_changes (tenant_id,booking_id,next_status) VALUES (${scope.tenantId},${booking.id},${booking.status})`,
                 );
                 if (booking.status === 'confirmed') await enqueue(tx, scope, booking.id, "confirmed");
+                if (booking.status === 'pending' && trustedTenantId) await tx.execute(sql`INSERT INTO rrd_scheduling.notification_jobs(tenant_id,booking_id,event,event_key,expected_start) SELECT b.tenant_id,b.id,'confirmed','pending',b.start_time FROM rrd_scheduling.bookings b JOIN rrd_scheduling.tenants t ON t.id=b.tenant_id JOIN rrd_scheduling.notification_settings n ON n.tenant_id=b.tenant_id WHERE b.tenant_id=${scope.tenantId} AND b.id=${booking.id} AND n.customer_confirmation AND t.branding->'customization'->'published' IS NOT NULL AND t.branding->'customization'->'published' <> 'null'::jsonb ON CONFLICT DO NOTHING`);
               },
               async getManagedBooking(hash) {
                 const result =

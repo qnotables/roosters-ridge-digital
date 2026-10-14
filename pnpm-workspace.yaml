@@ -7,6 +7,7 @@ minimumReleaseAgeExclude:
 allowBuilds:
   core-js: true
   esbuild: true
+  sharp: true
 
 overrides:
   '@better-auth/api-key': 1.6.23

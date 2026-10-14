@@ -1,0 +1,11 @@
+{
+  "status": "APPROVED_ISOLATED",
+  "projectId": "royal-bonus-04874440",
+  "branchId": "br-plain-king-au7ub8t2",
+  "computeId": "ep-delicate-heart-autbb00i",
+  "database": "neondb",
+  "approvalId": "user-approved-isolated-001-010-2026-10-13",
+  "sourceCommit": "788fff0ed3691c977a2ca32ac138b0b9a9795637",
+  "release": "sandbox",
+  "purpose": "Disposable isolated 001-010 acceptance only; never production"
+}

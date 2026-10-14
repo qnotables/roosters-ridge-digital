@@ -1,0 +1,5 @@
+'use client'
+import { Bar,BarChart,CartesianGrid,XAxis,YAxis } from 'recharts'
+import { ChartContainer,ChartTooltip,ChartTooltipContent } from '@/components/ui/chart'
+import { Card,CardHeader,CardTitle,CardDescription,CardContent } from '@/components/ui/card'
+export function TenantAnalyticsChart({rows}:{rows:{date:string;total:number}[]}) { return <Card><CardHeader><CardTitle>Booking trend</CardTitle><CardDescription>Appointment start dates in your business time zone. The exact values are available in the table below.</CardDescription></CardHeader><CardContent>{rows.length?<ChartContainer config={{total:{label:'Bookings',color:'var(--chart-1)'}}} className="h-64 w-full"><BarChart accessibilityLayer data={rows}><CartesianGrid vertical={false}/><XAxis dataKey="date" tickLine={false} axisLine={false} minTickGap={35}/><YAxis allowDecimals={false}/><ChartTooltip content={<ChartTooltipContent/>}/><Bar dataKey="total" fill="var(--color-total)" radius={4}/></BarChart></ChartContainer>:<p className="text-sm text-muted-foreground">No bookings in this range.</p>}</CardContent></Card> }
