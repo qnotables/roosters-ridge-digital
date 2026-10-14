@@ -245,7 +245,23 @@ Fresh Neon endpoint metadata maps `ep-divine-scene-au7rxgk5` to branch `br-solit
 
 The production alias still points to `dpl_4cpZE25UZByREuE66t8SVo1i6zjm`; repository main remains `f819a9aaf1848f88d329b2157d461d8256e32fa5`. The validated application branch remains distinct. No production catalog query was issued against the new target under the obsolete branch approval, and no release artifact has been newly approved. Next approval is limited to read-only catalog inspection of this exact current target; migration, activation, deployment and delivery remain excluded.
 
-Next checkpoint: approve the reconciled exact production database read target and candidate release SHA, then close staging/browser, recovery and operational gates. Only afterward request separately scoped migration authorization. No RRD catalog or business settings were created, existing lead forms were not changed, and other businesses were not activated.
+### Approved current-target catalog inspection
+
+The user separately approved schema/catalog and role-permission inspection of `br-solitary-grass-au781exk` / `ep-divine-scene-au7rxgk5`, database `neondb`, excluding customer-record reads and all changes. The exact approved SELECT succeeded:
+
+| Catalog fact | Observed result |
+| --- | --- |
+| Database / inspection role | `neondb` / `neondb_owner` |
+| Scheduling schema exists | `false` |
+| Scheduling base-table count | `0` |
+| Public base-table count visible to inspection role | `21` |
+| Inspection role is superuser | `false` |
+| Inspection role can create roles | `true` |
+| Inspection role bypasses RLS | `true` |
+
+This refreshes the scheduling-schema baseline on the reconciled production target: scheduling has not been installed there. The query inspected catalog metadata only, not customer data, tenant rows or provider events. Role flags describe the explicitly selected inspection role; they do not independently establish the deployed application's login role, effective grants, table ownership or runtime least privilege. A non-superuser role that can create roles and bypass RLS must not be described as a least-privilege runtime role. No grants, schema, credentials or data were changed.
+
+Next checkpoint: identify and approve the candidate release SHA, then close staging/browser, runtime least-privilege, recovery and operational gates. Production migration remains separately approval-gated and **NO-GO**; the catalog-read approval is not migration permission. No RRD catalog or business settings were created, existing lead forms were not changed, and other businesses were not activated.
 
 ## Monitoring and next approval
 
