@@ -1,0 +1,11 @@
+{
+  "status": "AWAITING_EXPLICIT_APPROVAL",
+  "projectId": "royal-bonus-04874440",
+  "branchId": null,
+  "computeId": null,
+  "database": "neondb",
+  "approvalId": null,
+  "sourceCommit": "788fff0ed3691c977a2ca32ac138b0b9a9795637",
+  "release": "sandbox",
+  "purpose": "Disposable isolated 001-010 acceptance only; never production"
+}
