@@ -1,5 +1,6 @@
 import { getAuthSession } from '@/lib/auth'
 import { hasDashboardAccess } from '@/lib/admin-auth'
+import { stagingIsolationStatus } from '@/lib/staging-isolation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
   const respond = (body: unknown, status: number) => Response.json(body, { status, headers })
   const url = new URL(request.url)
   if (request.headers.get('sec-fetch-site') === 'cross-site' || (request.headers.get('origin') && request.headers.get('origin') !== url.origin)) return respond({ error: 'Same-origin access required.' }, 403)
+  if (!stagingIsolationStatus().ready) return respond({ error: 'Staging isolation configuration is not ready.' }, 503)
   if (!process.env.NEON_AUTH_BASE_URL || (process.env.NEON_AUTH_COOKIE_SECRET?.length ?? 0) < 32 || (process.env.ADMIN_DASHBOARD_KEY?.trim().length ?? 0) < 32) return respond({ error: 'Identity confirmation configuration is not ready.' }, 503)
   try {
     const authOrigin = new URL(process.env.NEON_AUTH_BASE_URL).origin

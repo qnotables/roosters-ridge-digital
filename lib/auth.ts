@@ -1,6 +1,9 @@
 import { createNeonAuth } from '@neondatabase/auth/next/server'
 
-const baseUrl = process.env.NEON_AUTH_BASE_URL || 'http://localhost:3000'
+import { stagingIsolationStatus } from '@/lib/staging-isolation'
+
+const stagingReady = stagingIsolationStatus().ready
+const baseUrl = stagingReady ? process.env.NEON_AUTH_BASE_URL || 'http://localhost:3000' : 'http://localhost:3000'
 const configuredCookieSecret = process.env.NEON_AUTH_COOKIE_SECRET
 const cookieSecret = configuredCookieSecret && configuredCookieSecret.length >= 32 ? configuredCookieSecret : 'build-only-secret-not-used-at-runtime-for-static-builds-64-character-fallback'
 
@@ -13,7 +16,7 @@ export const auth = createNeonAuth({
 })
 
 export async function getAuthSession(fresh = false) {
-  if (!process.env.NEON_AUTH_BASE_URL || !configuredCookieSecret || configuredCookieSecret.length < 32) return null
+  if (!stagingReady || !process.env.NEON_AUTH_BASE_URL || !configuredCookieSecret || configuredCookieSecret.length < 32) return null
   const { data, error } = await auth.getSession(
     fresh ? { query: { disableCookieCache: 'true' } } : undefined,
   )
