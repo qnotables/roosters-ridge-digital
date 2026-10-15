@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { stagingIsolationStatus } from '../../../lib/staging-isolation'
+import { isAuthorizedPreflightDeployment } from './preflight-project-authorization.mjs'
 
 type Environment = Record<string, string | undefined>
 export const expected = Object.freeze({
@@ -9,7 +10,6 @@ export const expected = Object.freeze({
   database: 'neondb',
 })
 const gitBranch = 'staging/rrd-scheduling'
-const vercelProject = 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC'
 
 type Identity = { project_id: string | null; branch_id: string | null; endpoint_id: string | null; database_name: string; read_only: string }
 export type InspectConnection = (connection: string) => Promise<Identity>
@@ -51,8 +51,7 @@ export const inspectConnection: InspectConnection = async connection => {
 export async function stagingPreflight(env: Environment, inspect: InspectConnection = inspectConnection) {
   const isolation = stagingIsolationStatus(env)
   const checks = {
-    stagingExecution: env.VERCEL === '1' && env.VERCEL_ENV === 'preview'
-      && env.VERCEL_PROJECT_ID === vercelProject && env.VERCEL_GIT_COMMIT_REF === gitBranch,
+    stagingExecution: isAuthorizedPreflightDeployment(env),
     ...isolation.checks,
     pooledServerIdentity: false,
     directServerIdentity: false,

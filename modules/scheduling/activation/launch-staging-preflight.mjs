@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { isAuthorizedPreflightDeployment } from './preflight-project-authorization.mjs'
 
 export const allowedEnvironmentKeys = Object.freeze([
   'DATABASE_URL', 'DATABASE_URL_UNPOOLED', 'NEON_AUTH_BASE_URL',
@@ -26,9 +27,7 @@ export function restrictedEnvironment(source) {
 export function launchStagingPreflight(source, execute = spawnSync) {
   const env = restrictedEnvironment(source)
   const blocked = { status: 'BLOCKED', reason: 'Restricted verification did not produce a valid result.' }
-  if (env.VERCEL !== '1' || env.VERCEL_ENV !== 'preview'
-    || env.VERCEL_PROJECT_ID !== 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC'
-    || env.VERCEL_GIT_COMMIT_REF !== 'staging/rrd-scheduling') {
+  if (!isAuthorizedPreflightDeployment(env)) {
     return { status: 'BLOCKED', reason: 'Exact staging Preview execution scope is required.' }
   }
   try {

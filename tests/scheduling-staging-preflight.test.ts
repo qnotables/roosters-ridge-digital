@@ -23,7 +23,11 @@ describe('private staging preflight', () => {
   })
   it.each([
     { VERCEL_ENV: 'production' }, { VERCEL_GIT_COMMIT_REF: 'main' }, { VERCEL_PROJECT_ID: 'other' },
-    { VERCEL: undefined }, { DATABASE_URL: undefined }, { DATABASE_URL_UNPOOLED: 'postgres://x:y@production/neondb' },
+    { VERCEL: undefined }, { VERCEL_ENV: undefined }, { VERCEL_PROJECT_ID: undefined },
+    { VERCEL_GIT_COMMIT_REF: undefined }, { VERCEL_ENV: 'development' },
+    { VERCEL_PROJECT_ID: 'rrd-scheduling-preflight' },
+    { VERCEL_PROJECT_ID: 'prj_unapproved', APPROVED_VERCEL_PROJECT_ID: 'prj_unapproved' },
+    { DATABASE_URL: undefined }, { DATABASE_URL_UNPOOLED: 'postgres://x:y@production/neondb' },
     { NEON_AUTH_BASE_URL: 'https://production.example/auth' }, { NEON_AUTH_COOKIE_SECRET: 'short' },
     { ADMIN_DASHBOARD_KEY: ' '.repeat(40) },
     { DATABASE_URL: `${environment().DATABASE_URL}&options=-c%20neon.branch_id=spoofed` },
