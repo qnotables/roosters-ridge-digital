@@ -1,0 +1,14 @@
+{
+  "algorithm": "SHA-256",
+  "reviewedSourceRevision": "27c7bb9c9bcfe5c54dc94880160614a94fdb097c",
+  "scope": "Exact artifact bytes; this index excludes itself and is not a signature or execution approval",
+  "files": {
+    "security-reviews/private-runner-27c7bb9/SECURITY-REVIEW.md": "c8bd29b076e8109acef643bc81afc77e84788b3225a9c08be6058a29a1133fb4",
+    "security-reviews/private-runner-27c7bb9/VALIDATION.json": "d2c9a40b62fbd1b51c1935990617dab28b84642268db107a4d64bf1cf0a85eb8",
+    "security-reviews/private-runner-27c7bb9/generate-manifest.mjs": "1f400fe0c886a5f77b3fad5baadb92433d6655c6daf60ad59e3dba8b1aa3814e",
+    "security-reviews/private-runner-27c7bb9/runner-policy.json": "8ca5c309cb836c906b759d997f49b927e61b44cd1d9bbfab8ae0872d35cf7f86",
+    "security-reviews/private-runner-27c7bb9/source-inventory.json": "a9d49e9ea73b7541ee4dd2813097db2da1841ec54ab469c620af83a6c85af717",
+    "security-reviews/private-runner-27c7bb9/source-manifest.json": "2cc16149e1f9faf85ef4edc03cb4e9f282b358314ac55a5817f1b3f8c092c249",
+    "tests/scheduling-private-runner-review.test.ts": "195b3b9b04b51e65dc87fa488d9cb5ff0f41a1c3f505ad08357fb080f4831ab5"
+  }
+}

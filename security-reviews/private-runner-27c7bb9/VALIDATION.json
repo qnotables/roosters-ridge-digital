@@ -1,0 +1,76 @@
+{
+  "reviewedSourceRevision": "27c7bb9c9bcfe5c54dc94880160614a94fdb097c",
+  "scope": "offline source review, fixtures, mocks and artifact verification only",
+  "operationalReadiness": "BLOCKED",
+  "commands": [
+    {
+      "command": "git ls-remote --heads https://github.com/qnotables/roosters-ridge-digital.git refs/heads/v0/private-runner-preflight",
+      "result": "PASS",
+      "observedRevision": "27c7bb9c9bcfe5c54dc94880160614a94fdb097c",
+      "scopeLimit": "Read-only GitHub reference observation, not future ref stability, signed commit verification or staging relationship"
+    },
+    {
+      "command": "pnpm exec vitest run tests/scheduling-private-runner-review.test.ts",
+      "result": "PASS",
+      "passedSuites": 1,
+      "passedTests": 5,
+      "failedTests": 0,
+      "scopeLimit": "Adversarial reproductions assert current gaps, not certification of those safeguards; subset of final total"
+    },
+    {
+      "command": "pnpm exec vitest run 'tests/scheduling' --exclude '**/*.integration.test.ts'",
+      "result": "PASS",
+      "passedSuites": 54,
+      "passedTests": 598,
+      "failedTests": 0,
+      "runnerSkippedTests": 0,
+      "excludedLiveSuiteCount": 6
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --incremental false",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "node security-reviews/private-runner-27c7bb9/generate-manifest.mjs",
+      "result": "PASS",
+      "trackedFileCount": 460,
+      "sourceManifestSha256": "2cc16149e1f9faf85ef4edc03cb4e9f282b358314ac55a5817f1b3f8c092c249",
+      "sourceInventorySha256": "a9d49e9ea73b7541ee4dd2813097db2da1841ec54ab469c620af83a6c85af717"
+    },
+    {
+      "check": "Separate Git-object, manifest and worktree cross-check of every reviewed tracked file; no original tracked changes; non-executable policy and deployment-suppressed review branch",
+      "result": "PASS",
+      "verifiedFiles": 460,
+      "scopeLimit": "Installed dependency contents, host image, external policy and attestation not certified"
+    }
+  ],
+  "excludedNotPassed": [
+    "tests/scheduling-billing.integration.test.ts",
+    "tests/scheduling-branding.integration.test.ts",
+    "tests/scheduling-customer.integration.test.ts",
+    "tests/scheduling-installation.integration.test.ts",
+    "tests/scheduling-multitenant.integration.test.ts",
+    "tests/scheduling-platform.integration.test.ts"
+  ],
+  "notPerformed": [
+    "live database or Auth connection",
+    "credential retrieval or environment-file access",
+    "Neon or Vercel account/control-plane query",
+    "DNS or endpoint probe",
+    "preflight execution",
+    "infrastructure provisioning",
+    "Vercel deployment or deployment setting change",
+    "staging or main merge",
+    "dependency installation, vulnerability certification or runtime-image build",
+    "operational signature, approval token or runner identity issuance"
+  ],
+  "implementationModified": false,
+  "newArtifactsNotCoveredByOriginalManifest": [
+    "security-reviews/private-runner-27c7bb9/",
+    "tests/scheduling-private-runner-review.test.ts"
+  ]
+}
