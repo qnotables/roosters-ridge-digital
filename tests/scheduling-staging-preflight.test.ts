@@ -14,9 +14,9 @@ function environment() {
 const identity = () => ({ project_id: expected.projectId, branch_id: expected.branchId, endpoint_id: expected.computeId, database_name: expected.database, read_only: 'on' })
 
 describe('private staging preflight', () => {
-  it('requires both server identities, not only matching URLs', async () => {
+  it.each(['prj_iolwd1HBRl0M7NllmzyBCAFmaczC', 'prj_CXskPmbNMIl5Idh6e6c2UUv2eanm'])('requires both server identities for authorized project %s', async projectId => {
     const inspect = vi.fn<InspectConnection>().mockResolvedValue(identity())
-    const result = await stagingPreflight(environment(), inspect)
+    const result = await stagingPreflight({ ...environment(), VERCEL_PROJECT_ID: projectId }, inspect)
     expect(result.status).toBe('PASS')
     expect(inspect).toHaveBeenCalledTimes(2)
     expect(result.verified).toEqual({ pooled: expected, direct: expected })

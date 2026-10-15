@@ -9,10 +9,15 @@ const scope = {
 }
 
 describe('source-controlled preflight project authorization', () => {
-  it('authorizes only the original project until a separately reviewed ID is added', () => {
-    expect(approvedVerificationProjectIds).toEqual([])
-    expect(approvedProjectIds).toEqual([originalStagingProjectId])
-    expect(isAuthorizedPreflightDeployment(scope)).toBe(true)
+  it('authorizes only the original and exact owner-approved verification project', () => {
+    expect(approvedVerificationProjectIds).toEqual(['prj_CXskPmbNMIl5Idh6e6c2UUv2eanm'])
+    expect(approvedProjectIds).toEqual([originalStagingProjectId, 'prj_CXskPmbNMIl5Idh6e6c2UUv2eanm'])
+    for (const projectId of approvedProjectIds) {
+      expect(isAuthorizedPreflightDeployment({ ...scope, VERCEL_PROJECT_ID: projectId })).toBe(true)
+      const execute = vi.fn(() => ({ status: 1, stdout: '' }))
+      expect(launchStagingPreflight({ ...scope, VERCEL_PROJECT_ID: projectId }, execute).status).toBe('BLOCKED')
+      expect(execute).toHaveBeenCalledOnce()
+    }
     expect(Object.isFrozen(approvedProjectIds)).toBe(true)
     expect(Object.isFrozen(approvedVerificationProjectIds)).toBe(true)
   })
@@ -32,11 +37,13 @@ describe('source-controlled preflight project authorization', () => {
     { VERCEL_PROJECT_ID: 'prj_unapproved', VERCEL_PROJECT_NAME: 'rrd-scheduling-preflight' },
     { VERCEL_PROJECT_ID: 'prj_unapproved', APPROVED_VERCEL_PROJECT_ID: 'prj_unapproved', NODE_ENV: 'development' },
   ])('blocks unknown identities and missing/wrong scope without spawning %j', change => {
-    const env = { ...scope, ...change }
-    expect(isAuthorizedPreflightDeployment(env)).toBe(false)
-    const execute = vi.fn()
-    expect(launchStagingPreflight(env, execute).status).toBe('BLOCKED')
-    expect(execute).not.toHaveBeenCalled()
+    for (const projectId of approvedProjectIds) {
+      const env = { ...scope, VERCEL_PROJECT_ID: projectId, ...change }
+      expect(isAuthorizedPreflightDeployment(env)).toBe(false)
+      const execute = vi.fn()
+      expect(launchStagingPreflight(env, execute).status).toBe('BLOCKED')
+      expect(execute).not.toHaveBeenCalled()
+    }
   })
 
   it('keeps unconditional nonzero exits in both executable entrypoints', () => {
