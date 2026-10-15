@@ -1,0 +1,107 @@
+{
+  "artifactType": "OFFLINE_NON_EXECUTABLE_POLICY",
+  "schemaVersion": 2,
+  "authorizationAllowed": false,
+  "overallStatus": "BLOCKED",
+  "approvalSignature": null,
+  "source": {
+    "repository": "https://github.com/qnotables/roosters-ridge-digital.git",
+    "reviewRef": "refs/heads/v0/private-runner-preflight",
+    "reviewedSourceRevision": "a90ad8a92e0356501332669041863bff3a05fa16",
+    "requiredExecutionRef": "refs/heads/staging/rrd-scheduling",
+    "stagingRelationship": "UNVERIFIED; permanent staging was not modified or fetched",
+    "liveExecutionApproved": false,
+    "manifest": "source-manifest.json",
+    "manifestSha256": "ca0ed05281be0bec8eb9221d4da7fec1f85493e704961f258d9a514c647a71d3",
+    "inventorySha256": "9180b1a968b96c90f8b14a5a5d65b973192b8b246951ee789878504dd35fdec1",
+    "trackedFileCount": 471,
+    "runtimeManifestRequiresExactApprovedRevision": true,
+    "runtimeRemoteEvidence": "Fresh independently administered fetchRemoteSource adapter; fixed HTTPS repo and staging ref; fetched branch commit must equal approved SHA; complete fetched Git-blob manifest must equal signed manifest and read-only mounted source",
+    "maxRemoteEvidenceAgeMs": 60000,
+    "acceptCallerSuppliedProvenance": false,
+    "sourceRootAndGitBinaryTrust": "UNVERIFIED",
+    "ignoredExtraFilesAllowed": false,
+    "workerGitMetadataAccessAllowed": false,
+    "reviewBundleScope": "Manifest covers immutable source commit, not later review-bundle additions. Final review commit is not automatically an authorized execution revision. Independently inventory any newly approved revision; never copy this digest to changed source."
+  },
+  "runner": {
+    "runnerId": "UNVERIFIED",
+    "hostAndSupervisorDeploymentDigest": "UNVERIFIED",
+    "trustedHostAdapterAndAttestationVerifier": "UNVERIFIED",
+    "provisioned": false,
+    "samePrivilegeForkFallback": false,
+    "requireDistinctNonRootSupervisorAndWorkerPrincipals": true,
+    "requiredExternalControls": [
+      "private PID/mount namespaces and non-delegated escape-proof worker cgroup",
+      "read-only source and complete executable dependency closure; no lifecycle scripts or downloads with credentials present",
+      "deny worker access to supervisor memory, filesystem, signing keys, approval policy, credential custodian and ledger",
+      "deny ptrace, setns, unshare, mount, capabilities, host sockets and cloud metadata; no-new-privileges and syscall policy",
+      "bounded CPU, memory and process count; disabled core dumps/swap/crash artifacts; no untrusted co-tenants",
+      "capture all worker IPC/stdout/stderr from launch through closed channels",
+      "host watchdog covering startup, supervisor stalls, execution and cleanup",
+      "whole-cgroup termination, prevent new descendants, reap all processes and attest empty containment"
+    ],
+    "implementationStatus": "Host controls are required contracts, not infrastructure implemented by repository code"
+  },
+  "runtime": {
+    "imageDigestAndSBOM": "UNVERIFIED",
+    "nodeLoaderGitTlsSystemLibraryAndCABundleDigests": "UNVERIFIED",
+    "packageManager": "pnpm@12.3.4",
+    "lockfileSha256": "cf857996719d4d62d9f3fdb3496f2073c289e43f1f2579e5fc7cc05ebdae57ed",
+    "frozenOfflineInstallBeforeCredentialsRequired": true,
+    "workerEnvironmentOnly": { "LANG": "C", "TZ": "UTC", "NODE_ENV": "production" },
+    "credentialsInEnvironmentOrArgumentsAllowed": false
+  },
+  "resources": {
+    "expectedConfigurationNotIndependentEvidence": {
+      "projectId": "royal-bonus-04874440",
+      "branchId": "br-plain-king-au7ub8t2",
+      "computeId": "ep-delicate-heart-autbb00i",
+      "database": "neondb"
+    },
+    "independentProviderMapping": "UNVERIFIED",
+    "deployedGucRegistrationAndProviderPopulation": "UNVERIFIED",
+    "pooledAndDirectIdentityVisibility": "UNVERIFIED",
+    "exactPooledStartupOptionsEnforcementAndNoStateLeakage": "UNVERIFIED",
+    "approvedRolePrivilegesAndCredentialSeparation": "UNVERIFIED",
+    "research": "NEON-EVIDENCE.md",
+    "publicProviderSourceSupportsStartupOnlyIdentityGucs": true,
+    "publicSourceProvesApprovedDeployedBuild": false,
+    "hostnameOnlyIdentityFallbackAllowed": false,
+    "credentialCustodian": "UNVERIFIED",
+    "credentialKeysOnly": ["DATABASE_URL", "DATABASE_URL_UNPOOLED", "NEON_AUTH_BASE_URL", "NEON_AUTH_COOKIE_SECRET", "ADMIN_DASHBOARD_KEY"],
+    "delivery": "Private IPC only, after trusted runtime/source/signature/expiry/one-use checks. No actual secret retrieval authorized."
+  },
+  "network": {
+    "enforcementEvidence": "UNVERIFIED",
+    "defaultDeny": true,
+    "databaseTcpPort": 5432,
+    "databaseHostsOnly": ["ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech", "ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech"],
+    "trustedDnsTlsSniAndDestinationBindingRequired": true,
+    "sharedNeonProxyIpAllowlistSufficient": false,
+    "deny": ["Auth requests", "HTTP egress", "email", "billing", "Neon management API from worker", "cloud metadata", "host services", "dependency registries", "application routes"]
+  },
+  "execution": {
+    "authorized": false,
+    "signedApprovalAndPinnedEd25519PublicKey": "UNVERIFIED",
+    "executionIdAndExpiry": "UNVERIFIED",
+    "ledgerRootAndDurabilityAcrossAllRunners": "UNVERIFIED",
+    "requirePermanentAtomicReservationBeforeSecretRelease": true,
+    "maximumApprovalLifetimeMs": 3600000,
+    "workerLifecycleDeadlineMs": 30000,
+    "cleanupConfirmationDeadlineMs": 5000,
+    "requiredExternalWholeSupervisorDeadlineMs": 60000,
+    "outerDeadlineEnforcement": "UNVERIFIED",
+    "passRequires": ["exactly one schema-valid IPC report", "no forbidden output", "observed process exit code zero with no signal", "subsequent close event for output closure", "trusted external confirmation entire worker containment is empty and reaped"],
+    "blockedOn": ["no containment adapter", "malformed or duplicate IPC", "stdout/stderr including trailing output", "timeout", "nonzero or signal exit", "missing exit or close", "false, rejected, missing or stalled cleanup confirmation"],
+    "blockedIsNotTerminationCertification": true
+  },
+  "report": {
+    "fieldsOnly": ["status", "reason"],
+    "pass": { "status": "PASS", "reason": "OK" },
+    "blockedReasonsOnly": ["AUTHORIZATION_BLOCKED", "CONFIGURATION_BLOCKED", "IDENTITY_BLOCKED", "CONNECTION_BLOCKED", "EXECUTION_BLOCKED"],
+    "rawErrorsOutputCredentialsAndApprovalPayloadsForbidden": true,
+    "authScope": "Configuration URL binding and minimum secret lengths only; no login/session/provider-authority certification"
+  },
+  "nextApproval": "Accept source remediation and review independently supplied redacted provider/host design evidence only; no provisioning, credential retrieval, database connection, SQL, live preflight, deployment, staging/main changes or service activation"
+}

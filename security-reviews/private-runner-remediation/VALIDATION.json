@@ -1,0 +1,24 @@
+{
+  "reviewedSourceRevision": "a90ad8a92e0356501332669041863bff3a05fa16",
+  "scope": "Offline source remediation, fixture/mocked tests, local Git objects and public documentation only",
+  "operationalReadiness": "BLOCKED",
+  "commands": [
+    { "command": "pnpm exec vitest run tests/scheduling-private-runner*.test.ts", "result": "PASS", "passedSuites": 5, "passedTests": 75, "scopeLimit": "Intermediate targeted run; subsequent source-enumeration and host-attestation changes validated in final broader run" },
+    { "command": "pnpm exec vitest run 'tests/scheduling' --exclude '**/*.integration.test.ts'", "result": "PASS", "passedSuites": 55, "passedTests": 627, "failedTests": 0, "runnerSkippedTests": 0, "excludedLiveSuites": 6, "scopeLimit": "Includes all private-runner adversarial and database-transport mocks; no actual runner or database" },
+    { "command": "pnpm exec tsc --noEmit --incremental false", "result": "PASS" },
+    { "command": "git diff --check", "result": "PASS" },
+    { "check": "Separate offline assertion-based cross-check of every source Git blob, worktree file, inventory entry and manifest hash; JSON parsing and unsigned non-executable policy validation", "result": "PASS", "verifiedFiles": 471, "oldManifestDigestReused": false },
+    { "command": "node security-reviews/private-runner-remediation/generate-manifest.mjs a90ad8a92e0356501332669041863bff3a05fa16", "result": "PASS", "trackedFileCount": 471, "sourceManifestSha256": "ca0ed05281be0bec8eb9221d4da7fec1f85493e704961f258d9a514c647a71d3", "sourceInventorySha256": "9180b1a968b96c90f8b14a5a5d65b973192b8b246951ee789878504dd35fdec1" }
+  ],
+  "excludedNotPassed": [
+    "tests/scheduling-billing.integration.test.ts",
+    "tests/scheduling-branding.integration.test.ts",
+    "tests/scheduling-customer.integration.test.ts",
+    "tests/scheduling-installation.integration.test.ts",
+    "tests/scheduling-multitenant.integration.test.ts",
+    "tests/scheduling-platform.integration.test.ts"
+  ],
+  "notPerformed": ["runner provisioning or execution", "credential retrieval or environment-file access", "Neon account metadata retrieval", "Neon/other database connection or SQL", "live preflight", "Auth requests", "DNS or endpoint probing", "Vercel deployment", "scheduling/email/billing activation", "permanent staging or main modification", "dependency install or runtime image build", "execution approval signing", "production-only build or browser checks; no UI or build config changed"],
+  "mockOnlyExternalClaims": ["runtime attestation", "remote Git acquisition transport", "worker containment", "process exit and cleanup", "database identity replies"],
+  "sourceManifestIsIndependentOperationalProvenance": false
+}
