@@ -1,199 +1,111 @@
 # RRD scheduling: deployment-specific activation investigation
 
-## Decision
+## Decision and authority
 
-**NOT READY. Production installation is absent; activation is not authorized by this investigation.** The dashboard warning is driven by a real database guard, but its explanatory text is hard-coded and its blanket isolated-validation claim is outdated. Changing the message alone will not unlock scheduling.
+**NOT READY for production execution.** The approved `v0_plans/creative-design.md` authorizes repository preparation only: current-release pinning, offline tests, refreshed documentation and separate configuration/member packets. No migration, database write, recovery creation/restore, fixture, administrator grant, deployment, environment change, public activation, customer email or Stripe operation is authorized by that approval.
 
-The original investigation performed read-only deployment, PostgreSQL catalog, identity-count and isolated seed inspection, plus an anonymous production browser check. The approved preparation follow-up adds `ACTIVATION_RUNBOOK.md` and offline-only request preparation, catalog-query, bootstrap SQL and safety-test files under `activation/`. No production migration, record mutation, recovery creation/restore, booking activation, email send, billing activation, environment-variable change or deployment occurred. Existing isolated concurrency results were recovered and corroborated, not rerun. Preparation approval does not authorize production execution.
+Implementation performed local repository work only. The existing Neon integration's schema inventory was verified; no SQL was executed. The dated live findings below are carried forward from the approved investigation, not represented as new live inspections during implementation. Full operator reference: [ACTIVATION_RUNBOOK.md](./ACTIVATION_RUNBOOK.md).
 
-## 1. Deployment and database identity
+## 1. Latest recorded deployment and database evidence
 
-| Item | Verified value |
+| Item | Recorded observation from approved investigation |
 | --- | --- |
-| Vercel project | `roosters-ridge-digital` / `prj_iolwd1HBRl0M7NllmzyBCAFmaczC` |
+| Domain | `https://roostersridgedigital.com` |
+| READY production deployment | `dpl_3zCBnmVfnPsCw5J1guFCgnS98CDu` |
+| Immutable URL | `https://roosters-ridge-digital-fbql8cl94-mbthiel1-5217s-projects.vercel.app` |
+| Deployed source / branch | `d59e011106aade4ebf287aa9d714029f24614b58` / `main` |
+| Vercel project | `prj_iolwd1HBRl0M7NllmzyBCAFmaczC` |
 | Team | `team_HuUf4Hc9N4Wq5RYieMR4WwOE` |
-| Production domain | `https://roostersridgedigital.com` |
-| Deployment | `dpl_4cpZE25UZByREuE66t8SVo1i6zjm`, target `production`, status `READY` |
-| Immutable URL | `https://roosters-ridge-digital-g2xjc801c-mbthiel1-5217s-projects.vercel.app` |
-| Deployment creation | 2026-10-13 11:30:45 UTC |
-| Deployed source | `main`, `f819a9aaf1848f88d329b2157d461d8256e32fa5` |
-| Investigated working source | `v0/scheduling-phase-4c-validation`, `0a3f05facea1bce9490ed41b8a6796c179df779b` |
 | Neon project | `royal-bonus-04874440` |
-| Connected production branch | `br-solitary-grass-au781exk` |
-| Runtime pooled host | `ep-divine-scene-au7rxgk5-pooler.c-10.us-east-1.aws.neon.tech` |
-| Direct compute | `ep-divine-scene-au7rxgk5.c-10.us-east-1.aws.neon.tech` |
-| Database / inspection role | `neondb` / `neondb_owner` |
-| PostgreSQL | 18.6 |
-| Managed-auth host | `ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech` |
+| Observed production branch | `br-solitary-grass-au781exk` (`main`) |
+| Compute | `ep-divine-scene-au7rxgk5` |
+| Pooled host | `ep-divine-scene-au7rxgk5-pooler.c-10.us-east-1.aws.neon.tech` |
+| Direct host | `ep-divine-scene-au7rxgk5.c-10.us-east-1.aws.neon.tech` |
+| Database | `neondb` |
 
-Vercel inspection established the domain-to-deployment mapping. Secret-safe inspection of the current production-scoped `DATABASE_URL` established its host/database, and Neon endpoint metadata mapped that compute to its branch. The production database/auth variable records predate this deployment. These are configuration and catalog observations, not an instrumented runtime connection trace inside the immutable deployment.
+**Target discrepancy:** the request's `br-solitary-grass-au781ekx` returned HTTP 404. Do not mark it confirmed or silently substitute targets. Any future execution approval must explicitly name the observed `br-solitary-grass-au781exk`; the preparer rejects the typo.
 
-The sandbox's `DATABASE_URL` points to the same pooled host. The inspected unbranched Vercel database variable targets production, preview and development: **an ordinary preview is not automatically isolated**. Future tests must pin an approved isolated branch without repointing shared project variables.
+Current production-target variable hostname/database/project values and update timestamps corroborate this mapping; endpoint metadata independently maps compute to branch. **Immutable-deployment runtime attestation remains incomplete:** deployment metadata lists variable names, not resolved values, and deployment-scoped environment lookup was unavailable. Do not substitute sandbox/project configuration for immutable runtime proof or deploy diagnostics without separate authorization. A secret-safe approved existing server/operator diagnostic must establish deployment ID, DB hostname/name and project ID; otherwise installation remains blocked.
 
-## 2. Migration comparison, Phases 1–5
+### Recorded catalog observation
 
-Production currently has **no `rrd_scheduling` schema and zero scheduling tables**. No migration-ledger tables were discovered through `information_schema`; the SQL files do not implement a scheduling migration ledger. Therefore none of these migrations is currently represented in the production schema. This does not prove they were never applied and subsequently removed.
+At database timestamp **2026-10-15T01:47:56.891Z**:
 
-| Migration | Capability | Production | Version relevance / isolated evidence |
-| --- | --- | --- | --- |
-| 001 `scheduling` | Tenant/member/host/types, availability, bookings, tokens, initial notification settings | Missing | Present in deployed commit; isolated foundation exists |
-| 002 `admin_calendar` | Pending status, booking metadata/version, calendar blocks, admin audit | Missing | Present in deployed commit; isolated catalog confirms calendar exclusion |
-| 003 `configuration` | Tenant policies, type metadata, New York timezone and weekday seeds | Missing | Present in deployed commit; isolated RRD seeds verified |
-| 004 `notifications` | Delivery gate, jobs/attempts/events, lead links, booking notification trigger | Missing | Present in deployed commit; isolated implementation tested |
-| 005 `customer_management` | Purpose-scoped tokens, request replay, history fields/trigger | Missing | Present in deployed commit; isolated implementation tested |
-| 006 `website_integration` | Booking conversion claims | Missing | Present in deployed commit; isolated implementation tested |
-| 007 `multitenant` | Active/permission memberships, domains, platform admins, tenant audit | Missing | Not in deployed commit; present on Phase 5A isolated branch |
-| 008 `branding_responses` | Sealed booking response storage | Missing | Not in deployed commit; present on Phase 5A isolated branch |
-| 009 `platform_management` | Plans/accounts/settings, immutable audit, operational events | Missing | Not in deployed commit; present on Phase 5A isolated branch |
-| 010 `stripe_sandbox` | Disabled billing settings, prices/accounts, immutable billing events | Missing | Not in deployed commit; prior isolated-only application recorded in `PHASE_5C.md` |
+- PostgreSQL 18.6 `(c021049)`, database `neondb`.
+- No `rrd_scheduling` schema; zero scheduling tables.
+- Only plpgsql 1.0 installed; btree_gist 1.8 available but not installed. Database CREATE privilege is not a completed extension rehearsal.
+- `public.leads.id`: non-null UUID, validated PK; `leads.email`: non-null text. `public.email_suppressions.email`: non-null text, validated PK. Legacy key/type prerequisites satisfy the inspected contracts; no legacy rows were read.
+- Missing scheduling installation is independently established. It does not establish password validity, a fresh identity, membership or full environment readiness.
 
-All ten files were inspected. **Do not install 007–010 merely to fix the currently deployed calendar warning.** The deployed artifact contains 001–006. A release of the newer application requires its own artifact/migration compatibility review. Migration 010 is sandbox billing preparation, not a prerequisite for the current private RRD calendar.
+Fresh snapshot listing during that investigation returned `[]`; retention was 21,600 seconds/six hours. No current earliest-restorable point, agreed retained artifact lifetime/RPO/RTO or full restore rehearsal was established for the proposed installation. Recovery remains a blocking gate. Preserve historical partial recovery evidence below without relabeling it a current full pass.
 
-Migration files are not generally rerunnable: 001 creates the schema and inserts seeds; most later files use unconditional additive DDL. Migration 008's `IF NOT EXISTS` does not make the complete sequence idempotent. Record exact checksums and committed steps in an approved execution record; abort on schema drift rather than replaying everything.
+## 2. Correct current-release scope
 
-### Extensions and legacy dependencies
+The older `f819a9a...` private source and `788fff0...` newer source are historical, not the latest recorded deployed SHA. All ten migration files exist at `d59e011106aade4ebf287aa9d714029f24614b58`; their hashes match the runbook manifest. No migration was executed by preparation.
 
-- Required: `btree_gist`, for UUID equality in the tenant/host GiST exclusions. **Missing in production**; isolated Phase 5A catalog has version 1.8.
-- `plpgsql` is installed in production and required by later trigger/function migrations.
-- PostgreSQL 18 provides `gen_random_uuid()`; these files do not require an additional `pgcrypto` installation.
-- Existing `public.leads` and `public.email_suppressions` were confirmed in production. Validate required columns, keys and privileges against the selected release before migration; their existence alone is not a complete compatibility test.
+The reviewed candidate is **001 → 009**, with btree_gist prerequisite checked before 001. This is an individually reviewed full non-billing release recommendation, not automatic promotion of staging files:
 
-## 3. Exact warning source and behavior
+- 001–006 provide base calendar/configuration/customer/website capabilities. 001 includes tenant/random-host/type/disabled-link seeds; 003 includes real timezone/buffer/name updates and hours/type seeds. Those effects need explicit migration approvals.
+- 007 provides membership status/permission authorization and platform-admin relation; existing membership backfill changes authorization semantics and needs review if the baseline changes. It creates no platform administrator.
+- Installation readiness also requires 008 sealed response capability. Its IF NOT EXISTS is not structural drift validation.
+- 009 supplies deployed management/settings/audit functionality and global plan/settings seeds, not RRD enrollment. Some entitlement paths deliberately tolerate absent accounts/schema, so not every calendar call strictly needs 009. Test unenrolled RRD explicitly.
+- **010 is excluded.** Its header limits it to explicitly approved isolated targets. Billing code must fail closed with schema absent; disabled defaults do not authorize production installation or live Stripe.
 
-The deployed commit and working copy share this path:
+The runbook includes each file's exact SHA-256 and additive/constraint/backfill/append-only risk review. No production down migration is approved. Clean same-SHA replay is required for exact expected catalog, not inference from numbering/table counts. Any smaller calendar-only scope needs a separate compatibility review; do not use the obsolete 001–006 production recommendation.
 
-1. `app/admin/scheduling/page.tsx` requires dashboard access.
-2. `modules/scheduling/admin-authorization.ts` checks `to_regclass('rrd_scheduling.admin_audit') IS NOT NULL`.
-3. If missing, it throws `SCHEDULING_SETUP_REQUIRED`. An absent tenant with slug `roosters-ridge-digital` also throws this error.
-4. `app/admin/scheduling/actions.ts`, `loadSchedulingCalendar`, maps that error to `state: 'setup'` and a fixed sentence saying Phase 1/2A approval and isolated validation are pending and no migration has been applied.
-5. `components/admin/scheduling/scheduling-dashboard.tsx` renders `Activation pending approval` for that state.
+## 3. Runtime warning and authorization boundaries
 
-**The state is dynamic; the prose is static.** In production the missing `admin_audit` relation is sufficient to trigger the warning before staff membership is evaluated. This is not a permanent unconditional placeholder, but it is also not a comprehensive readiness assessment. The same message could incorrectly claim no migrations exist if only the tenant seed were missing. It does not assess approvals or historical test evidence.
+Historical tracing established that `/admin/scheduling` loads dashboard-protected actions and maps `SCHEDULING_SETUP_REQUIRED` to setup UI. Missing schema is sufficient to explain the warning before membership is evaluated. Static explanatory copy is not a comprehensive readiness or approval assessment; changing copy will not install the database. No warning/UI/runtime change is part of this preparation.
 
-Proposed correction, not implemented: return structured, deployment-specific readiness reasons for schema/version compatibility, required extension/relations/columns/constraints/triggers, tenant seed/configuration, authenticated authorization, host assignment, private-admin usability and separate public/email/billing gates. Keep owner-only details private, treat database failures as errors rather than missing-schema conclusions, and preserve all authorization checks. Show missing prerequisites from actual results instead of asserting untracked approval/test history. A suitable message for this inspected production target is: **Scheduling database installation is missing. Private setup requires reviewed migrations and staff initialization; public booking and notification delivery remain disabled.**
+Installation does not confer access. The current `/admin/scheduling/tenants` path calls `platformList()` and needs a verified **platform administrator**, not merely an RRD tenant administrator. A tenant grant must not be upgraded to platform scope to clear an error. Use tenant-appropriate calendar/configuration routes after separately approved identity/member setup.
 
-## 4. Administrator authorization and tenant configuration
+Fresh `getAuthSession(true)`, verified immutable user UUID and dashboard authorization remain required. Existing `/api/admin/scheduling/identity` grants nothing and enforces its own isolation/configuration checks. No identity was obtained during this preparation; no email lookup, project ownership, shared password, screenshot or user-row existence substitutes for fresh server-validated identity. Host-user binding is also separately authorized.
 
-| Check | Production result |
-| --- | --- |
-| Browser's administrator session | Unauthenticated: `/admin/scheduling` redirected to `/admin/sign-in` at dark 1638×986; no dashboard key entered or session manufactured |
-| Authenticated user identity | Not available in this browser; the user's own session was not inherited |
-| Managed-auth identities | Aggregate metadata confirmed two users, both email-verified; no identity/session secrets were read |
-| RRD tenant membership / role | Cannot exist in the current scheduling schema: `members` and `tenants` are absent |
-| Scheduling host assignment | Not initialized: `hosts` is absent |
-| Timezone / weekly availability | Not initialized: scheduling tenant and availability tables are absent |
-| Types / configuration / notification settings | Not initialized: their tables are absent |
+## 4. Implemented offline preparation contracts
 
-Deployed scheduling admin access requires the dashboard cookie, a **fresh verified individual Neon Auth session**, and an RRD membership with `role IN ('owner','admin')`. Shared dashboard access alone is insufficient. In the newer source, membership must additionally be active with `permission_role='tenant_admin'`; platform administration is separate and must not be granted implicitly. A host assignment is separate from admin authority: the calendar guard does not require the administrator to be a host, but a staff member acting as a booking host needs an explicit association.
+- `current-production` pins the exact recorded deployed SHA and verifies migration bytes against BOTH Git objects and working files. Production migration generation requires explicit correct project-bound branch/compute/database, current release and empty baseline. It emits only 001–009.
+- Historical `private`, `newer` and `sandbox` modes remain explicitly labeled staging-only, with no inferred release/target. Sandbox 010 cannot be prepared for production.
+- Each packet is `PREPARED_NOT_EXECUTED` / `SEPARATE_EXECUTION_APPROVAL_REQUIRED`. The helper has no database/network executor. Per-file arrays retain statement boundaries and transaction atomicity; unsupported syntax/drift aborts.
+- `bootstrap.sql` is now configuration-only: no member/auth access, privilege grant, host creation or host-user binding. It adopts the single reviewed actual migration-seeded host, inserts missing manifest configuration only, compares existing values, rejects conflicts and does not overwrite timezone/history. Exact retries produce no changes/audit noise.
+- `membership.sql` is a distinct packet. The retired combined bootstrap mode is rejected. Generation requires fresh identity evidence plus a separate exact identity/target/source/role/host-bound authorization record, as documented in the runbook. The offline tool checks record consistency and age but cannot authenticate a live session or establish approval authority: records remain explicitly operator-attested, not cryptographic session proof. Revalidate immediately before execution.
+- Membership SQL refuses privilege/status/ownership conflicts, creates no host/tenant/platform administrator, and binds only the approved existing unassigned host. SQL verified-user existence is an additional guard, never fresh-login proof. Both packets preserve disabled tenant/host/public/delivery gates and reject billing targets.
 
-The current authenticated administrator's identity and effective session permissions therefore remain **unverified**, not passed. After approved installation, verify the chosen user's real session and server-derived user ID, membership, status/permission role appropriate to that artifact, and host assignment without using an email match as an authorization shortcut.
+Preparation validation passed **16/16 offline Node tests, zero skipped**, generator/test syntax checks and `git diff --check`. Regression coverage includes checksums/current-SHA pinning, typo/implicit target rejection, 010 exclusion, historical labels, SQL-aware statement framing, grant-free configuration and blocked/mismatched/stale membership evidence. These are not real PostgreSQL execution, retry/race, recovery or authenticated acceptance results; no production build/browser result is implied for offline tooling.
 
-## 5. Real PostgreSQL concurrency evidence
+## 5. Historical evidence retained with its original scope
 
-Previously approved isolated Phase 5A target:
+These observations are historical and **do not override the latest release manifest or authorize execution**:
 
-- Branch `br-dawn-sea-aucw8o2d`.
-- Direct host `ep-red-hat-aub2bx37.c-10.us-east-1.aws.neon.tech`.
-- Recovered actual tool output: five files, **82 tests passed, zero skipped**, exit 0, 81.73 seconds. A subsequent retained run after dependency updates also passed **82/82**, exit 0, 81.88 seconds.
-- `PHASE_5A.md` identifies customer, multitenant, installation, branding and platform integration suites. The real customer suite uses a six-connection PostgreSQL pool and simultaneous requests/reschedules, not an in-memory race substitute.
-- This investigation's read-only catalog confirms all 32 expected 001–009 scheduling tables, installed `btree_gist`, two validated exclusion constraints and zero unvalidated scheduling constraints.
+- Earlier deployment `dpl_4cpZE25UZByREuE66t8SVo1i6zjm`, immutable URL `https://roosters-ridge-digital-g2xjc801c-mbthiel1-5217s-projects.vercel.app`, source `f819a9aaf1848f88d329b2157d461d8256e32fa5`, was the original 001–006 private artifact. Earlier advice not to install 007–009 referred to that artifact, not current `d59e011...`.
+- Original catalog at `2026-10-14T02:04:24.862Z` also found no scheduling schema, only plpgsql and validated legacy keys. Historical auth metadata established UUID user IDs/non-null verified flag, not current administrator identity. Earlier aggregate evidence of two verified users was not grant authority and was not refreshed here.
+- Original anonymous browser visit to `/admin/scheduling` redirected to `/admin/sign-in` at dark 1638×986. No key entered/session manufactured; positive authenticated acceptance remained unexecuted.
+- Earlier sandbox-only secret-safe process checks found configured database/auth hosts aligned with production and short auth-cookie/dashboard keys. That was not immutable production attestation, and no values/lengths were exposed or keys changed. Current environment validity requires its own approved diagnostic.
+- Phase 5A branch `br-dawn-sea-aucw8o2d`, compute `ep-red-hat-aub2bx37`: recovered five-suite **82/82** PostgreSQL results (81.73 seconds; retained repeat 81.88 seconds). Six-connection real customer races were not in-memory substitutes. Read-only catalog confirmed 32 tables for 001–009, btree_gist, two validated exclusions, zero unvalidated scheduling constraints. RRD seeds were disabled/unassigned with no RRD members; synthetic records elsewhere mean this is not a clean target to merge.
+- Separate Phase 5C `br-lively-wildflower-au7n9r4k` / `ep-floral-unit-auxvhhf6`: 12 billing PostgreSQL tests with simulated Stripe, not live billing readiness.
+- Later `STAGING_VALIDATION.md` and `ACTIVATION_PREREQUISITES.md` retain **573/573** isolated scheduling assertions on approved 001–010 staging. That billing baseline is incompatible with the deliberately non-billing configuration/member packet guard; do not remove 010 or weaken guards to reuse it.
+- Historical recovery branch `br-old-lake-ausa6oe8` exact LSN `0/4DAF628` comparison passed logical integrity for 21 public tables, 328 columns, 238 constraints, 35 indexes and complete row multisets. Managed-Auth JWKS had two extra columns with unverified provider provenance; attachment-byte/grants/physical recovery and retention exclusions remained. Do not erase this partial success, infer supported provider evolution or relabel it current full recoverability. Earlier expiry/retention was insufficient for the discussed seven-day window.
 
-Booking exclusion protects intersecting **buffered** inventory for the same tenant/host when status is not cancelled. Calendar-block exclusion protects intersecting blocks. **Booking-vs-block conflicts and daily capacity require the shared host-lock/check protocol in the services**; the two separate exclusions do not protect cross-table conflicts by themselves. External writers must follow the same protocol.
+Booking exclusion covers buffered same-tenant/host overlap for non-cancelled bookings; block exclusion separately covers block overlaps. Cross-table booking/block and capacity races need the shared host-lock protocol. Historical successes do not prove current-release clean replay through the exact proposed transaction executor.
 
-This establishes prior real isolated concurrency verification, not production validation or a fresh run against a newly chosen release. No concurrency tests were run during this read-only investigation. Earlier rehearsal used transactional DO framing, not proof of a byte-for-byte replay of every original file through the production execution path. Pin exact migration/source hashes and repeat appropriate tests on a clean production-derived branch before production approval.
+## 6. Remaining approval gates and acceptance
 
-Live isolated RRD seed inspection now confirms `America/New_York`, five Monday–Friday 09:00–17:00 rows for the seeded host, the four expected type seeds, disabled tenant/delivery, **zero RRD members and zero assigned RRD hosts**. Synthetic test records remain elsewhere/on test hosts; this branch is not a clean production seed and must never be merged into production.
+1. Reconfirm exact observed branch (not typo), domain/deployment/current SHA and immutable runtime database mapping without credentials.
+2. Separately approve retained recovery creation/lifetime and restore-to-new-isolated-branch rehearsal; establish owner/RPO/RTO and approved legacy/auth integrity coverage. No current full recovery pass is claimed.
+3. Separately approve clean current-SHA 001–009 replay on new isolation and necessary test-only exact endpoint pins/fixtures/auth/preview work. An ordinary preview may inherit production DB values; never repoint shared variables or weaken guards.
+4. Obtain distinct production extension and per-file migration approvals covering disclosed seed/backfill/constraint/authorization effects. Execute with exact explicit target IDs and one bounded transaction per file; record each committed result externally. Stop on drift/unknown results.
+5. Separately approve disabled configuration completion only if needed. Adopt actual seeded host UUID, no duplicate host, no membership/permission changes. Compare existing state; matching seeds make no changes.
+6. Obtain legitimate fresh server-validated identity and separate exact tenant/role/host/user authorization before membership generation/execution. Tenant admin does not unlock platform administration.
+7. On isolation first, verify configuration/member no-op retries, rollback/conflict/concurrent behavior, private persistence/version conflicts, unauthenticated/unverified/nonmember/suspended/cross-tenant/host denials, timezone/DST and exceptions, shared inventory/capacity races. Host activation, deployment and environment fixes each need independent approval; never open public booking to pass a private test.
+8. Postflight exact catalogs/legacy integrity/disabled manifest, no platform account/domain/billing tables or unexpected grants, no customer deliveries/Stripe calls. Do not call potentially writing public/cron handlers as read-only checks. Production fixture/UI writes are separately gated.
 
-The Phase 5C report records separate billing migration/testing on `br-lively-wildflower-au7n9r4k` / `ep-floral-unit-auxvhhf6`: 12 PostgreSQL billing tests passed with simulated Stripe responses. That is unrelated to scheduling production approval; live Stripe delivery and the isolated billing preview remain incomplete. Its current billing catalog was not re-inspected here.
+Recovery/rollback must not blindly DROP SCHEMA, replay migrations, bypass append-only audit triggers or rewind the whole database. Restore to new isolation first, prefer reviewed additive compatibility/application rollback and scoped repair; whole-database recovery risks unrelated leads/email/auth and requires explicit reconciliation/downtime approval.
 
-## 6. Deployment-specific activation checklist
-
-### Required to unlock the current private admin implementation
-
-- [ ] Approve exact release scope: current production 001–006 versus a separately reviewed newer artifact. Do not silently deploy the working branch.
-- [ ] Pin approved source/migration hashes, production deployment ID, Neon branch/compute/database and operator.
-- [ ] Complete clean isolated replay using the intended execution path, extension/legacy dependency checks, constraints/triggers/index checks and recoverable backup procedure.
-- [ ] Approve production schema installation separately; current production has no scheduling tables and lacks `btree_gist`.
-- [ ] Approve the real staff user ID, role and host association. Two verified accounts existing is not membership approval.
-- [ ] Approve RRD timezone, hours, exceptions, appointment types, limits and policies; initialize them tenant-scoped without changing public or delivery gates.
-- [ ] Verify authenticated calendar, types, availability, staff configuration, save persistence, version conflicts and denied access against isolated staging; these were not proven by the anonymous browser check.
-- [ ] Establish runtime least-privilege grants, key custody and backup/restoration ownership before production writes; current inspection uses `neondb_owner` and does not establish RLS protection.
-
-### Separate gates for any later public/email/commercial launch
-
-- [ ] Explicit tenant/host/type/public-link activation approval and real public/mobile/management-link acceptance.
-- [ ] If deploying newer multitenant/platform source, review domain approval/DNS/HTTPS, installation/branding settings and any intended account entitlements. Do not auto-enroll RRD or create a platform administrator to silence a setup warning.
-- [ ] Separate sender/recipient, secure-link, worker/webhook and notification-delivery approval. Configure cron/plan frequency only under that approval; schema installation does not prove email readiness.
-- [ ] Monitor jobs, conflicts, errors, backups and operational access; retain a reviewed rollback plan.
-- [ ] Keep billing disabled and tenant enrollment absent. Sandbox Stripe acceptance/live billing require separate scopes and approvals, not this scheduling installation.
-
-## 7. Idempotent RRD initialization procedure — prepared, not executed
-
-This is the initialization contract for a reviewed operator procedure, not a claim that the migration files themselves are idempotent. Execute only after the selected schema is installed and verified on an explicitly approved target.
-
-### Candidate seed specification requiring operator confirmation
-
-| Type slug | Name | Duration | Meeting mode | Initial type state |
-| --- | --- | --- | --- | --- |
-| `free-digital-checkup` | Free Digital Checkup | 30 min | online | Active type, disabled public link |
-| `website-consultation` | Website Design Consultation | 45 min | online | Active type, disabled public link |
-| `project-discovery-call` | Project Discovery Call | 30 min | phone_or_online | Active type, disabled public link |
-| `existing-client-meeting` | Existing Client Meeting | 30 min | online | Inactive, disabled public link |
-
-These mirror repository seed intent, not new production approval. Candidate defaults: `America/New_York`; Monday–Friday 09:00–17:00; host daily limit 6; zero before-buffer, 15-minute after-buffer, 720-minute notice, 60-day horizon, 15-minute slot interval, zero price. Policies: automatic approval, 720-minute cancellation/reschedule deadlines, no reminders, multiple bookings permitted. Sender/recipient/intake/location details need explicit confirmation rather than invention.
-
-1. **Preflight outside any mutation:** verify approved host/database/branch/source checksums and real verified staff user ID; require an approval record. Verify the entire selected migration capability set. Abort on unexpected existing data or enablement. Never run DDL from application startup.
-2. **Begin one bounded initialization transaction:** acquire a stable transaction-scoped advisory lock for the RRD initialization key, set lock/statement timeouts and resolve the tenant server-side by its unique slug. Use parameterized values throughout.
-3. **Tenant:** insert only if absent, using `ON CONFLICT (slug) DO NOTHING`; select and lock the resulting tenant row. Preserve its existing ID. Require disabled state for this bootstrap. If existing timezone/name/settings differ from the approved manifest, abort for review instead of silently overwriting them. Do not change timezone in a tenant with booking history through this bootstrap.
-4. **Member:** verify the approved user exists and is verified. Insert `(tenant_id,user_id)` with the approved owner/admin role only if absent; on conflict, compare the existing role and, for 007+, active status/tenant-admin permission. Unexpected suspended/lower-privilege/different memberships require separate authorization changes, not automatic escalation. Never derive privilege from public signup or an unverified email.
-5. **Host:** use the operator-approved host UUID, or explicitly adopt the single existing seeded RRD host by reviewed ID. Do not match arbitrary names or generate a fresh host UUID on every run. If more than one candidate exists, stop. Associate only the approved user under the same tenant; an existing different association requires review. Keep the host inactive in this non-public installation scope.
-6. **Types:** insert missing approved types with `ON CONFLICT (tenant_id,slug) DO NOTHING`; compare existing rows against the manifest. Preserve IDs/history and abort on conflicting prices/durations/policies. Keep Existing Client Meeting inactive. No payment-provider action is part of initialization.
-7. **Availability:** insert missing approved windows using the existing unique `(tenant_id,host_id,weekday,start_minute,end_minute)` key with `ON CONFLICT DO NOTHING`. Validate the complete existing schedule and exceptions; do not add 09:00–17:00 alongside incompatible split hours. Conflicting existing schedules require a reviewed configuration edit, not a bootstrap overwrite.
-8. **Settings:** insert configuration/notification rows only if missing, using tenant primary keys; preserve/compare existing version and policies. All notification preferences/reminders and `delivery_enabled` remain false for this installation. Do not reset an existing configuration version on retry. Unexpected enabled delivery aborts preflight rather than silently changing production.
-9. **Public links:** reuse stable reviewed slugs/type/host IDs. Insert missing links disabled with conflict checks; reject any slug owned by another tenant or mapped to different resources. Preserve disabled tenant/host/link gates. Do not activate domains or billing, create billing enrollments or grant platform-admin membership.
-10. **Audit and commit:** record the approved actor and only actual initialization changes through the selected artifact's tenant/admin audit model. On a retry with identical state, make no data changes or duplicate audit entries. Postflight must prove the exact tenant/member/host relationships, type/hour/policy rows and all disabled gates. Roll back the transaction on any mismatch.
-11. **Authenticated acceptance:** sign in legitimately and test authorized/denied private-admin flows. Public booking, live notifications, cron and billing remain separately gated. This step does not authorize their activation.
-
-This insert-or-compare approach is idempotent for an approved unchanged manifest and fails safely on drift. It intentionally does not erase history, downgrade existing permissions, escalate roles, overwrite settings or auto-enable anything.
-
-## 8. Safe production procedure and approval boundary
-
-1. Select release scope and finish the clean isolated replay/authenticated acceptance/recovery gates above. Prefer the smallest reviewed scope matching the deployed artifact.
-2. Present the exact ordered SQL files, initialization manifest, staff/host IDs, hashes, target branch/database, grants, backup and rollback plan for **explicit production approval**.
-3. Only after that approval, take the recovery point, recheck target/gates and apply missing reviewed migrations with fail-on-error transactions. Record each committed step; do not rerun an unknown partially committed sequence. Migration 003 includes seed updates, so approval must cover those data changes as well as DDL.
-4. Run the approved idempotent bootstrap; verify private scheduling while public links, tenant/host activation, notification delivery and billing remain off. A deployment/message correction needs its own approved release; this investigation changed no runtime code.
-5. Stop again before public activation, live email/cron, billing or destructive rollback. Each has separate acceptance and approval requirements. If installation fails, preserve evidence and the last committed step; additive schema removal/full-database restoration requires a separate recovery decision because unrelated business records may be affected.
-
-**Approval requested for a future turn only:** production installation of reviewed 001–006 plus the confirmed RRD staff/configuration bootstrap, contingent on clean isolated replay and authenticated acceptance, with public booking, live email and billing disabled. No production execution follows this investigation.
-
-## 9. Approved preparation completion — not activation
-
-The executable operator reference is [ACTIVATION_RUNBOOK.md](./ACTIVATION_RUNBOOK.md). Release manifest pins private source `f819a9aaf1848f88d329b2157d461d8256e32fa5` (001–006) and separately proposed newer source `788fff0ed3691c977a2ca32ac138b0b9a9795637` (001–009). The six base files have identical SHA-256s in both Git objects; every hash is listed in the runbook and verified by the offline preparer. Production deployment mapping above is retained historical evidence and must be reverified immediately before any execution.
-
-Fresh read-only production observation at **2026-10-14T02:04:24.862Z** confirms PostgreSQL 18.6, no scheduling schema/zero scheduling tables, only `plpgsql` 1.0 and database CREATE privilege for `neondb_owner`. Legacy `leads.id` is non-null UUID with validated primary key, `leads.email` non-null text and `email_suppressions.email` non-null text with validated primary key. Managed-auth identity metadata confirms UUID `id` and non-null boolean `emailVerified`; no user/session/account records were read. Extension trust/installability and least-privilege runtime grants remain separate preflight requirements.
-
-Connected inventory lists the existing database/auth/dashboard/provider variables. A secret-safe **sandbox-only** value-constraint check confirms pooled/direct database and HTTPS managed-auth host mapping to the recorded production compute. Both configured `NEON_AUTH_COOKIE_SECRET` and trimmed `ADMIN_DASHBOARD_KEY` **fail the 32-character minimum**; no values or lengths were exposed. This is not proof of production-scoped values or immutable deployment validity. No rotation or variable change was performed. The existing fresh-session helper returns null with a short cookie secret, adding an authenticated-acceptance blocker in this environment. An approved key transition must consider dashboard HMAC cookies and encrypted scheduling payloads; do not silently overwrite keys or ask to add already-configured names again.
-
-Previously authorized snapshot listing returned `[]`; configured history retention is 21,600 seconds (six hours). Earliest-restorable timestamp and actual successful restore are unproven. **Recovery is blocked**, not passed by retention metadata or a diagnostic WAL LSN. Snapshot/branch creation and restoration need separate authorization. The runbook supplies explicit creation/restore-to-new-branch templates and requires artifact ID/time/LSN/expiry/owner plus restored catalog/critical-data evidence before production mutation.
-
-Preparation files have no database execution or network capability. They generate explicit Neon MCP request payloads only. Each 001–006 file becomes one `neon_run_sql_transaction` array of individually parsed statements with its per-file atomicity preserved; dollar-quoted function bodies remain intact. Loaded tool documentation provides single-transaction semantics, but actual clean replay on the new approved isolated branch is still required; unsupported execution blocks the procedure rather than permitting naive semicolon splitting, cross-connection BEGIN/COMMIT or an invented direct runner. No production checksum-ledger schema is added: a separately retained operator execution record must track every hash/committed step. The new bootstrap SQL is unexecuted and requires real PostgreSQL acceptance, including identical no-op retries and full rollback on conflicts.
-
-The bootstrap is scoped to disabled RRD configuration, approved immutable actor/host IDs and owner/admin role. It serializes initialization, uses insert-or-compare semantics, explicitly adopts only the approved seeded host, rejects privilege/status/ownership/settings/link conflicts and audits actual changes only. It never grants platform administration, activates domains/public/email, enrolls platform/billing accounts, deletes history or changes timezone. Exact retries do not update configuration versions or add audit rows. The seed manifest is still proposed, not approved for production.
-
-Existing private catalog loading lists inactive hosts without filtering them out (`admin-postgres.ts`). This establishes listing behavior only, not successful private booking with an inactive host. Any required host activation needs separate authority and proof public tenant/link/server gates remain closed. Proposed `SCHEDULING_PRIVATE_ADMIN_ENABLED`, `SCHEDULING_PUBLIC_BOOKING_ENABLED` and `SCHEDULING_EMAIL_DELIVERY_ENABLED` controls are specified for later implementation; they are **not existing configuration or implemented gates**.
-
-**Current readiness remains NOT READY:** missing base schema/extension; unconfirmed restorability; unknown approved administrator/operator/host; unapproved manifest; failed sandbox key constraints and unverified production values; no clean release-specific replay/bootstrap test or authenticated acceptance; new isolated endpoint is not yet allowed by current integration tests; private release integration harness and release/gate/environment work need review. No prior 82-test result satisfies these gates. Preparation validation passed **12/12 offline Node tests**, zero skipped, plus `node --check` for the preparer and `git diff --check`. Tests cover SQL framing, pinned hashes, explicit targets, production exclusion of 010, bounded bootstrap inputs, read-only preflight, secret-safe environment results and runbook/packet consistency. This is not PostgreSQL concurrency, recovery or authentication evidence; no production build/browser check is claimed for these preparation-only artifacts.
-
-Separate next approvals: isolated staging/replay/fixture and test-only endpoint pinning; recovery creation/restoration; production extension/migrations with exact hashes; bootstrap with immutable IDs and procedure/manifest hash; private-admin deployment/default-off controls plus any environment key/host activation changes. Public booking, scheduling delivery and Stripe remain three independent future approval scopes.
+**VERIFIED:** local release/hash and fail-closed preparation contracts, plus dated retained observations above. **PROPOSED:** current non-billing 001–009 and disabled RRD manifest. **BLOCKED:** corrected-target execution authority, immutable runtime attestation, current full retained recovery/retention/RPO/RTO, clean replay, approved administrator, SQL retry and authenticated acceptance. **APPROVED:** repository preparation only. Public scheduling, customer email and live billing remain separately excluded.
 
 ## Evidence references
 
-- Vercel CLI deployment inspection and secret-safe project environment metadata/value-host checks in this investigation.
-- Read-only Neon catalog queries on the explicit production and Phase 5A branch/compute IDs above.
-- Deployed Git objects for `admin-authorization.ts`, `rrd-adapter.ts`, `actions.ts` and migration file inventory at `f819a9a`.
-- Working `modules/scheduling/migrations/001_scheduling.sql` through `010_stripe_sandbox.sql`.
-- `modules/scheduling/PHASE_3D.md`, `PHASE_5A.md`, `PHASE_5C.md` (historical claims distinguished from fresh reads).
-- Retained tool results: `user_read_only_context/conversation_history/t2968/2533-tool-bash-node-env-file-if-exists-ver.md` and `2575-tool-bash-agent-browser-open-http-loca.md`, containing actual 82-test PostgreSQL run output.
-- `tests/scheduling-customer.integration.test.ts`: explicit isolated endpoint allowlist, multi-connection pool and simultaneous booking/reschedule assertions.
-
-No credentials, tokens, staff identities, password hashes, or customer appointment data are included in this report.
+- Approved `v0_plans/creative-design.md` for latest live mapping/catalog/snapshot findings and approval boundary.
+- `ACTIVATION_RUNBOOK.md` for full hashes, per-file review, packet commands, evidence-record contract and stop rules.
+- Original retained 82-test outputs: `user_read_only_context/conversation_history/t2968/2533-tool-bash-node-env-file-if-exists-ver.md` and `2575-tool-bash-agent-browser-open-http-loca.md`.
+- `PHASE_3D.md`, `PHASE_5A.md`, `PHASE_5C.md`, `STAGING_VALIDATION.md` and `ACTIVATION_PREREQUISITES.md` for historical scoped results, not current execution instructions.
+- Unchanged migration files 001–010 and their pinned Git objects. No credentials, session tokens, staff identity records or customer appointment data belong in this report.

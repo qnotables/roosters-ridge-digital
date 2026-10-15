@@ -8,9 +8,10 @@ export const projectId = 'royal-bonus-04874440'
 export const productionBranch = 'br-solitary-grass-au781exk'
 export const productionCompute = 'ep-divine-scene-au7rxgk5'
 export const releases = {
-  private: { ref: 'f819a9aaf1848f88d329b2157d461d8256e32fa5', end: 6 },
-  newer: { ref: '788fff0ed3691c977a2ca32ac138b0b9a9795637', end: 9 },
-  sandbox: { ref: '788fff0ed3691c977a2ca32ac138b0b9a9795637', end: 10 },
+  'current-production': { ref: 'd59e011106aade4ebf287aa9d714029f24614b58', end: 9, historical: false },
+  private: { ref: 'f819a9aaf1848f88d329b2157d461d8256e32fa5', end: 6, historical: true },
+  newer: { ref: '788fff0ed3691c977a2ca32ac138b0b9a9795637', end: 9, historical: true },
+  sandbox: { ref: '788fff0ed3691c977a2ca32ac138b0b9a9795637', end: 10, historical: true },
 }
 export const migrations = [
   ['001_scheduling.sql','4bddb55a7a1fb7952a2ae7afa5f29dcecbd7a368bbc0acb380320be0591f9e93'],
@@ -95,13 +96,16 @@ export function validateTarget(options) {
   if (options.target === 'staging' && (options.branch === productionBranch || options.compute === productionCompute)) throw new Error('Production cannot be a staging target')
   return { project_id: projectId, branch_id: options.branch, compute_id: options.compute, database_name: options.database }
 }
+export function verifyMigrationBytes(name, expected, source, working) {
+  if (sha256(source) !== expected || sha256(working) !== expected) throw new Error(`Checksum drift: ${name}`)
+}
 export function pinnedMigrations(release) {
-  const selected = releases[release]
-  if (!selected) throw new Error('Choose --release private|newer|sandbox')
+  const selected = Object.hasOwn(releases, release) ? releases[release] : null
+  if (!selected) throw new Error('Choose --release current-production|private|newer|sandbox; historical releases are staging-only')
   return migrations.slice(0,selected.end).map(([name,expected]) => {
     const path = `modules/scheduling/migrations/${name}`
     const source = execFileSync('git',['show',`${selected.ref}:${path}`],{cwd:root,encoding:'utf8'})
-    if (sha256(source) !== expected || sha256(readFileSync(resolve(root,path))) !== expected) throw new Error(`Checksum drift: ${name}`)
+    verifyMigrationBytes(name, expected, source, readFileSync(resolve(root,path)))
     return { path, sha256: expected, sql_statements: transactionStatements(source) }
   })
 }
@@ -124,6 +128,35 @@ export function environmentChecks(env, compute) {
     return { name, present: Boolean(value), valid }
   })
 }
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
+const approvalId = /^[A-Za-z0-9_-]{1,80}$/
+
+export function validateMembershipEvidence(options, target, identity, authorization, identityHash, now = Date.now()) {
+  if (!uuid.test(options.user ?? '') || !['owner','admin'].includes(options.role)) throw new Error('Approved immutable user UUID and owner|admin role required')
+  const checkedAt = Date.parse(identity?.checkedAt)
+  if (!Number.isFinite(checkedAt) || now - checkedAt > 300_000 || checkedAt - now > 30_000) throw new Error('Identity evidence must be fresh within five minutes, with no future timestamp')
+  let application, authentication
+  try { application = new URL(identity.applicationOrigin); authentication = new URL(identity.authenticationOrigin) } catch { throw new Error('Verified application and authentication origins required') }
+  if (application.protocol !== 'https:' || application.origin !== identity.applicationOrigin || authentication.origin !== identity.authenticationOrigin || authentication.protocol !== 'https:' || authentication.hostname !== `${options.compute}.neonauth.c-10.us-east-1.aws.neon.tech`) throw new Error('Identity origin mapping mismatch')
+  const ref = releases['current-production'].ref
+  if (identity.userId !== options.user || identity.emailVerified !== true || identity.dashboardAuthorized !== true || identity.grantsPrivileges !== false || identity.sourceCommit !== ref || !/^dpl_[A-Za-z0-9]+$/.test(identity.deploymentId ?? '')) throw new Error('Verified immutable session/dashboard/deployment evidence required')
+  const expected = { id:options.approval, scope:'rrd-membership-and-host-binding', source_commit:ref, tenant_slug:'roosters-ridge-digital', user_id:options.user, host_id:options.host, role:options.role, identity_sha256:identityHash, application_origin:identity.applicationOrigin, deployment_id:identity.deploymentId, target:options.target }
+  if (!authorization || Object.entries(expected).some(([key,value]) => authorization[key] !== value) || Object.entries(target).some(([key,value]) => authorization.database_target?.[key] !== value) || authorization.fresh_session_verified !== true || authorization.runtime_mapping_verified !== true || !approvalId.test(authorization.reviewer ?? '') || !approvalId.test(authorization.operator ?? '')) throw new Error('Separate identity-bound membership authorization record required')
+  return { identity_evidence_sha256:identityHash, identity_checked_at:identity.checkedAt, evidence_scope:'OPERATOR_ATTESTED_NOT_CRYPTOGRAPHIC_SESSION_PROOF', recheck:'REVALIDATE_FRESH_SESSION_AND_AUTHORIZATION_IMMEDIATELY_BEFORE_EXECUTION' }
+}
+
+function membershipEvidence(options, target) {
+  if (!options['identity-record'] || !options['authorization-record']) throw new Error('Membership blocked: fresh identity and separate authorization record files required')
+  let rawIdentity, rawAuthorization, identity, authorization
+  try {
+    rawIdentity = readFileSync(resolve(options['identity-record']))
+    rawAuthorization = readFileSync(resolve(options['authorization-record']))
+    identity = JSON.parse(rawIdentity.toString('utf8'))
+    authorization = JSON.parse(rawAuthorization.toString('utf8'))
+  } catch { throw new Error('Unable to read valid private identity/authorization JSON records') }
+  return { ...validateMembershipEvidence(options,target,identity,authorization,sha256(rawIdentity)), authorization_evidence_sha256:sha256(rawAuthorization) }
+}
+
 export function prepare(options) {
   const target = validateTarget(options)
   const common = { status:'PREPARED_NOT_EXECUTED', approval:'SEPARATE_EXECUTION_APPROVAL_REQUIRED', target:options.target, project_id:projectId }
@@ -133,28 +166,43 @@ export function prepare(options) {
     const source = readFileSync(path,'utf8')
     return { ...common, sha256:sha256(source), requests:splitSql(source).map(sql => ({tool:'neon_run_sql',arguments:{...target,sql}})) }
   }
-  if (options.mode === 'bootstrap') {
-    if (!/^[a-f0-9-]{36}$/i.test(options.user ?? '') || !/^[a-f0-9-]{36}$/i.test(options.host ?? '') || !['owner','admin'].includes(options.role) || !/^[A-Za-z0-9_-]{1,80}$/.test(options.approval ?? '')) throw new Error('Approved UUID user/host, owner|admin role and approval ID required')
-    for (const value of [options.user,options.host]) if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)) throw new Error('Invalid UUID')
-    const source = readFileSync(new URL('./bootstrap.sql',import.meta.url),'utf8')
+  if (options.mode === 'configuration' || options.mode === 'membership') {
+    if (options.release !== 'current-production') throw new Error('Configuration and membership require --release current-production')
+    pinnedMigrations(options.release)
+    if (!uuid.test(options.host ?? '') || !approvalId.test(options.approval ?? '')) throw new Error('Reviewed seeded host UUID and separate approval ID required')
+    if (options.baseline !== undefined) throw new Error('Configuration and membership require verified 009 catalog parity, not a baseline option')
+    let values = [options.host, options.approval], signature = 'uuid,text', parameters = '$1,$2', evidence = {}
+    if (options.mode === 'configuration') {
+      if (['user','role','identity-record','authorization-record'].some(key => options[key] !== undefined)) throw new Error('Configuration must not contain identity or membership inputs')
+    } else {
+      evidence = membershipEvidence(options, target)
+      values = [options.user, options.host, options.role, options.approval]
+      signature = 'text,uuid,text,text'; parameters = '$1,$2,$3,$4'
+    }
+    const file = options.mode === 'configuration' ? 'bootstrap.sql' : 'membership.sql'
+    const name = `rrd_activation_${options.mode}`
+    const source = readFileSync(new URL(`./${file}`,import.meta.url),'utf8')
     const literal = value => `'${value.replaceAll("'","''")}'`
     const sql_statements = ["SET LOCAL lock_timeout='5s'","SET LOCAL statement_timeout='60s'",...splitSql(source),
-      'PREPARE rrd_activation_bootstrap(text,uuid,text,text) AS SELECT pg_temp.rrd_activation_bootstrap($1,$2,$3,$4)',
-      `EXECUTE rrd_activation_bootstrap(${[options.user,options.host,options.role,options.approval].map(literal).join(',')})`,
-      'DEALLOCATE rrd_activation_bootstrap']
-    return {...common,bootstrap_sha256:sha256(source),identity:'OPERATOR_MUST_VERIFY_FRESH_SESSION',requests:[{tool:'neon_run_sql_transaction',arguments:{...target,sql_statements}}]}
+      `PREPARE ${name}(${signature}) AS SELECT pg_temp.${name}(${parameters})`,
+      `EXECUTE ${name}(${values.map(literal).join(',')})`,
+      `DEALLOCATE ${name}`]
+    return {...common,scope:options.mode,source_commit:releases[options.release].ref,packet_sha256:sha256(source),authorization_record_id:options.approval,...evidence,
+      requests:[{tool:'neon_run_sql_transaction',arguments:{...target,sql_statements}}]}
   }
-  if (options.mode !== 'migrations') throw new Error('Choose --mode environment|preflight|migrations|bootstrap')
+  if (options.mode !== 'migrations') throw new Error('Choose --mode environment|preflight|migrations|configuration|membership; combined bootstrap is retired')
   if (options.release === 'sandbox' && options.target !== 'staging') throw new Error('Migration 010 is isolated-only')
+  if (options.target === 'production' && options.release !== 'current-production') throw new Error('Production requires the reviewed current-production release; historical modes are staging-only')
   if (!['empty','006'].includes(options.baseline)) throw new Error('Explicit --baseline empty|006 required')
+  if (options.target === 'production' && options.baseline !== 'empty') throw new Error('Reviewed production baseline is empty; partial installation requires a new review')
   if (options.baseline === '006' && options.release === 'private') throw new Error('001–006 already installed: no replay allowed')
   const manifest = pinnedMigrations(options.release).slice(options.baseline === '006' ? 6 : 0)
-  return {...common,source_commit:releases[options.release].ref,baseline:options.baseline,
+  return {...common,release:options.release,historical:releases[options.release].historical,source_commit:releases[options.release].ref,baseline:options.baseline,
     requests:manifest.map(({path,sha256,sql_statements}) => ({path,sha256,tool:'neon_run_sql_transaction',arguments:{...target,sql_statements}}))}
 }
 export function parseOptions(args) {
   if (args.length % 2) throw new Error('All options require explicit values')
-  const options = {}, allowed = ['mode','target','branch','compute','database','baseline','release','user','host','role','approval']
+  const options = {}, allowed = ['mode','target','branch','compute','database','baseline','release','user','host','role','approval','identity-record','authorization-record']
   for (let i=0;i<args.length;i+=2) {
     const key = args[i].replace(/^--/,'')
     if (!args[i].startsWith('--') || !allowed.includes(key) || key in options) throw new Error('Unknown or repeated option')
