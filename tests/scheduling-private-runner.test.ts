@@ -8,6 +8,8 @@ import { expected, type InspectConnection } from '../modules/scheduling/activati
 import { privateRunnerVerification, validReport, type Credentials } from '../modules/scheduling/activation/private-runner-verifier'
 import { claimExecution, supervise, verifyApproval, verifySource, type Approval, type SupervisorPolicy } from '../modules/scheduling/activation/private-runner-supervisor'
 import { workerEnvironment } from '../modules/scheduling/activation/private-runner-process'
+import { sourceRepository, sourceRef } from '../modules/scheduling/activation/private-runner-provenance'
+const remote = (a: Approval) => ({ repository: sourceRepository, ref: sourceRef, revision: a.sourceRevision, manifest: { ...a.sourceManifest }, fetchedAt: Date.now() })
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519')
 const revision = 'a'.repeat(40)
@@ -48,15 +50,15 @@ describe('external supervisor authorization (offline)', () => {
   it('rejects tampering and malformed approval without releasing secrets', async () => {
     const a = signed(approval()); expect(() => verifyApproval(a.payload + ' ', a.signature, policyBase)).toThrow()
     const release = vi.fn(); const execute = vi.fn()
-    expect(await supervise('{}', 'invalid', { ...policyBase, sourceRoot: '/unused', ledgerRoot: '/unused', attest: vi.fn(), credentials: release, execute })).toEqual({ status: 'BLOCKED', reason: 'AUTHORIZATION_BLOCKED' })
+    expect(await supervise('{}', 'invalid', { ...policyBase, sourceRoot: '/unused', ledgerRoot: '/unused', fetchSource: vi.fn(), attest: vi.fn(), credentials: release, execute })).toEqual({ status: 'BLOCKED', reason: 'AUTHORIZATION_BLOCKED' })
     expect(release).not.toHaveBeenCalled(); expect(execute).not.toHaveBeenCalled()
   })
   it('verifies real fixture Git revision, complete manifest and contents', async () => {
-    const { root, a } = await fixtureSource(); await expect(verifySource(root, a)).resolves.toBeUndefined()
+    const { root, a } = await fixtureSource(); await expect(verifySource(root, a, remote(a))).resolves.toBeUndefined()
     await expect(verifySource(root, { ...a, sourceRevision: revision })).rejects.toThrow()
     await expect(verifySource(root, { ...a, sourceManifest: { 'fixture.ts': 'f'.repeat(64) } })).rejects.toThrow()
     await expect(verifySource(root, { ...a, sourceManifest: {} })).rejects.toThrow()
-    await writeFile(join(root, 'fixture.ts'), 'altered'); await expect(verifySource(root, a)).rejects.toThrow()
+    await writeFile(join(root, 'fixture.ts'), 'altered'); await expect(verifySource(root, a, remote(a))).rejects.toThrow()
   })
   it('atomically rejects reused IDs, including concurrent claims', async () => {
     const ledger = await directory(); const results = await Promise.allSettled([claimExecution(ledger, approval().executionId), claimExecution(ledger, approval().executionId)])
@@ -67,8 +69,8 @@ describe('external supervisor authorization (offline)', () => {
     const { root, a } = await fixtureSource(); const ledger = await directory()
     const release = vi.fn().mockResolvedValue(credentials())
     const execute = vi.fn().mockResolvedValue({ status: 'PASS', reason: 'OK', leaked: 'forbidden' })
-    const p: SupervisorPolicy = { ...policyBase, approvedRevision: a.sourceRevision, sourceRoot: root, ledgerRoot: ledger,
-      attest: async () => ({ runnerId: a.runnerId, runtimeDigest: a.runtimeDigest, nonRoot: true, disposable: true, readOnlySource: true, restrictedEgress: true, privateCredentials: true }), credentials: release, execute }
+    const p: SupervisorPolicy = { ...policyBase, approvedRevision: a.sourceRevision, sourceRoot: root, ledgerRoot: ledger, fetchSource: async () => remote(a),
+      attest: async () => ({ runnerId: a.runnerId, runtimeDigest: a.runtimeDigest, nonRoot: true, disposable: true, readOnlySource: true, restrictedEgress: true, privateCredentials: true, distinctPrincipals: true, noSupervisorAccess: true, boundedResources: true, wholeTreeTermination: true }), credentials: release, execute }
     const s = signed(a)
     expect(await supervise(s.payload, s.signature, p)).toEqual({ status: 'BLOCKED', reason: 'EXECUTION_BLOCKED' })
     expect(release).toHaveBeenCalledTimes(1); expect(execute).toHaveBeenCalledTimes(1)
@@ -81,17 +83,37 @@ describe('external supervisor authorization (offline)', () => {
   it('blocks untracked executables and symbolic links', async () => {
     const { root, a } = await fixtureSource()
     await writeFile(join(root, 'extra.ts'), 'untracked')
-    await expect(verifySource(root, a)).rejects.toThrow()
+    await expect(verifySource(root, a, remote(a))).rejects.toThrow()
     await rm(join(root, 'extra.ts')); await rm(join(root, 'fixture.ts'))
     await symlink('/dev/null', join(root, 'fixture.ts'))
-    await expect(verifySource(root, a)).rejects.toThrow()
+    await expect(verifySource(root, a, remote(a))).rejects.toThrow()
+  })
+  it.each(['distinctPrincipals', 'noSupervisorAccess', 'boundedResources', 'wholeTreeTermination'] as const)('withholds credentials without externally attested %s', async key => {
+    vi.spyOn(process, 'getuid').mockReturnValue(1000)
+    const { root, a } = await fixtureSource(); const ledger = await directory()
+    const release = vi.fn(); const execute = vi.fn(); const fetchSource = vi.fn().mockResolvedValue(remote(a))
+    const p: SupervisorPolicy = { ...policyBase, approvedRevision: a.sourceRevision, sourceRoot: root, ledgerRoot: ledger, fetchSource,
+      attest: async () => ({ runnerId: a.runnerId, runtimeDigest: a.runtimeDigest, nonRoot: true, disposable: true, readOnlySource: true, restrictedEgress: true, privateCredentials: true, distinctPrincipals: true, noSupervisorAccess: true, boundedResources: true, wholeTreeTermination: true, [key]: false }), credentials: release, execute }
+    const s = signed(a)
+    expect((await supervise(s.payload, s.signature, p)).status).toBe('BLOCKED')
+    expect(fetchSource).not.toHaveBeenCalled(); expect(release).not.toHaveBeenCalled(); expect(execute).not.toHaveBeenCalled()
+  })
+  it('withholds credentials when independent remote provenance does not match', async () => {
+    vi.spyOn(process, 'getuid').mockReturnValue(1000)
+    const { root, a } = await fixtureSource(); const ledger = await directory()
+    const release = vi.fn(); const execute = vi.fn()
+    const p: SupervisorPolicy = { ...policyBase, approvedRevision: a.sourceRevision, sourceRoot: root, ledgerRoot: ledger,
+      fetchSource: async () => ({ ...remote(a), revision: revision }),
+      attest: async () => ({ runnerId: a.runnerId, runtimeDigest: a.runtimeDigest, nonRoot: true, disposable: true, readOnlySource: true, restrictedEgress: true, privateCredentials: true, distinctPrincipals: true, noSupervisorAccess: true, boundedResources: true, wholeTreeTermination: true }), credentials: release, execute }
+    const s = signed(a)
+    expect((await supervise(s.payload, s.signature, p)).status).toBe('BLOCKED'); expect(release).not.toHaveBeenCalled(); expect(execute).not.toHaveBeenCalled()
   })
   it('gates credential release on trusted runtime and source', async () => {
     vi.spyOn(process, 'getuid').mockReturnValue(1000)
     const { root, a } = await fixtureSource(); const ledger = await directory()
     const release = vi.fn().mockResolvedValue(credentials()); const execute = vi.fn()
-    const p: SupervisorPolicy = { ...policyBase, approvedRevision: a.sourceRevision, sourceRoot: root, ledgerRoot: ledger,
-      attest: async () => ({ runnerId: 'unapproved', runtimeDigest: a.runtimeDigest, nonRoot: true, disposable: true, readOnlySource: true, restrictedEgress: true, privateCredentials: true }), credentials: release, execute }
+    const p: SupervisorPolicy = { ...policyBase, approvedRevision: a.sourceRevision, sourceRoot: root, ledgerRoot: ledger, fetchSource: async () => remote(a),
+      attest: async () => ({ runnerId: 'unapproved', runtimeDigest: a.runtimeDigest, nonRoot: true, disposable: true, readOnlySource: true, restrictedEgress: true, privateCredentials: true, distinctPrincipals: true, noSupervisorAccess: true, boundedResources: true, wholeTreeTermination: true }), credentials: release, execute }
     const s = signed(a); expect((await supervise(s.payload, s.signature, p)).status).toBe('BLOCKED'); expect(release).not.toHaveBeenCalled()
   })
 })
