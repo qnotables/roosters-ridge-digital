@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "staging/rrd-scheduling": false,
+      "v0/secure-staging-preflight": false
+    }
+  }
+}
