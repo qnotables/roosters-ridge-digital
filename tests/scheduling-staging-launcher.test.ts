@@ -55,7 +55,7 @@ describe('restricted preflight launcher', () => {
   })
   it('suppresses staging and preparation branches, leaving main at the default', () => {
     const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'))
-    expect(config.git.deploymentEnabled).toEqual({ 'staging/rrd-scheduling': false, 'v0/secure-staging-preflight': false, 'v0/preflight-project-authorization': false, 'v0/private-runner-preflight': false })
+    expect(config.git.deploymentEnabled).toEqual({ 'staging/rrd-scheduling': false, 'v0/secure-staging-preflight': false, 'v0/preflight-project-authorization': false, 'v0/private-runner-preflight': false, 'v0/scheduling-db-isolation-repair': false })
     expect(config).not.toHaveProperty('buildCommand')
     expect(config).not.toHaveProperty('public')
   })
