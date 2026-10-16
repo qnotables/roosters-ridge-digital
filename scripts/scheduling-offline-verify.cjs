@@ -1,0 +1,34 @@
+const { spawnSync } = require('node:child_process')
+const path = require('node:path')
+
+const root = path.resolve(__dirname, '..')
+const targets = {
+  targeted: ['node_modules/vitest/vitest.mjs', 'run', 'tests/scheduling-runtime-diagnostic.test.ts', 'tests/scheduling-runtime-diagnostic-evidence.test.ts', 'tests/scheduling-runtime-diagnostic-transport.test.ts', 'tests/scheduling-dashboard-readonly.test.ts', 'tests/scheduling-runtime-diagnostic-pg.test.ts', 'tests/scheduling-runtime-diagnostic-capability.test.ts', 'tests/scheduling-runtime-diagnostic-integration.test.ts'],
+  scheduling: ['node_modules/vitest/vitest.mjs', 'run', 'scheduling'],
+  types: ['node_modules/typescript/bin/tsc', '--noEmit', '--incremental', 'false'],
+  build: ['node_modules/next/dist/bin/next', 'build', '--webpack'],
+}
+const target = process.argv[2]
+if (process.argv.length !== 3 || !Object.hasOwn(targets, target)) {
+  console.error('Choose one offline verification target: targeted, scheduling, types, build')
+  process.exit(2)
+}
+
+// Never inherit credentials, external NODE_OPTIONS, integration flags, or live-test switches.
+const env = {
+  PATH: process.env.PATH,
+  HOME: process.env.HOME,
+  NODE_OPTIONS: `--require=${path.join(root, 'scripts/scheduling-offline-guard.cjs')}`,
+  NEXT_TELEMETRY_DISABLED: '1',
+  __NEXT_PROCESSED_ENV: 'true',
+}
+if (target === 'build') {
+  env.NODE_ENV = 'production'
+  env.NEON_AUTH_BASE_URL = 'https://fixture.invalid/auth'
+  env.NEON_AUTH_COOKIE_SECRET = 'synthetic-offline-verification-secret-not-a-real-key'
+}
+const result = spawnSync(process.execPath, targets[target], {
+  cwd: root, env, stdio: 'inherit', timeout: target === 'build' ? 120_000 : 90_000,
+})
+if (result.error) console.error('Offline verification process did not finish:', result.error.code)
+process.exit(result.status ?? 1)

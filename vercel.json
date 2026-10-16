@@ -3,6 +3,7 @@
   "git": {
     "deploymentEnabled": {
       "staging/rrd-scheduling": false,
+      "v0/staging-diagnostic-integration": false,
       "v0/secure-staging-preflight": false,
       "v0/preflight-project-authorization": false,
       "v0/scheduling-db-isolation-staging": false,
