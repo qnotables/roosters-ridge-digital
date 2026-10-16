@@ -1,5 +1,5 @@
 import { Pool } from 'pg'
-import { stagingIsolationStatus } from '../../../lib/staging-isolation'
+import { stagingIsolationStatus, stagingPoolConfig } from '../../../lib/staging-isolation'
 import { isAuthorizedPreflightDeployment } from './preflight-project-authorization.mjs'
 
 type Environment = Record<string, string | undefined>
@@ -21,13 +21,15 @@ export const identityQuery = `SELECT
   current_database() AS database_name,
   current_setting('transaction_read_only') AS read_only`
 
-export const inspectConnection: InspectConnection = async connection => {
-  const url = new URL(connection)
-  // pg's sslmode parser can replace explicit TLS settings; enforce verified TLS ourselves.
-  url.search = ''
+export async function inspectConnection(connection: string, env: Environment = process.env): Promise<Identity> {
+  if (!isAuthorizedPreflightDeployment(env) || !stagingIsolationStatus(env).ready) {
+    throw new Error('Staging database configuration rejected.')
+  }
+  const kind = connection === env.DATABASE_URL ? 'pooled'
+    : connection === env.DATABASE_URL_UNPOOLED ? 'direct' : null
+  if (!kind) throw new Error('Staging database configuration rejected.')
   const pool = new Pool({
-    connectionString: url.toString(),
-    ssl: { rejectUnauthorized: true },
+    ...stagingPoolConfig(1, env, kind),
     options: '-c default_transaction_read_only=on -c statement_timeout=5000 -c lock_timeout=2000',
     connectionTimeoutMillis: 8000,
     query_timeout: 8000,
@@ -48,7 +50,7 @@ export const inspectConnection: InspectConnection = async connection => {
   }
 }
 
-export async function stagingPreflight(env: Environment, inspect: InspectConnection = inspectConnection) {
+export async function stagingPreflight(env: Environment, inspect: InspectConnection = connection => inspectConnection(connection, env)) {
   const isolation = stagingIsolationStatus(env)
   const checks = {
     stagingExecution: isAuthorizedPreflightDeployment(env),

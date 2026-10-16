@@ -32,6 +32,16 @@ function authMatches(value: string | undefined) {
   }
 }
 
+function connectionOptionsMatch(env: Environment) {
+  return env.NODE_TLS_REJECT_UNAUTHORIZED !== '0'
+    && (!env.PGSSLMODE || ['require', 'verify-full'].includes(env.PGSSLMODE))
+    && !env.PGOPTIONS && !env.PGREPLICATION
+}
+
+function secretMatches(value: string | undefined) {
+  return typeof value === 'string' && /^[\x21-\x7e]{32,}$/.test(value)
+}
+
 export function stagingPoolConfig(
   max: number,
   env: Environment = process.env,
@@ -42,9 +52,7 @@ export function stagingPoolConfig(
     return { connectionString, max }
   }
   if (!databaseMatches(connectionString, kind === 'pooled')
-    || env.NODE_TLS_REJECT_UNAUTHORIZED === '0'
-    || (env.PGSSLMODE && !['require', 'verify-full'].includes(env.PGSSLMODE))
-    || env.PGOPTIONS || env.PGREPLICATION) {
+    || !connectionOptionsMatch(env)) {
     throw new Error('Staging database configuration rejected: explicit approved URL and verified TLS required.')
   }
   const url = new URL(connectionString!)
@@ -67,11 +75,41 @@ export function stagingPoolConfig(
 export function stagingIsolationStatus(env: Environment = process.env) {
   const enforced = env.VERCEL_ENV === 'preview' || env.NODE_ENV === 'development'
   const checks = {
-    pooledDatabase: databaseMatches(env.DATABASE_URL, true),
-    directDatabase: databaseMatches(env.DATABASE_URL_UNPOOLED, false),
+    pooledDatabase: databaseMatches(env.DATABASE_URL, true) && connectionOptionsMatch(env),
+    directDatabase: databaseMatches(env.DATABASE_URL_UNPOOLED, false) && connectionOptionsMatch(env),
     authenticationEndpoint: authMatches(env.NEON_AUTH_BASE_URL),
-    cookieSecret: (env.NEON_AUTH_COOKIE_SECRET?.length ?? 0) >= 32,
-    dashboardKey: (env.ADMIN_DASHBOARD_KEY?.trim().length ?? 0) >= 32,
+    cookieSecret: secretMatches(env.NEON_AUTH_COOKIE_SECRET),
+    dashboardKey: secretMatches(env.ADMIN_DASHBOARD_KEY),
   }
   return { enforced, ready: !enforced || Object.values(checks).every(Boolean), checks }
+}
+
+const stagingProjectId = 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC'
+const stagingBranch = 'staging/rrd-scheduling'
+
+export function stagingRuntimeConfiguration(env: Environment = process.env) {
+  const enforced = env.VERCEL_ENV === 'preview'
+  const contextMatches = env.VERCEL_PROJECT_ID === stagingProjectId
+    && env.VERCEL_GIT_COMMIT_REF === stagingBranch
+  const { checks } = stagingIsolationStatus(env)
+  const status = (valid: boolean) => valid ? 'PASS' as const : 'BLOCKED' as const
+  const report = {
+    DATABASE_DESTINATION: status(contextMatches && checks.pooledDatabase && checks.directDatabase),
+    AUTH_DESTINATION: status(contextMatches && checks.authenticationEndpoint),
+    SECRET_FORMAT: status(checks.cookieSecret && checks.dashboardKey),
+  }
+  return { enforced, ready: !enforced || Object.values(report).every(value => value === 'PASS'), report }
+}
+
+let previousRuntimeReport = ''
+
+export function assertStagingRuntimeConfiguration(env: Environment = process.env) {
+  const { enforced, ready, report } = stagingRuntimeConfiguration(env)
+  if (!enforced) return
+  const output = Object.entries(report).map(([key, value]) => `${key}: ${value}`).join('\n')
+  if (output !== previousRuntimeReport) {
+    console.info(output)
+    previousRuntimeReport = output
+  }
+  if (!ready) throw new Error(output)
 }

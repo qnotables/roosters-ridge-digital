@@ -1,10 +1,18 @@
 import { auth } from '@/lib/auth'
-import { stagingIsolationStatus } from '@/lib/staging-isolation'
+import { assertStagingRuntimeConfiguration, stagingIsolationStatus } from '@/lib/staging-isolation'
 
 const handlers = auth.handler()
 
 function guarded(handler: typeof handlers.GET) {
   return async (...args: Parameters<typeof handlers.GET>) => {
+    try {
+      assertStagingRuntimeConfiguration()
+    } catch {
+      return Response.json({ error: 'Staging isolation configuration is not ready.' }, {
+        status: 503,
+        headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
+      })
+    }
     if (!stagingIsolationStatus().ready) {
       return Response.json({ error: 'Staging isolation configuration is not ready.' }, {
         status: 503,

@@ -16,6 +16,10 @@ const direct = 'ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech'
 const valid = {
   VERCEL_ENV: 'preview',
   VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
+  VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC',
+  NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
+  NEON_AUTH_COOKIE_SECRET: 'synthetic-cookie-secret-at-least-32-chars',
+  ADMIN_DASHBOARD_KEY: 'synthetic-dashboard-key-at-least-32-chars',
   NODE_ENV: 'production',
   DATABASE_URL: `postgresql://fixture:fixture%40password@${pooled}/neondb?sslmode=require`,
   DATABASE_URL_UNPOOLED: `postgresql://fixture:fixture%40password@${direct}/neondb?sslmode=verify-full`,
@@ -107,14 +111,14 @@ describe('scheduling emailDb initialization', () => {
   it('fails before Pool construction for an inherited Production URL', async () => {
     setEnvironment()
     vi.stubEnv('DATABASE_URL', valid.DATABASE_URL.replace(pooled, 'production.invalid'))
-    await expect(import('@/lib/email-workspace-db')).rejects.toThrow('Staging database configuration rejected')
+    await expect(import('@/lib/email-workspace-db')).rejects.toThrow('DATABASE_DESTINATION: BLOCKED')
     expect(poolConstructor).not.toHaveBeenCalled()
   })
   it('fails before Pool construction when DATABASE_URL is missing despite PG fallbacks', async () => {
     setEnvironment()
     vi.stubEnv('DATABASE_URL', undefined)
     vi.stubEnv('PGHOST', 'production.invalid')
-    await expect(import('@/lib/email-workspace-db')).rejects.toThrow('Staging database configuration rejected')
+    await expect(import('@/lib/email-workspace-db')).rejects.toThrow('DATABASE_DESTINATION: BLOCKED')
     expect(poolConstructor).not.toHaveBeenCalled()
   })
   it('retains Production emailDb options', async () => {

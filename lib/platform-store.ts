@@ -8,7 +8,10 @@ import { normalizeWebsiteUrl } from '@/lib/platform-network'
 import { PLATFORM_RULE_VERSION, prospectWebsiteKey, type PlatformAttempt, type PlatformCheck, type PlatformProspect } from '@/lib/platform-types'
 import { searchBusinessProvider, validateBusinessSearch, type BusinessSearch, type BusinessSearchResult } from '@/lib/business-discovery'
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 3 })
+import { assertStagingRuntimeConfiguration, stagingPoolConfig } from '@/lib/staging-isolation'
+
+assertStagingRuntimeConfiguration()
+const pool = new Pool(stagingPoolConfig(3))
 const db = drizzle(pool)
 export async function platformScope() {
   if (!(await hasDashboardAccess())) throw new Error('Dashboard access required')

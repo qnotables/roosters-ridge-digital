@@ -1,10 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
+import { assertStagingRuntimeConfiguration } from '@/lib/staging-isolation'
 
 const COOKIE_NAME = 'admin_dashboard_access'
 const COOKIE_PAYLOAD = 'roosters-ridge-dashboard-access'
 
 function getDashboardKey() {
+  assertStagingRuntimeConfiguration()
   const key = process.env.ADMIN_DASHBOARD_KEY?.trim()
   if (!key) throw new Error('ADMIN_DASHBOARD_KEY is not configured')
   return key
@@ -29,6 +31,7 @@ export function isValidDashboardToken(value: unknown) {
 }
 
 export function dashboardCookieOptions() {
+  assertStagingRuntimeConfiguration()
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production' || Boolean(process.env.V0_RUNTIME_URL),
@@ -39,6 +42,7 @@ export function dashboardCookieOptions() {
 }
 
 export async function hasDashboardAccess() {
+  assertStagingRuntimeConfiguration()
   const token = (await cookies()).get(COOKIE_NAME)?.value
   return Boolean(token && isValidDashboardToken(token))
 }
