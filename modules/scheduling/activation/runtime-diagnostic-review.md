@@ -2,7 +2,40 @@
 
 Current continuation baseline: reviewed commit `9647cee` on `v0/staging-runtime-gate` (original contract baseline `21a3d65`). This continuation adds an inert concrete `pg` binding and offline wire fixtures, not a diagnostic route, authorization bypass, or identity signing key.
 
-## Independently verifiable identity: BLOCKED
+## Offline JWT verifier continuation from `99ebc9a`
+
+The supplied owner documentation confirms Neon's capability to issue EdDSA/Ed25519 JWTs with issuer/audience, operator UUID, `emailVerified`, `iat`, and `exp`. That capability supports implementing a verifier, but does not supply this project's approved claim values, authenticated public keys, acquisition semantics, or source-session lifetime. No hosted service behavior has been inferred from fixtures.
+
+`runtime-diagnostic-jwt.ts` uses the explicit `jose` dependency with injected policy, local public JWKS, approved SHA-256 JWK thumbprints, and a trusted millisecond clock. It neither reads environment variables nor imports the Auth SDK. It performs no HTTP, database, cookie, session, logging, or audit operation. No route or diagnostic report is wired to it.
+
+### Implemented verification contract
+
+- The owner must explicitly supply a canonical HTTPS **origin**, exact issuer and exact audience; this deliberately narrow profile requires both to equal that approved staging Auth origin byte-for-byte. There are no inferred defaults, path/slash normalization, audience arrays, or environment-derived values. If the actual provider contract uses a path-bearing issuer or different audience, this profile blocks and requires reviewed adjustment—not silent normalization. Auth-origin audience alone does not establish diagnostic-origin binding.
+- Require the exact approved operator UUID (`sub`, case-sensitive comparison), signed boolean `emailVerified === true`, integer non-negative NumericDate `iat` and `exp`, and `exp > iat`. `email_verified` is not an alias. If present, `nbf` must also be a valid integer NumericDate and not future.
+- Permit only EdDSA signatures using Ed25519 public `OKP` keys. Require a known, unique `kid` and an independently approved RFC 7638 SHA-256 thumbprint. Reject private keys, contradictory key metadata, unknown algorithms/keys, malformed policy, and protected headers other than `alg`, `kid`, and optional `typ: JWT`. No token-provided `jwk`, `jku`, `x5u`, or remote-key resolver is accepted. Snapshot key material/policy before asynchronous import. The policy's provenance must be authenticated outside this function: passing an attacker's key and matching thumbprint is not trustworthy approval.
+- Strict proof age **less than 60,000 milliseconds**, checked again after asynchronous verification. `exp` is exclusive and must still be future. Clock tolerance is **zero**, preserving the prior approved policy: future issuance, backwards movement during verification, invalid clocks, expiration, and the exact 60-second boundary block. Synchronized trusted host clocks are required; skew fails closed rather than extending lifetime.
+- Return only sanitized `BLOCKED` or `JWT_VERIFIED` evidence. Even `JWT_VERIFIED` explicitly includes `authorization: BLOCKED` and `SESSION_VALIDITY_UNESTABLISHED`; it is **not** the existing diagnostic `PASS` status. `proofValidUntil` is only the earlier JWT expiry/issuance-plus-60-second bound, not an authorization or session expiry. No invented `sessionExpiresAt` field can authorize anything. Consumers must re-evaluate validity immediately before use and still apply all other gates.
+
+### Exact authorization evidence still required
+
+1. **Owner-approved identity/trust export:** exact staging origin, issuer, audience, operator UUID; current Ed25519 public JWKS with independently authenticated thumbprints/key IDs, provenance, validity/rotation/retirement policy; approved claim semantics and non-stale verified-email source. Public JWT capability documentation alone is insufficient. Do not supply a bearer token/private key/cookie secret. Production keys and the published RFC fixture must never become staging approvals.
+2. **Acquisition contract:** a separately reviewed path proven not to refresh/delete sessions, set/delete cookies, initialize keys, or cause application audit writes on success or failure. `getSession()`, `getJWTToken()`, `authClient.token()`, and live JWKS retrieval remain prohibited for this workflow until established safe. The verifier deliberately does not acquire proofs.
+3. **Source-session validity:** an authenticated issuer contract and signed evidence binding this exact proof/operator to an originating session's expiry, or an authenticated issuer guarantee that JWT `exp` never exceeds that session's expiry. Do not infer this from ordinary JWT expiry. Establish issuance behavior after revocation and freshness of source claims. A future authorization adapter must cap acceptance at the earliest session expiry, JWT expiry, issuance plus 60 seconds, and approved diagnostic-window expiry. This continuation implements no session verifier and authorizes no operation.
+4. **Diagnostic-origin binding and scope:** approved binding of the proof to the exact immutable diagnostic invocation origin/deployment/window. An Auth-origin audience does not supply this. Keep existing operator/dashboard/deployment checks, and obtain explicit acceptance of bounded replay/revocation risk.
+
+### Fixture provenance
+
+Tests use the **published, insecure test-only RFC 8037 Appendix A.1–A.3 Ed25519 vector**, not newly generated keys or a replacement provider signer. Its private component exists only in the test file to sign synthetic claims; production code imports only supplied public keys. Fixtures run with the existing network/environment-file guard and exercise real `jose` cryptography, not a mocked verification success. They cannot authenticate actual staging keys or hosted claims.
+
+### Validation for JWT continuation
+
+- `node scripts/scheduling-offline-verify.cjs scheduling`: **1112 passed**, **94 live-integration tests skipped**, including **78 JWT verification fixtures** and all prior regressions.
+- `node scripts/scheduling-offline-verify.cjs build`: guarded production webpack build passed; 50 static pages, no diagnostic endpoint added.
+- `node scripts/scheduling-offline-verify.cjs types`: separate typecheck passed after the build (the existing build skips type validation).
+- `pnpm install --frozen-lockfile`: passed, including the environment's lockfile supply-chain policy check. `jose@6.2.5` is now explicit in the manifest and lockfile; no unrelated dependency versions changed.
+- No live Auth/JWKS request, database access, deployment, diagnostic invocation, secret/configuration change, or provider signing-key generation occurred. Only the published RFC fixture was imported for test signing. Browser verification is not applicable to this inert backend-only module.
+
+## Independently verifiable identity: BLOCKED (earlier infrastructure findings)
 
 The application configures `createNeonAuth` with a base URL and a potentially shared cookie secret (`lib/auth.ts`). No pinned public-key verifier, issuer, or audience contract is established in application source. Installed SDK `getJWTToken()` calls `getSession()` (`adapter-core-CZ8saNEY.mjs:818–823`); it is not a permissible acquisition path for this diagnostic. Exposed `/jwks` and token methods alone do not establish an issuer-specific trust chain or guarantee verified-email claims. No Auth endpoint was contacted and no credentials, tokens, or signing keys were read or generated during this review.
 
@@ -23,7 +56,7 @@ The application configures `createNeonAuth` with a base URL and a potentially sh
 | Signed proof/session lifetime | Require valid numeric `iat`, `exp`, and a signed session-expiry claim or an issuer guarantee that `exp` cannot exceed the source session's expiry. Upstream default token lifetime is not that guarantee. |
 | Non-mutating acquisition and current-claim freshness | No confirmed existing path. SDK session retrieval and unreviewed `/token`/`/jwks` calls are not acceptable substitutes. |
 
-**Smallest unblock decision:** the identity-infrastructure owner must nominate/attest an **already-existing** issuer plus non-mutating credential acquisition path that satisfies the table, and approve the exact operator UUID. A trusted, non-secret contract/key export from that infrastructure is sufficient for implementation review; a live session or bearer token must not be pasted into chat. If no existing path can provide origin binding and the signed freshness/session bounds, an explicit decision to change identity infrastructure is required in a separately approved scope. There is no safe local adapter-only workaround. The adapter and HTTP handler remain unimplemented, not permissively stubbed.
+**Smallest unblock decision:** the identity-infrastructure owner must nominate/attest an **already-existing** issuer plus non-mutating credential acquisition path that satisfies the table, and approve the exact operator UUID. A trusted, non-secret contract/key export from that infrastructure is sufficient for implementation review; a live session or bearer token must not be pasted into chat. If no existing path can provide origin binding and the signed freshness/session bounds, an explicit decision to change identity infrastructure is required in a separately approved scope. There is no safe local adapter-only workaround. The full authorization adapter and HTTP handler remain unimplemented; the isolated JWT evidence verifier above does not authorize execution.
 
 Required before implementing the adapter:
 
@@ -33,7 +66,7 @@ Required before implementing the adapter:
 
 ### Residual revocation risk
 
-Offline signature verification cannot prove the session or operator authorization is still active. A legitimately issued proof can remain acceptable after revocation until the earliest bound above; the maximum pre-revocation-proof exposure is 60 seconds from issuance, assuming synchronized clocks and uncompromised issuer keys. Bearer-proof replay remains possible during this interval. A freshly issued token containing stale source claims can invalidate that assumed revocation bound, so issuance semantics must be confirmed. Explicit owner acceptance of this limitation is required. This describes the required verifier policy, not an implemented verifier.
+Offline signature verification cannot prove the session or operator authorization is still active. A legitimately issued proof can remain acceptable after revocation until the earliest bound above; the maximum pre-revocation-proof exposure is 60 seconds from issuance, assuming synchronized clocks and uncompromised issuer keys. Bearer-proof replay remains possible during this interval. A freshly issued token containing stale source claims can invalidate that assumed revocation bound, so issuance semantics must be confirmed. Explicit owner acceptance of this limitation is required. This describes the full authorization policy; only the JWT evidence subset is implemented above.
 
 ## Dashboard authorization: read-only behavior verified
 
@@ -64,7 +97,7 @@ The driver exposes a detached, frozen metadata snapshot: verified TLS hostname/s
 
 ## Remaining deployment blockers
 
-- Establish the identity prerequisites above, then implement/test the isolated verifier and gated handler. Do not replace this gate with a fixture key or unconditional PASS.
+- Establish the remaining identity evidence above, then implement/test the source-session authorization adapter and gated handler around the completed isolated JWT verifier. Do not replace this gate with a fixture key or unconditional PASS.
 - Review the concrete binding and approve subsequent runtime validation of real certificate/socket behavior. Establish independently authoritative direct/pooled server/branch identity evidence and wire the collected bounded metadata into the evidence checker without turning transport PASS into authorization/schema PASS.
 - Confirm staging-only database/Auth destinations and exact operator approval; no live destination validation has been performed.
 - Pin reviewed SHA, project, staging branch, immutable deployment ID, exact invocation origin, and a fixed window of at most five minutes; confirm effective protection on that deployment.
