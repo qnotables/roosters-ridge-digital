@@ -2,6 +2,10 @@
 
 Current continuation baseline: reviewed commit `9647cee` on `v0/staging-runtime-gate` (original contract baseline `21a3d65`). This continuation adds an inert concrete `pg` binding and offline wire fixtures, not a diagnostic route, authorization bypass, or identity signing key.
 
+## Option B continuation — source/offline review only
+
+The owner subsequently approved a temporary possession capability, explicitly accepting lack of independent Neon identity and bounded replay. Its isolated, unmounted handler and separate approval/cleanup requirements are documented in [runtime-diagnostic-capability-review.md](./runtime-diagnostic-capability-review.md). This does not enable the original JWT gate or any application route. The historical Option A findings below remain unchanged; no live authorization or deployment acceptance is asserted.
+
 ## Offline JWT verifier continuation from `99ebc9a`
 
 The supplied owner documentation confirms Neon's capability to issue EdDSA/Ed25519 JWTs with issuer/audience, operator UUID, `emailVerified`, `iat`, and `exp`. That capability supports implementing a verifier, but does not supply this project's approved claim values, authenticated public keys, acquisition semantics, or source-session lifetime. No hosted service behavior has been inferred from fixtures.

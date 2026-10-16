@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDiagnosticPgConnection, createDiagnosticPgFactory } from '../modules/scheduling/activation/runtime-diagnostic-pg'
 import { diagnosticReadOnlyPlan } from '../modules/scheduling/activation/runtime-diagnostic-evidence'
 import { runDiagnosticTransportPath, runSequentialDiagnosticTransports } from '../modules/scheduling/activation/runtime-diagnostic-transport'
+import { createDiagnosticCapabilityHandler } from '../modules/scheduling/activation/runtime-diagnostic-capability-handler'
+import { schedulingSchemaContract } from '../modules/scheduling/activation/runtime-diagnostic-contract'
+import { fixtureEnvironment, fixtureRequest, fixtureNow } from './fixtures/scheduling-diagnostic-capability'
 
 const destination = { hostname: 'ep-fixture.example.neon.tech', database: 'neondb' as const, username: 'fixture_owner', password: 'synthetic-offline-only' }
 function frame(type: string, payload = Buffer.alloc(0)) {
@@ -35,7 +38,6 @@ function fixture(patch: { authorized?: boolean; hostname?: string; stallConnect?
   const rawSockets: Socket[] = [], secureSockets: Duplex[] = [], statements: string[] = []
   let tlsOptions: tls.ConnectionOptions | undefined
   let startupParameters = ''
-  const certificate = { subjectaltname: `DNS:${patch.hostname ?? destination.hostname}` } as tls.PeerCertificate
   vi.spyOn(Socket.prototype, 'connect').mockImplementation(function (this: Socket) {
     const raw = this
     rawSockets.push(raw)
@@ -49,6 +51,7 @@ function fixture(patch: { authorized?: boolean; hostname?: string; stallConnect?
   } as typeof Socket.prototype.connect)
   vi.spyOn(tls, 'connect').mockImplementation(((options: tls.ConnectionOptions) => {
     tlsOptions = options
+    const certificate = { subjectaltname: `DNS:${patch.hostname ?? options.servername ?? destination.hostname}` } as tls.PeerCertificate
     const raw = options.socket as Socket
     let startup = true
     const secure = new Duplex({
@@ -88,6 +91,24 @@ afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers() })
 const closeTurn = () => new Promise<void>(resolve => setImmediate(resolve))
 
 describe('installed pg driver with offline wire fixtures (no real endpoint or signing keys)', () => {
+  it('runs the authorized handler through unmocked pg on both intercepted socket paths', async () => {
+    const f = fixture({ rowsFor: statement => statement === diagnosticReadOnlyPlan[5] ? [...schedulingSchemaContract] : defaultRows(statement) })
+    const handler = createDiagnosticCapabilityHandler({ environment: () => fixtureEnvironment(), now: () => fixtureNow })
+    const result = await handler(fixtureRequest())
+    expect(result.status).toBe(200)
+    expect((await result.json()).status).toBe('PASS')
+    expect(f.statements).toEqual([...diagnosticReadOnlyPlan, ...diagnosticReadOnlyPlan])
+    expect(f.rawSockets).toHaveLength(2)
+    expect(f.rawSockets.every(socket => socket.destroyed && socket.closed)).toBe(true)
+    expect(f.secureSockets.every(socket => socket.destroyed && socket.closed)).toBe(true)
+  })
+  it('never reads schema after the real pg peer reports transaction_read_only off', async () => {
+    const f = fixture({ rowsFor: statement => statement === diagnosticReadOnlyPlan[3] ? [{ transaction_read_only: 'off' }] : defaultRows(statement) })
+    const handler = createDiagnosticCapabilityHandler({ environment: () => fixtureEnvironment(), now: () => fixtureNow })
+    expect((await handler(fixtureRequest())).status).toBe(503)
+    expect(f.statements).not.toContain(diagnosticReadOnlyPlan[5])
+    expect(f.rawSockets.every(socket => socket.destroyed && socket.closed)).toBe(true)
+  })
   it('enforces TLS verification and the exact fixed read-only plan, and observes both close events', async () => {
     const f = fixture()
     const connection = createDiagnosticPgConnection(destination)
@@ -221,7 +242,7 @@ describe('installed pg driver with offline wire fixtures (no real endpoint or si
     expect(connection.isClosed()).toBe(true)
   })
   it('connects direct then pooled with physical closure before pooled allocation', async () => {
-    const f = fixture()
+    const f = fixture({ hostname: destination.hostname })
     const factory = createDiagnosticPgFactory({ direct: destination, pooled: { ...destination, hostname: 'ep-fixture-pooler.example.neon.tech' } })
     // The pooled certificate is deliberately wrong: closure/sequencing must still hold.
     const result = await runSequentialDiagnosticTransports(path => {

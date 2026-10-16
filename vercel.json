@@ -7,7 +7,8 @@
       "v0/preflight-project-authorization": false,
       "v0/scheduling-db-isolation-staging": false,
       "v0/staging-build-readiness": false,
-      "v0/staging-runtime-gate": false
+      "v0/staging-runtime-gate": false,
+      "v0/diagnostic-capability-review": false
     }
   }
 }
