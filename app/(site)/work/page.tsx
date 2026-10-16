@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import Link from 'next/link'
 import { ProjectMediaPanel } from '@/components/project-media-panel'
 import { ArrowRight, Sparkles } from 'lucide-react'
@@ -56,6 +57,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 }
 
 export default async function WorkPage() {
+  await connection()
   const projects = await getPublishedProjects('work')
   const internalProjects = projects.filter((project) => project.designation === 'internal')
   const featuredProjects = projects.filter((project) => project.designation !== 'internal')

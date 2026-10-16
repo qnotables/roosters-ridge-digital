@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import { CheckCircle2, ArrowDown, ArrowRight, Globe2, Search, MousePointerClick, Workflow, Palette, Gauge } from 'lucide-react'
 import { CheckupForm } from '@/components/forms/checkup-form'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +42,7 @@ const benefits = [
 ]
 
 export default async function FreeCheckupPage() {
+  await connection()
   const profile = await getBusinessProfile()
 
   return (
