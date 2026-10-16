@@ -8,10 +8,12 @@ export const fixtureOrigin = 'https://rrd-offline-fixture.vercel.app'
 export const fixtureDirectHost = 'ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech'
 export const fixturePooledHost = 'ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech'
 export function fixtureApproval(patch: Record<string, unknown> = {}): CapabilityApproval {
-  return { version: 'RRD_DIAGNOSTIC_CAPABILITY_V1', sourceSha: 'a'.repeat(40), deploymentId: 'dpl_fixture',
+  return { version: 'RRD_DIAGNOSTIC_CAPABILITY_V2', sourceSha: 'a'.repeat(40), deploymentId: 'dpl_fixture',
     origin: fixtureOrigin, startsAt: fixtureNow - 1_000, expiresAt: fixtureNow + 299_000,
     operatorApproval: 'offline-fixture-operator-approval', credentialIssuance: 'OWNER_CSPRNG_256_BIT_PRIVATE_DELIVERY',
-    replayPolicy: 'POSSESSION_REPLAY_ACCEPTED', protection: 'VERCEL_AUTHENTICATION_NO_BYPASS',
+    replayPolicy: 'POSSESSION_REPLAY_ACCEPTED',
+    authorization: 'SEPARATE_BEARER_REQUIRED_EVERY_INVOCATION_NO_HUMAN_IDENTITY_PROOF',
+    protection: 'PREVIEW_VERCEL_AUTHENTICATION_WITH_EXISTING_PROJECT_AUTOMATION_BYPASS_ACKNOWLEDGED',
     protectionEvidence: 'offline-fixture-protection', databaseEvidence: 'offline-fixture-control-plane-review',
     expectedRole: 'fixture_owner', ...patch } as CapabilityApproval
 }

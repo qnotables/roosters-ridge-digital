@@ -87,6 +87,8 @@ describe('temporary possession capability, isolated server-side composition', ()
     { origin: 'https://fixture.invalid' }, { startsAt: fixtureNow + 1 }, { expiresAt: fixtureNow },
     { startsAt: fixtureNow - 1, expiresAt: fixtureNow + 300_000 }, { startsAt: 0.5 }, { expiresAt: null },
     { operatorApproval: '' }, { credentialIssuance: 'OWNER_SAID_OK' }, { replayPolicy: '' }, { protection: '' },
+    { version: 'RRD_DIAGNOSTIC_CAPABILITY_V1' }, { protection: 'VERCEL_AUTHENTICATION_NO_BYPASS' },
+    { authorization: undefined }, { authorization: 'VERCEL_BYPASS_SUFFICIENT' }, { authorization: 'HUMAN_IDENTITY_VERIFIED' },
     { protectionEvidence: '' }, { databaseEvidence: '' }, { expectedRole: '' }, { expectedRole: 'u;sql' }, { unknown: true },
   ])('rejects incomplete/unapproved capability policy: %j', async patch => {
     const serialized = JSON.stringify(fixtureApproval(patch)), h = harness({ env: fixtureEnvironment({ RRD_DIAGNOSTIC_APPROVAL: serialized }) })

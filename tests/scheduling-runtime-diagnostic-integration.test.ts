@@ -73,6 +73,39 @@ describe('temporary staging diagnostic integration', () => {
     expect((await h.handler(fixtureRequest())).status).toBe(403)
     expect(h.allocations).toEqual([])
   })
+  it.each(['missing', 'wrong', 'bypass-cookie-only', 'bypass-header-only'])('V2 acknowledgment never authorizes database access with %s capability', async kind => {
+    const request = fixtureRequest()
+    request.headers.delete('x-rrd-diagnostic-capability')
+    if (kind === 'wrong') request.headers.set('x-rrd-diagnostic-capability', '02'.repeat(32))
+    if (kind === 'bypass-cookie-only') request.headers.set('cookie', '_vercel_jwt=synthetic-not-a-real-grant')
+    if (kind === 'bypass-header-only') request.headers.set('x-vercel-protection-bypass', 'synthetic-not-a-real-secret')
+    const h = harness()
+    expect((await h.handler(request)).status).toBe(403)
+    expect(h.bind).not.toHaveBeenCalled(); expect(h.allocations).toEqual([]); expect(h.statements).toEqual([])
+  })
+  it.each([
+    { version: 'RRD_DIAGNOSTIC_CAPABILITY_V1' }, { protection: 'VERCEL_AUTHENTICATION_NO_BYPASS' },
+    { protection: undefined }, { authorization: undefined }, { authorization: 'BYPASS_IS_AUTHORIZATION' },
+    { authorization: 'HUMAN_IDENTITY_VERIFIED' }, { replayPolicy: undefined }, { expiresAt: fixtureNow },
+  ])('remote V2 policy fails closed for downgraded/malformed/expired acknowledgment: %j', async patch => {
+    const h = harness(vi.fn(async () => ({ ...approvalRecord(), approval: JSON.stringify(fixtureApproval(patch)) })))
+    expect((await h.handler(fixtureRequest())).status).toBe(403)
+    expect(h.bind).not.toHaveBeenCalled(); expect(h.allocations).toEqual([]); expect(h.statements).toEqual([])
+  })
+  it.each(['/api/admin', '/api/auth', '/api/scheduling', '/api/internal/rrd-scheduling/diagnostic/admin'])('V2 approval grants no route authorization for %s', async path => {
+    const original = fixtureRequest(), request = new Request(new URL(path, original.url), { method: 'POST', headers: original.headers })
+    const h = harness()
+    expect((await h.handler(request)).status).toBe(403)
+    expect(h.bind).not.toHaveBeenCalled(); expect(h.allocations).toEqual([])
+  })
+  it('V2 replay acceptance is not human identity proof or bypass-based database authorization', async () => {
+    const h = harness()
+    expect(fixtureApproval().authorization).toBe('SEPARATE_BEARER_REQUIRED_EVERY_INVOCATION_NO_HUMAN_IDENTITY_PROOF')
+    expect((await h.handler(fixtureRequest())).status).toBe(200)
+    expect((await h.handler(fixtureRequest())).status).toBe(200)
+    expect(h.allocations).toEqual(['direct', 'pooled', 'direct', 'pooled'])
+    expect(h.statements).toEqual([...diagnosticReadOnlyPlan, ...diagnosticReadOnlyPlan, ...diagnosticReadOnlyPlan, ...diagnosticReadOnlyPlan])
+  })
   it('activates on a subsequent read without redeployment, then revokes without a success fallback', async () => {
     const get = vi.fn<() => Promise<unknown>>().mockResolvedValueOnce(undefined).mockResolvedValueOnce(approvalRecord())
       .mockRejectedValueOnce(new Error(connection)).mockResolvedValueOnce(undefined)

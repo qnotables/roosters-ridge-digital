@@ -8,7 +8,7 @@ export const diagnosticCapabilityPath = '/api/internal/rrd-scheduling/diagnostic
 export const diagnosticCredentialHeader = 'x-rrd-diagnostic-capability'
 export type DiagnosticEnvironment = Readonly<Record<string, string | undefined>>
 export type CapabilityApproval = Readonly<{
-  version: 'RRD_DIAGNOSTIC_CAPABILITY_V1'
+  version: 'RRD_DIAGNOSTIC_CAPABILITY_V2'
   sourceSha: string
   deploymentId: string
   origin: string
@@ -17,14 +17,15 @@ export type CapabilityApproval = Readonly<{
   operatorApproval: string
   credentialIssuance: 'OWNER_CSPRNG_256_BIT_PRIVATE_DELIVERY'
   replayPolicy: 'POSSESSION_REPLAY_ACCEPTED'
-  protection: 'VERCEL_AUTHENTICATION_NO_BYPASS'
+  authorization: 'SEPARATE_BEARER_REQUIRED_EVERY_INVOCATION_NO_HUMAN_IDENTITY_PROOF'
+  protection: 'PREVIEW_VERCEL_AUTHENTICATION_WITH_EXISTING_PROJECT_AUTOMATION_BYPASS_ACKNOWLEDGED'
   protectionEvidence: string
   databaseEvidence: string
   expectedRole: string
 }>
 
 const fields = ['version', 'sourceSha', 'deploymentId', 'origin', 'startsAt', 'expiresAt', 'operatorApproval',
-  'credentialIssuance', 'replayPolicy', 'protection', 'protectionEvidence', 'databaseEvidence', 'expectedRole'].sort()
+  'credentialIssuance', 'replayPolicy', 'authorization', 'protection', 'protectionEvidence', 'databaseEvidence', 'expectedRole'].sort()
 const reference = (value: unknown): value is string => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,159}$/.test(value)
 
 // References attest owner review; they cannot introspect or turn on Vercel protection or prove CSPRNG issuance.
@@ -34,13 +35,14 @@ export function parseCapabilityApproval(serialized: string | undefined): Capabil
     const a = JSON.parse(serialized)
     if (!a || typeof a !== 'object' || Array.isArray(a)
       || Object.keys(a).sort().join(',') !== fields.join(',')
-      || a.version !== 'RRD_DIAGNOSTIC_CAPABILITY_V1'
+      || a.version !== 'RRD_DIAGNOSTIC_CAPABILITY_V2'
       || !/^[a-f0-9]{40}$/.test(a.sourceSha) || !/^dpl_[A-Za-z0-9]+$/.test(a.deploymentId)
       || !Number.isSafeInteger(a.startsAt) || !Number.isSafeInteger(a.expiresAt)
       || a.startsAt < 0 || a.expiresAt <= a.startsAt || a.expiresAt - a.startsAt > diagnosticLimits.windowMs
       || !reference(a.operatorApproval) || !reference(a.protectionEvidence) || !reference(a.databaseEvidence)
       || a.credentialIssuance !== 'OWNER_CSPRNG_256_BIT_PRIVATE_DELIVERY'
-      || a.replayPolicy !== 'POSSESSION_REPLAY_ACCEPTED' || a.protection !== 'VERCEL_AUTHENTICATION_NO_BYPASS'
+      || a.authorization !== 'SEPARATE_BEARER_REQUIRED_EVERY_INVOCATION_NO_HUMAN_IDENTITY_PROOF'
+      || a.replayPolicy !== 'POSSESSION_REPLAY_ACCEPTED' || a.protection !== 'PREVIEW_VERCEL_AUTHENTICATION_WITH_EXISTING_PROJECT_AUTOMATION_BYPASS_ACKNOWLEDGED'
       || typeof a.expectedRole !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_-]{0,62}$/.test(a.expectedRole)) return null
     const origin = new URL(a.origin)
     if (origin.protocol !== 'https:' || origin.origin !== a.origin || origin.username || origin.password
