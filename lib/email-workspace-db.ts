@@ -4,8 +4,9 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import { hasDashboardAccess } from "@/lib/admin-auth";
 import { getAuthSession } from "@/lib/auth";
+import { stagingPoolConfig } from "@/lib/staging-isolation";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+const pool = new Pool(stagingPoolConfig(4));
 export const emailDb = drizzle(pool);
 export { sql as query };
 export class EmailError extends Error {
