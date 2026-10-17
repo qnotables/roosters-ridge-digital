@@ -3,9 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ dashboard: vi.fn(), handler: vi.fn(), session: vi.fn() }))
+const mocks = vi.hoisted(() => ({ dashboard: vi.fn(), handler: vi.fn(), recoveryHandler: vi.fn(), session: vi.fn() }))
 vi.mock('@/lib/admin-auth', () => ({ hasDashboardAccess: mocks.dashboard }))
-vi.mock('@/lib/auth', () => ({ auth: { handler: () => Object.fromEntries(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => [method, mocks.handler])) }, getAuthSession: mocks.session }))
+vi.mock('@/lib/auth', () => ({
+  auth: { handler: () => Object.fromEntries(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => [method, mocks.handler])) },
+  recoveryAuth: { handler: () => Object.fromEntries(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => [method, mocks.recoveryHandler])) },
+  getAuthSession: mocks.session,
+}))
 vi.mock('@/lib/auth-client', () => ({ authClient: {} }))
 vi.mock('next/navigation', () => ({
   notFound: () => { throw new Error('NOT_FOUND') },
@@ -18,7 +22,9 @@ import ForgotPage from '@/app/admin/scheduling/forgot-password/page'
 import ResetPage from '@/app/admin/scheduling/reset-password/page'
 import { SchedulingPasswordRecovery } from '@/components/admin/scheduling/password-recovery'
 import { SchedulingStaffSignIn } from '@/components/admin/scheduling/staff-sign-in'
-import { POST, GET } from '@/app/api/auth/[...path]/route'
+import { POST, GET, PUT, PATCH, DELETE } from '@/app/api/auth/[...path]/route'
+import { recoveryAuthLogger } from '@/lib/auth-recovery-logging'
+import { resolveNeonAuthLogging } from '@neondatabase/auth/server'
 import { leaveSchedulingRecovery, schedulingRecoveryAvailable, schedulingRecoveryOrigin, schedulingResetCallback } from '@/modules/scheduling/password-recovery'
 
 const source = (file: string) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
@@ -31,7 +37,7 @@ const env = {
   ADMIN_DASHBOARD_KEY: 'offline-dashboard-fixture-not-real-'.repeat(2), NEON_AUTH_COOKIE_SECRET: 'offline-auth-fixture-not-real-'.repeat(2),
 }
 function request(path: string, body: unknown = {}, origin = schedulingRecoveryOrigin) {
-  return POST(new Request(`${origin}/api/auth/${path}`, { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify(body) }), { params: Promise.resolve({ path: path.split('/') }) })
+  return POST(new Request(`${origin}/api/auth/${path}`, { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify(body) }), { params: Promise.resolve({ path: path.split('?')[0].split('/') }) })
 }
 beforeEach(() => {
   vi.resetAllMocks()
@@ -39,6 +45,7 @@ beforeEach(() => {
   for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value)
   mocks.dashboard.mockResolvedValue(true)
   mocks.handler.mockImplementation(() => Response.json({ ok: true }))
+  mocks.recoveryHandler.mockImplementation(() => Response.json({ ok: true }))
   vi.spyOn(console, 'info').mockImplementation(() => {})
 })
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
@@ -50,11 +57,13 @@ describe('staging-only recovery pages', () => {
     expect(mocks.dashboard).toHaveBeenCalledOnce()
     expect(mocks.session).not.toHaveBeenCalled()
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it('redirects missing dashboard access with a fixed token-free destination', async () => {
     mocks.dashboard.mockResolvedValue(false)
     await expect(ForgotPage()).rejects.toThrow('REDIRECT:/admin/sign-in')
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it('renders reset without dashboard cookies, a staff session, token validation, or Auth traffic', () => {
     mocks.dashboard.mockResolvedValue(false)
@@ -64,6 +73,7 @@ describe('staging-only recovery pages', () => {
     expect(mocks.dashboard).not.toHaveBeenCalled()
     expect(mocks.session).not.toHaveBeenCalled()
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it.each(['production', 'development', ''])('rejects both pages outside Preview: %s', async context => {
     vi.stubEnv('VERCEL_ENV', context)
@@ -97,7 +107,8 @@ describe('guarded same-origin Auth proxy', () => {
     const response = await request('request-password-reset', { email: 'offline@example.invalid', redirectTo: schedulingResetCallback })
     expect(response.status).toBe(200)
     expect(mocks.dashboard).toHaveBeenCalledOnce()
-    expect(mocks.handler).toHaveBeenCalledOnce()
+    expect(mocks.recoveryHandler).toHaveBeenCalledOnce()
+    expect(mocks.handler).not.toHaveBeenCalled()
     expect(response.headers.get('Referrer-Policy')).toBe('no-referrer')
     expect(response.headers.get('Cache-Control')).toContain('no-store')
   })
@@ -105,28 +116,35 @@ describe('guarded same-origin Auth proxy', () => {
     mocks.dashboard.mockResolvedValue(false)
     expect((await request('request-password-reset', { redirectTo: schedulingResetCallback })).status).toBe(403)
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it.each(['https://roostersridgedigital.com/admin/scheduling/reset-password', '//evil.invalid', '/admin/scheduling/reset-password', `${schedulingResetCallback}?token=synthetic`, undefined])('rejects unsafe callback %s before provider traffic', async redirectTo => {
     expect((await request('request-password-reset', { redirectTo })).status).toBe(400)
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it.each(['request-password-reset', 'forget-password', 'reset-password'])('rejects %s in Production before provider traffic', async path => {
     vi.stubEnv('VERCEL_ENV', 'production')
     expect((await request(path, { redirectTo: schedulingResetCallback })).status).toBe(404)
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it('rejects a non-approved Preview origin', async () => {
     expect((await request('reset-password', {}, 'https://other-preview.vercel.app')).status).toBe(404)
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it('rejects missing/cross-site Origin headers', async () => {
     const response = await POST(new Request(`${schedulingRecoveryOrigin}/api/auth/reset-password`, { method: 'POST' }), { params: Promise.resolve({ path: ['reset-password'] }) })
     expect(response.status).toBe(404)
     expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it('lets the SDK validate a reset without granting dashboard or staff access', async () => {
     mocks.dashboard.mockResolvedValue(false)
     expect((await request('reset-password', { token: 'synthetic-offline-token', newPassword: 'synthetic-offline-password' })).status).toBe(200)
+    expect(mocks.recoveryHandler).toHaveBeenCalledOnce()
+    expect(mocks.handler).not.toHaveBeenCalled()
     expect(mocks.dashboard).not.toHaveBeenCalled()
     expect(mocks.session).not.toHaveBeenCalled()
   })
@@ -134,6 +152,147 @@ describe('guarded same-origin Auth proxy', () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     expect((await GET(new Request('https://production.invalid/api/auth/get-session'), { params: Promise.resolve({ path: ['get-session'] }) })).status).toBe(200)
     expect(mocks.handler).toHaveBeenCalledOnce()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+})
+
+describe('recovery callback and redirect boundaries', () => {
+  const callback = (query = `callbackURL=${encodeURIComponent(schedulingResetCallback)}`, path = ['reset-password', 'synthetic-offline-token']) =>
+    GET(new Request(`${schedulingRecoveryOrigin}/api/auth/${path.join('/')}?${query}`), { params: Promise.resolve({ path }) })
+
+  it('pins the exact stable branch hostname, rejecting the previous immutable Preview and lookalikes', async () => {
+    expect(schedulingRecoveryOrigin).toBe('https://roosters-ridge-digital-git-stagi-7ec470-mbthiel1-5217s-projects.vercel.app')
+    for (const origin of [
+      'https://roosters-ridge-digital-99ii085oo-mbthiel1-5217s-projects.vercel.app',
+      'https://roostersridgedigital.com', `${schedulingRecoveryOrigin}.evil.invalid`,
+      schedulingRecoveryOrigin.replace('https:', 'http:'), `${schedulingRecoveryOrigin}:444`,
+    ]) expect((await request('reset-password', {}, origin)).status).toBe(404)
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+  it.each(['token=synthetic-offline-token', 'error=INVALID_TOKEN'])('preserves managed callback redirect %s without dashboard/session checks', async query => {
+    mocks.dashboard.mockResolvedValue(false)
+    const location = `${schedulingResetCallback}?${query}`
+    mocks.recoveryHandler.mockResolvedValue(new Response(null, { status: 302, headers: { location } }))
+    const response = await callback()
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe(location)
+    expect(response.headers.get('cache-control')).toContain('no-store')
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(mocks.recoveryHandler).toHaveBeenCalledOnce()
+    expect(mocks.dashboard).not.toHaveBeenCalled()
+    expect(mocks.session).not.toHaveBeenCalled()
+    expect(mocks.handler).not.toHaveBeenCalled()
+  })
+  it.each([
+    '', 'callbackURL=https://evil.invalid',
+    `callbackURL=${encodeURIComponent(`${schedulingResetCallback}?token=injected`)}`,
+    `callbackURL=${encodeURIComponent(schedulingResetCallback)}&callbackURL=https://evil.invalid`,
+    `callbackURL=${encodeURIComponent(schedulingResetCallback)}&returnTo=https://evil.invalid`,
+  ])('rejects callback query before any provider call: %s', async query => {
+    expect((await callback(query)).status).toBe(400)
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['reset-password'], ['reset-password', 'synthetic', 'extra'], ['request-password-reset'], ['forget-password'],
+  ])('rejects invalid GET route shape %j', async (...segments) => {
+    expect((await callback(undefined, segments)).status).toBe(400)
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+  it.each([PUT, PATCH, DELETE])('rejects unsupported recovery methods', async method => {
+    const response = await method(new Request(`${schedulingRecoveryOrigin}/api/auth/reset-password`, { method: method === PUT ? 'PUT' : method === PATCH ? 'PATCH' : 'DELETE', headers: { origin: schedulingRecoveryOrigin } }), { params: Promise.resolve({ path: ['reset-password'] }) })
+    expect(response.status).toBe(400)
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+  it('rejects query-string reset submissions and nested POST paths', async () => {
+    for (const path of ['reset-password?token=synthetic', 'reset-password/synthetic']) {
+      expect((await request(path)).status).toBe(400)
+    }
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+  it.each([
+    'https://evil.invalid/?token=synthetic', '//evil.invalid/?token=synthetic',
+    `${schedulingRecoveryOrigin}/admin/scheduling/staff-sign-in?token=synthetic`,
+    `${schedulingResetCallback}?token=synthetic&token=duplicate`,
+    `${schedulingResetCallback}?token=synthetic&returnTo=https://evil.invalid`,
+    `${schedulingResetCallback}?error=unexpected`, `${schedulingResetCallback}?token=`,
+    `${schedulingResetCallback}?token=synthetic#fragment`,
+    schedulingResetCallback, 'https://user:pass@' + schedulingRecoveryOrigin.slice(8) + '/admin/scheduling/reset-password?token=synthetic',
+  ])('blocks unexpected provider Location: %s', async location => {
+    mocks.recoveryHandler.mockResolvedValue(new Response(null, { status: 302, headers: { location, 'set-cookie': 'synthetic=discard' } }))
+    const response = await callback()
+    expect(response.status).toBe(502)
+    expect(response.headers.has('location')).toBe(false)
+    expect(response.headers.has('set-cookie')).toBe(false)
+    expect(await response.text()).toBe('{"error":"Invalid recovery response."}')
+  })
+  it('rejects POST redirects, Refresh headers and redirects lacking Location', async () => {
+    mocks.recoveryHandler.mockResolvedValue(new Response(null, { status: 302, headers: { location: `${schedulingResetCallback}?token=synthetic` } }))
+    expect((await request('reset-password')).status).toBe(502)
+    mocks.recoveryHandler.mockResolvedValue(new Response(null, { headers: { refresh: '0; url=https://evil.invalid' } }))
+    expect((await callback()).status).toBe(502)
+    mocks.recoveryHandler.mockResolvedValue(new Response(null, { status: 302 }))
+    expect((await callback()).status).toBe(502)
+  })
+  it('contains raw provider exceptions without logging or reflecting them', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.recoveryHandler.mockRejectedValue(new Error('synthetic-token synthetic-password offline@example.invalid'))
+    const response = await request('reset-password')
+    expect(response.status).toBe(502)
+    expect(await response.text()).toBe('{"error":"Recovery could not be completed."}')
+    expect(error).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
+  })
+})
+
+describe('allowlisted recovery SDK logging', () => {
+  it('keeps only fixed known events, never metadata or arbitrary messages, through the actual SDK logger resolver', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const log = resolveNeonAuthLogging({ logger: recoveryAuthLogger, logLevel: 'debug' })
+    const secrets = {
+      proxyPath: 'reset-password/synthetic-token', detail: 'synthetic-password',
+      email: 'offline@example.invalid', body: { token: 'synthetic-token', newPassword: 'synthetic-password' },
+      cookies: 'synthetic-cookie', authorization: 'Bearer synthetic-authorization',
+      url: `${schedulingResetCallback}?token=synthetic-token`, err: new Error('synthetic-secret-error'),
+    }
+    log.warn('[neon-auth] Upstream HTTP error', secrets)
+    log.warn('[neon-auth] Upstream fetch failed', secrets)
+    log.error('[neon-auth] Unexpected proxy error', secrets)
+    log.error('[mintSessionDataCookie] Failed to mint session_data cookie:', secrets)
+    for (const level of ['warn', 'error', 'info', 'debug'] as const) {
+      log[level]('synthetic-token offline@example.invalid', secrets)
+      log[level]('[neon-auth] Upstream HTTP error?token=synthetic-token', secrets)
+    }
+    log.info('[neon-auth] Upstream HTTP non-2xx', secrets)
+    log.debug('[neon-auth] Upstream fetch completed', secrets)
+    expect(warn.mock.calls).toEqual([
+      ['Scheduling recovery: upstream service unavailable.'],
+      ['Scheduling recovery: upstream connection failure.'],
+    ])
+    expect(error.mock.calls).toEqual([
+      ['Scheduling recovery: upstream proxy failure.'],
+      ['Scheduling recovery: session cookie failure.'],
+    ])
+    expect(info).not.toHaveBeenCalled()
+    expect(debug).not.toHaveBeenCalled()
+  })
+  it('uses a separate recovery instance while retaining ordinary SDK logging and session configuration', async () => {
+    const createNeonAuth = vi.fn(() => ({}))
+    vi.doMock('@neondatabase/auth/next/server', () => ({ createNeonAuth }))
+    try {
+      await vi.importActual('@/lib/auth')
+      expect(createNeonAuth).toHaveBeenCalledTimes(2)
+      const [normal, recovery] = createNeonAuth.mock.calls.map(call => (call as unknown as [Record<string, unknown>])[0])
+      expect(normal.baseUrl).toBe(env.NEON_AUTH_BASE_URL)
+      expect(normal).not.toHaveProperty('logger')
+      expect(normal).not.toHaveProperty('logLevel')
+      expect(recovery).toEqual({ ...normal, logger: recoveryAuthLogger, logLevel: 'warn' })
+    } finally {
+      vi.doUnmock('@neondatabase/auth/next/server')
+    }
   })
 })
 

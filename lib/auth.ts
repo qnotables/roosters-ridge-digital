@@ -1,6 +1,7 @@
 import { createNeonAuth } from '@neondatabase/auth/next/server'
 
 import { assertStagingRuntimeConfiguration, stagingIsolationStatus } from '@/lib/staging-isolation'
+import { recoveryAuthLogger } from '@/lib/auth-recovery-logging'
 
 assertStagingRuntimeConfiguration()
 const stagingReady = stagingIsolationStatus().ready
@@ -8,12 +9,19 @@ const baseUrl = stagingReady ? process.env.NEON_AUTH_BASE_URL || 'http://localho
 const configuredCookieSecret = process.env.NEON_AUTH_COOKIE_SECRET
 const cookieSecret = configuredCookieSecret && configuredCookieSecret.length >= 32 ? configuredCookieSecret : 'build-only-secret-not-used-at-runtime-for-static-builds-64-character-fallback'
 
-export const auth = createNeonAuth({
+const authConfig = {
   baseUrl,
   cookies: {
     secret: cookieSecret,
-    sameSite: process.env.NODE_ENV === 'development' ? 'none' : 'lax',
+    sameSite: process.env.NODE_ENV === 'development' ? 'none' as const : 'lax' as const,
   },
+}
+
+export const auth = createNeonAuth(authConfig)
+export const recoveryAuth = createNeonAuth({
+  ...authConfig,
+  logLevel: 'warn',
+  logger: recoveryAuthLogger,
 })
 
 export async function getAuthSession(fresh = false) {
