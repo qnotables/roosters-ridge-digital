@@ -7,7 +7,8 @@ export const schedulingRecoveryOrigin = 'https://roosters-ridge-digital-git-stag
 export const schedulingResetCallback = `${schedulingRecoveryOrigin}${schedulingResetPasswordPath}`
 
 export function schedulingRecoveryAvailable(env: Record<string, string | undefined> = process.env) {
-  return env.VERCEL_ENV === 'preview'
+  return env.RRD_STAGING_PASSWORD_RECOVERY_ENABLED === 'true'
+    && env.VERCEL_ENV === 'preview'
     && stagingRuntimeConfiguration(env).ready
     && stagingIsolationStatus(env).ready
 }

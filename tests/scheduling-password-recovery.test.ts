@@ -29,6 +29,7 @@ import { leaveSchedulingRecovery, schedulingRecoveryAvailable, schedulingRecover
 
 const source = (file: string) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
 const env = {
+  RRD_STAGING_PASSWORD_RECOVERY_ENABLED: 'true',
   NODE_ENV: 'production', VERCEL_ENV: 'preview',
   VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC', VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
   NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
@@ -49,6 +50,72 @@ beforeEach(() => {
   vi.spyOn(console, 'info').mockImplementation(() => {})
 })
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+
+describe('default-off server recovery activation', () => {
+  it.each([undefined, '', 'false', 'TRUE', 'True', ' true', 'true ', 'true\n', '1', 'yes', 'null'])('blocks pages and every recovery operation for flag %j', async flag => {
+    vi.stubEnv('RRD_STAGING_PASSWORD_RECOVERY_ENABLED', flag)
+    expect(schedulingRecoveryAvailable({ ...env, RRD_STAGING_PASSWORD_RECOVERY_ENABLED: flag })).toBe(false)
+    await expect(ForgotPage()).rejects.toThrow('NOT_FOUND')
+    expect(() => ResetPage()).toThrow('NOT_FOUND')
+    for (const path of ['request-password-reset', 'forget-password', 'reset-password']) {
+      const response = await request(path, { redirectTo: schedulingResetCallback, token: 'synthetic-disabled-token', newPassword: 'synthetic-disabled-password' })
+      expect(response.status).toBe(404)
+      expect(response.headers.has('location')).toBe(false)
+      expect(await response.text()).toBe('{"error":"Recovery is unavailable."}')
+      for (const [method, handler] of [['GET', GET], ['PUT', PUT], ['PATCH', PATCH], ['DELETE', DELETE]] as const) {
+        const segments = method === 'GET' && path === 'reset-password' ? [path, 'synthetic-disabled-token'] : [path]
+        const response = await handler(new Request(`${schedulingRecoveryOrigin}/api/auth/${segments.join('/')}?callbackURL=${encodeURIComponent(schedulingResetCallback)}`, { method, headers: { origin: schedulingRecoveryOrigin } }), { params: Promise.resolve({ path: segments }) })
+        expect(response.status).toBe(404)
+        expect(response.headers.has('location')).toBe(false)
+      }
+    }
+    expect(mocks.dashboard).not.toHaveBeenCalled()
+    expect(mocks.session).not.toHaveBeenCalled()
+    expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+    for (const call of vi.mocked(console.info).mock.calls) {
+      expect(call).toEqual(['DATABASE_DESTINATION: PASS\nAUTH_DESTINATION: PASS\nSECRET_FORMAT: PASS'])
+    }
+  })
+
+  it.each([
+    { VERCEL_ENV: 'production' }, { VERCEL_ENV: 'development' }, { VERCEL_ENV: undefined },
+    { VERCEL_GIT_COMMIT_REF: 'main' }, { VERCEL_GIT_COMMIT_REF: 'other-branch' },
+    { VERCEL_GIT_COMMIT_REF: undefined }, { VERCEL_PROJECT_ID: 'other-project' },
+    { VERCEL_PROJECT_ID: undefined }, { DATABASE_URL: undefined }, { DATABASE_URL_UNPOOLED: undefined },
+    { DATABASE_URL: 'postgresql://fixture:fixture@production.invalid/neondb?sslmode=require' },
+    { NEON_AUTH_BASE_URL: 'https://production.invalid/auth' },
+    { NEON_AUTH_COOKIE_SECRET: 'short' }, { ADMIN_DASHBOARD_KEY: 'short' },
+    { NODE_TLS_REJECT_UNAUTHORIZED: '0' },
+  ])('cannot override isolation with an enabled flag: %j', async overrides => {
+    for (const [key, value] of Object.entries(overrides)) vi.stubEnv(key, value)
+    expect(schedulingRecoveryAvailable({ ...env, ...overrides })).toBe(false)
+    await expect(ForgotPage()).rejects.toThrow('NOT_FOUND')
+    expect(() => ResetPage()).toThrow('NOT_FOUND')
+    for (const path of ['request-password-reset', 'forget-password', 'reset-password']) {
+      expect([404, 503]).toContain((await request(path, { redirectTo: schedulingResetCallback })).status)
+    }
+    expect(mocks.dashboard).not.toHaveBeenCalled()
+    expect(mocks.handler).not.toHaveBeenCalled()
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'false', 'TRUE'])('preserves staff sign-in and existing-session proxy calls with disabled flag %j', async flag => {
+    vi.stubEnv('RRD_STAGING_PASSWORD_RECOVERY_ENABLED', flag)
+    expect((await request('sign-in/email', { email: 'offline@example.invalid', password: 'synthetic-offline-password' })).status).toBe(200)
+    expect((await GET(new Request(`${schedulingRecoveryOrigin}/api/auth/get-session`), { params: Promise.resolve({ path: ['get-session'] }) })).status).toBe(200)
+    expect(mocks.handler).toHaveBeenCalledTimes(2)
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+    expect(mocks.dashboard).not.toHaveBeenCalled()
+  })
+
+  it('rechecks the flag for each request instead of caching activation', async () => {
+    expect((await request('reset-password')).status).toBe(200)
+    vi.stubEnv('RRD_STAGING_PASSWORD_RECOVERY_ENABLED', undefined)
+    expect((await request('reset-password')).status).toBe(404)
+    expect(mocks.recoveryHandler).toHaveBeenCalledOnce()
+  })
+})
 
 describe('staging-only recovery pages', () => {
   it('renders the forgot route behind the dashboard gate without requiring a staff session', async () => {
