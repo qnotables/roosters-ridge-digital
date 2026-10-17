@@ -5,12 +5,14 @@ const root = path.resolve(__dirname, '..')
 const targets = {
   targeted: ['node_modules/vitest/vitest.mjs', 'run', 'tests/scheduling-dashboard-readonly.test.ts', 'tests/scheduling-staging-launcher.test.ts'],
   scheduling: ['node_modules/vitest/vitest.mjs', 'run', 'scheduling'],
+  auth: ['node_modules/vitest/vitest.mjs', 'run', 'tests/scheduling-staff-sign-in.test.ts', 'tests/email-staff-session.test.ts', 'tests/scheduling-authorization.test.ts', 'tests/scheduling-runtime-gate.test.ts'],
+  regressions: ['node_modules/vitest/vitest.mjs', 'run'],
   types: ['node_modules/typescript/bin/tsc', '--noEmit', '--incremental', 'false'],
   build: ['node_modules/next/dist/bin/next', 'build', '--webpack'],
 }
 const target = process.argv[2]
 if (process.argv.length !== 3 || !Object.hasOwn(targets, target)) {
-  console.error('Choose one offline verification target: targeted, scheduling, types, build')
+  console.error('Choose one offline verification target: targeted, scheduling, auth, regressions, types, build')
   process.exit(2)
 }
 

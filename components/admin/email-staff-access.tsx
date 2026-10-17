@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { signInStaffWithPassword } from "@/lib/staff-password-sign-in";
 import { confirmEmailStaffSession, type WorkspaceData } from "@/lib/email-workspace-types";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -103,7 +104,7 @@ export function EmailStaffAccess({
                 run(
                   () =>
                     mode === "signin"
-                      ? authClient.signIn.email({ email: email.trim().toLowerCase(), password })
+                      ? signInStaffWithPassword(email, password)
                       : authClient.signUp.email({ email: email.trim().toLowerCase(), password, name }),
                   mode === "signin"
                     ? "Staff session confirmed. Verified approved accounts can send once a sender address is saved."
@@ -210,7 +211,7 @@ export function EmailStaffAccess({
                         const normalizedEmail = email.trim().toLowerCase();
                         const result = await authClient.emailOtp.verifyEmail({ email: normalizedEmail, otp: otp.trim() });
                         if (result.error || !password) return result;
-                        return authClient.signIn.email({ email: normalizedEmail, password });
+                        return signInStaffWithPassword(normalizedEmail, password);
                       },
                       password ? "Email verified and staff session confirmed. Save your sender address to finish setup." : "Email verified. Enter your staff password and click Sign in staff account to start your session.",
                       Boolean(password),
