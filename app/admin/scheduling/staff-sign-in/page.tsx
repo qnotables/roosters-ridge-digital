@@ -4,6 +4,7 @@ import { hasDashboardAccess } from '@/lib/admin-auth'
 import { getAuthSession } from '@/lib/auth'
 import { AdminShell } from '@/components/admin/admin-shell'
 import { SchedulingStaffSignIn } from '@/components/admin/scheduling/staff-sign-in'
+import { schedulingRecoveryAvailable } from '@/modules/scheduling/password-recovery'
 import { schedulingStaffReturnPath, verifiedStaffSession } from '@/modules/scheduling/staff-sign-in'
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default async function SchedulingStaffSignInPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Sign in to your staff account</h1>
           <p className="text-sm text-muted-foreground">Use your individual staff password, not the administrator dashboard key.</p>
         </header>
-        <SchedulingStaffSignIn sessionUnavailable={sessionUnavailable} />
+        <SchedulingStaffSignIn sessionUnavailable={sessionUnavailable} recoveryAvailable={schedulingRecoveryAvailable()} />
       </main>
     </AdminShell>
   )

@@ -12,7 +12,7 @@ import { signInStaffWithPassword } from '@/lib/staff-password-sign-in'
 import { confirmSchedulingStaffSession } from '@/app/admin/scheduling/staff-sign-in/actions'
 import { schedulingStaffReturnPath, signInSchedulingStaff } from '@/modules/scheduling/staff-sign-in'
 
-export function SchedulingStaffSignIn({ sessionUnavailable = false }: { sessionUnavailable?: boolean }) {
+export function SchedulingStaffSignIn({ sessionUnavailable = false, recoveryAvailable = false }: { sessionUnavailable?: boolean; recoveryAvailable?: boolean }) {
   const router = useRouter()
   const pending = useRef(false)
   const [email, setEmail] = useState('')
@@ -64,6 +64,7 @@ export function SchedulingStaffSignIn({ sessionUnavailable = false }: { sessionU
             <Button type="submit" disabled={busy}>{busy ? 'Confirming staff session…' : 'Sign in to Scheduling'}</Button>
           </FieldGroup>
         </form>
+        {recoveryAvailable && <Link href="/admin/scheduling/forgot-password" prefetch={false} className="text-sm underline underline-offset-4">Forgot Password?</Link>}
         <p className="text-sm text-muted-foreground">Signing in does not grant scheduling access. An existing owner or administrator membership is still required. If access is denied, contact your scheduling administrator.</p>
       </CardContent>
       <CardFooter>

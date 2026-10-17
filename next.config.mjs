@@ -32,6 +32,14 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: '/admin/scheduling/:recovery(forgot-password|reset-password)',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+        ],
+      },
     ]
   },
 }
