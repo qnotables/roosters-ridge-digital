@@ -3,7 +3,7 @@ const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
 const targets = {
-  targeted: ['node_modules/vitest/vitest.mjs', 'run', 'tests/scheduling-runtime-diagnostic.test.ts', 'tests/scheduling-runtime-diagnostic-evidence.test.ts', 'tests/scheduling-runtime-diagnostic-transport.test.ts', 'tests/scheduling-dashboard-readonly.test.ts', 'tests/scheduling-runtime-diagnostic-pg.test.ts', 'tests/scheduling-runtime-diagnostic-capability.test.ts', 'tests/scheduling-runtime-diagnostic-integration.test.ts'],
+  targeted: ['node_modules/vitest/vitest.mjs', 'run', 'tests/scheduling-dashboard-readonly.test.ts', 'tests/scheduling-staging-launcher.test.ts'],
   scheduling: ['node_modules/vitest/vitest.mjs', 'run', 'scheduling'],
   types: ['node_modules/typescript/bin/tsc', '--noEmit', '--incremental', 'false'],
   build: ['node_modules/next/dist/bin/next', 'build', '--webpack'],

@@ -20,7 +20,6 @@
     "@tiptap/starter-kit": "^3.31.3",
     "@vercel/analytics": "1.6.1",
     "@vercel/blob": "^2.8.0",
-    "@vercel/global-config": "1.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.3.0",
