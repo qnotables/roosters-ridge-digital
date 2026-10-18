@@ -1,0 +1,11 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "REVIEW.md": "a7e6342a46fc3a63f9bea24dd75871c3c2a694fa80954a17f7fadd9044b63602",
+    "bootstrap.mjs": "e18771066e010bd67a67a72e6400fad7054a6781731d7e25bbd4d194ddb77925",
+    "bootstrap.pg.test.mjs": "f414720f3642cf277d36f8e5587125f8ba7aff406a15a0ba177709d9c5e8ba2e",
+    "bootstrap.unit.test.mjs": "2e7b3add48cd5f2520f25b1a40db4a2cd03422a6fdbf664204871f5019f52027",
+    "schema-fixture.sql": "775d93b35bede1e903ddcac8cc370a5e370eba916b89fcb7acd0201e31db0262"
+  },
+  "bundle": "263484e71d75419cc9cda2045e05f9c49c922f53b10dd593a829debbaff88904"
+}

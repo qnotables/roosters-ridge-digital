@@ -1,0 +1,113 @@
+{
+  "reportDate": "2026-10-18",
+  "status": "PARTIAL_OFFLINE_VALIDATION_POSTGRESQL_BLOCKED",
+  "readyForExecutionApproval": false,
+  "readyForCodeReview": true,
+  "artifactBundleSha256": "263484e71d75419cc9cda2045e05f9c49c922f53b10dd593a829debbaff88904",
+  "directory": "modules/scheduling/activation/membership-bootstrap",
+  "preparedFiles": [
+    "bootstrap.mjs",
+    "bootstrap.unit.test.mjs",
+    "bootstrap.pg.test.mjs",
+    "schema-fixture.sql",
+    "REVIEW.md",
+    "SHA256SUMS.json",
+    "VALIDATION.json"
+  ],
+  "schemaEvidence": {
+    "inspection": "OFFLINE_SAVED_EVIDENCE_ONLY_NOT_CURRENT_LIVE_SCHEMA",
+    "capturedColumns": "user_read_only_context/tool_content/inspecting-approved-staging-schema-neon-run-sql-7-ln-h.txt",
+    "capturedConstraintsAndTriggers": "user_read_only_context/tool_content/inspecting-membership-constraints-and-triggers-neon-run-sql-nlr-l.txt",
+    "repositoryMigrations": [
+      "modules/scheduling/migrations/001_scheduling.sql",
+      "modules/scheduling/migrations/007_multitenant.sql",
+      "modules/scheduling/migrations/009_platform_management.sql"
+    ],
+    "notes": "Core membership/audit fixture follows saved columns, text CHECK domains, PKs/FKs, defaults and known triggers. Auth and unrelated-state tables are deliberately reduced synthetic fixtures, not a full live schema clone. Compatibility has not been established by running PostgreSQL."
+  },
+  "completedChecks": [
+    {
+      "name": "Offline authorization unit suite",
+      "command": "node --test modules/scheduling/activation/membership-bootstrap/bootstrap.unit.test.mjs",
+      "status": "PASS",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "coverage": "Exact target keys and all identifiers; owner and independent signatures; distinct trust anchors; artifact digest; approval reference; operation UUID; expiry; test/staging separation; Production mode denial; forged token denial; host binding before SQL; separate rollback authorization and complete activity/restoration requirements. No database connection is created by these tests."
+    },
+    {
+      "name": "JavaScript syntax checks",
+      "status": "PASS",
+      "files": ["bootstrap.mjs", "bootstrap.unit.test.mjs", "bootstrap.pg.test.mjs"],
+      "notes": "node --check passed for all three files. A previously detected syntax error in an unexecuted PostgreSQL test callback was corrected. This is JavaScript syntax validation, not PostgreSQL SQL validation."
+    },
+    {
+      "name": "Application isolation search and tracked whitespace check",
+      "status": "PASS",
+      "notes": "No callers/imports outside the new artifact folder found. git diff --check completed successfully; all prepared files are new and app/config/dependency files were not edited."
+    }
+  ],
+  "postgresqlValidation": {
+    "status": "BLOCKED_NOT_RUN",
+    "sqlParserValidation": "NOT_RUN",
+    "clusterInitialized": false,
+    "databaseConnections": 0,
+    "postgresqlTestCasesExecuted": 0,
+    "toolingAvailabilityCheck": "FAILED_MISSING_NATIVE_LIBRARY",
+    "blocker": "Temporary @embedded-postgres/linux-x64@18.4.0-beta.17 binaries could not start: libicui18n.so.60 not found. Bundled-library path and package symlink setup did not resolve the loader error. Native engine attempts were stopped; no fallback to Neon or another live database was made.",
+    "testHarness": "bootstrap.pg.test.mjs",
+    "plannedCasesNotPassed": [
+      "SQL syntax, column types/defaults and CHECK/FK/PK constraints",
+      "Known update and immutable-audit triggers",
+      "Unexpected trigger rejection",
+      "Exactly one membership and two attributed audit rows",
+      "All unrelated synthetic state and other-tenant memberships unchanged",
+      "Exact duplicate and conflicting existing membership rejection",
+      "Rollback of entire grant when tenant audit insertion fails",
+      "Rollback of entire grant when platform audit insertion fails",
+      "Consumed operation replay rejection",
+      "Missing/unverified/banned Auth UUID and tenant drift rejection",
+      "Actual PostgreSQL table-lock timeout and concurrent grant behavior",
+      "Transaction-local statement/idle/lock settings and actual statement timeout",
+      "Lost commit acknowledgment with and without server commit; no automatic retry",
+      "Read-only post-execution reconciliation",
+      "Separately authorized rollback preserving original audit and unrelated state",
+      "Rollback denial after intervening membership change"
+    ]
+  },
+  "requirementsStatus": [
+    { "requirement": 1, "status": "CAPTURED_SCHEMA_INSPECTED_OFFLINE_ONLY" },
+    { "requirement": 2, "status": "PARAMETERIZED_PROCEDURE_PREPARED_NOT_POSTGRESQL_VALIDATED" },
+    { "requirement": 3, "status": "BLOCKED_REAL_POSTGRESQL_NOT_RUN" },
+    { "requirement": 4, "status": "BLOCKED_REAL_POSTGRESQL_NOT_RUN" },
+    { "requirement": 5, "status": "BLOCKED_REAL_POSTGRESQL_NOT_RUN" },
+    { "requirement": 6, "status": "BLOCKED_REAL_POSTGRESQL_NOT_RUN" },
+    { "requirement": 7, "status": "BLOCKED_REAL_POSTGRESQL_NOT_RUN" },
+    { "requirement": 8, "status": "NO_LIVE_OPERATION_OR_CHANGE_OFFLINE_INVARIANCE_SUITE_NOT_RUN" },
+    { "requirement": 9, "status": "OFFLINE_TARGET_GATES_PASSED_REAL_BRANCH_BINDING_REQUIRES_INDEPENDENT_CONTROL_PLANE_EVIDENCE" },
+    { "requirement": 10, "status": "AMBIGUOUS_COMMIT_PROCEDURE_PREPARED_REAL_POSTGRESQL_TESTS_NOT_RUN" }
+  ],
+  "remainingRisks": [
+    "All real PostgreSQL SQL/constraint/trigger/transaction/locking/timeout/atomicity/commit-ambiguity/rollback assertions remain unexecuted. Unit passes do not establish transaction correctness.",
+    "Saved schema evidence may be stale and full Auth/application schema, database major-version differences, RLS and privileges are not reproduced by the reduced fixture.",
+    "SQL cannot identify a Neon branch. A separately trusted current control-plane attestation must bind project, branch, endpoint, database and operator authority; no such actual evidence or trusted real-world signer mapping is supplied here.",
+    "Table-wide Auth/member/audit locks briefly block other writers; eventual operator approval must accept contention and abort-on-timeout behavior.",
+    "Read-only reconciliation cannot prove absence from stale reads or guarantee safe replay after ambiguous commit. No automatic retry is authorized.",
+    "Rollback requires independently verified complete activity coverage and maintained quiescence. The schema alone cannot prove absence of legitimate intervening activity.",
+    "Database administrators can bypass audit protections; retain external immutable approval and execution evidence. Checksums must be independently approved, not merely read from a mutable manifest."
+  ],
+  "safety": {
+    "liveStagingConnected": false,
+    "productionAccess": false,
+    "membershipGrantExecuted": false,
+    "platformAdministratorCreated": false,
+    "accountPasswordSessionOrAuthenticationRequests": false,
+    "deploymentsAliasesOrProjectEnvironmentChanges": false,
+    "tenantActivationAppointmentsAvailabilityNotificationsOrBillingChanged": false,
+    "realApprovalEvidenceCreated": false,
+    "actualStaffCredentialsOrCustomerDataUsed": false,
+    "testSigningEvidence": "TEST_ONLY local generated keys and synthetic labels; not actual owner/operator authorization",
+    "temporaryTools": "PostgreSQL native npm package installed only under /tmp/rrd-membership-pg-tools; repository manifest and lockfile unchanged"
+  },
+  "nextGate": "Resolve the disposable native PostgreSQL test environment and pass the real PostgreSQL suite before declaring the operation ready for separate owner execution approval. Do not connect to live staging or execute the grant under this task authorization."
+}
