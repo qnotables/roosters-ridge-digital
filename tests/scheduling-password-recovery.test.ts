@@ -33,8 +33,8 @@ const env = {
   NODE_ENV: 'production', VERCEL_ENV: 'preview',
   VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC', VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
   NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
-  DATABASE_URL: 'postgresql://fixture:fixture@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
-  DATABASE_URL_UNPOOLED: 'postgresql://fixture:fixture@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+  DATABASE_URL: 'postgresql://neondb_owner:fixture@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+  DATABASE_URL_UNPOOLED: 'postgresql://neondb_owner:fixture@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
   ADMIN_DASHBOARD_KEY: 'offline-dashboard-fixture-not-real-'.repeat(2), NEON_AUTH_COOKIE_SECRET: 'offline-auth-fixture-not-real-'.repeat(2),
 }
 function request(path: string, body: unknown = {}, origin = schedulingRecoveryOrigin) {
@@ -83,6 +83,8 @@ describe('default-off server recovery activation', () => {
     { VERCEL_GIT_COMMIT_REF: 'main' }, { VERCEL_GIT_COMMIT_REF: 'other-branch' },
     { VERCEL_GIT_COMMIT_REF: undefined }, { VERCEL_PROJECT_ID: 'other-project' },
     { VERCEL_PROJECT_ID: undefined }, { DATABASE_URL: undefined }, { DATABASE_URL_UNPOOLED: undefined },
+    { DATABASE_URL: env.DATABASE_URL.replace('neondb_owner:', 'incorrect-role:') },
+    { DATABASE_URL_UNPOOLED: env.DATABASE_URL_UNPOOLED.replace('neondb_owner:', 'incorrect-role:') },
     { DATABASE_URL: 'postgresql://fixture:fixture@production.invalid/neondb?sslmode=require' },
     { NEON_AUTH_BASE_URL: 'https://production.invalid/auth' },
     { NEON_AUTH_COOKIE_SECRET: 'short' }, { ADMIN_DASHBOARD_KEY: 'short' },

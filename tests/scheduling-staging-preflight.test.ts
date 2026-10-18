@@ -5,8 +5,8 @@ function environment() {
   return {
     VERCEL: '1', VERCEL_ENV: 'preview', VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC',
     VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
-    DATABASE_URL: 'postgresql://test:private-password@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
-    DATABASE_URL_UNPOOLED: 'postgresql://test:private-password@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+    DATABASE_URL: 'postgresql://neondb_owner:private-password@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+    DATABASE_URL_UNPOOLED: 'postgresql://neondb_owner:private-password@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
     NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
     NEON_AUTH_COOKIE_SECRET: 'c'.repeat(40), ADMIN_DASHBOARD_KEY: 'd'.repeat(40),
   }

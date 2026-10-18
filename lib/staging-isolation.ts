@@ -12,7 +12,8 @@ function databaseMatches(value: string | undefined, pooled: boolean) {
     return ['postgres:', 'postgresql:'].includes(url.protocol)
       && url.hostname === (pooled ? stagingPooledHost : stagingDatabaseHost)
       && (!url.port || url.port === '5432') && url.pathname === '/neondb' && !url.hash
-      && Boolean(decodeURIComponent(url.username) && decodeURIComponent(url.password))
+      && decodeURIComponent(url.username) === 'neondb_owner'
+      && Boolean(decodeURIComponent(url.password))
       && ['require', 'verify-full'].includes(url.searchParams.get('sslmode') ?? '')
       && [...url.searchParams.keys()].every(key => key === 'sslmode')
       && url.searchParams.getAll('sslmode').length === 1

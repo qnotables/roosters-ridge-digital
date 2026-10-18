@@ -21,8 +21,8 @@ const valid = {
   NEON_AUTH_COOKIE_SECRET: 'synthetic-cookie-secret-at-least-32-chars',
   ADMIN_DASHBOARD_KEY: 'synthetic-dashboard-key-at-least-32-chars',
   NODE_ENV: 'production',
-  DATABASE_URL: `postgresql://fixture:fixture%40password@${pooled}/neondb?sslmode=require`,
-  DATABASE_URL_UNPOOLED: `postgresql://fixture:fixture%40password@${direct}/neondb?sslmode=verify-full`,
+  DATABASE_URL: `postgresql://neondb_owner:fixture%40password@${pooled}/neondb?sslmode=require`,
+  DATABASE_URL_UNPOOLED: `postgresql://neondb_owner:fixture%40password@${direct}/neondb?sslmode=verify-full`,
 }
 
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); vi.resetModules() })
@@ -38,7 +38,7 @@ function driver(config = stagingPoolConfig(4, valid)) {
 describe('staging PostgreSQL configuration (no connections)', () => {
   it.each(['require', 'verify-full'])('pins pooled host and verifies certificates with sslmode=%s', mode => {
     const config = stagingPoolConfig(4, { ...valid, DATABASE_URL: valid.DATABASE_URL.replace('require', mode) })
-    expect(config).toMatchObject({ host: pooled, port: 5432, database: 'neondb', user: 'fixture', password: 'fixture@password', ssl: { rejectUnauthorized: true, servername: pooled }, max: 4 })
+    expect(config).toMatchObject({ host: pooled, port: 5432, database: 'neondb', user: 'neondb_owner', password: 'fixture@password', ssl: { rejectUnauthorized: true, servername: pooled }, max: 4 })
     expect(config).not.toHaveProperty('connectionString')
     expect(driver(config).connectionParameters.ssl).toMatchObject({ rejectUnauthorized: true, servername: pooled })
   })
@@ -52,10 +52,10 @@ describe('staging PostgreSQL configuration (no connections)', () => {
     valid.DATABASE_URL.replace(pooled, 'ep-divine-scene-au7rxgk5-pooler.c-10.us-east-1.aws.neon.tech'),
     valid.DATABASE_URL.replace(pooled, `${pooled}.evil.invalid`),
     valid.DATABASE_URL.replace('postgresql:', 'https:'),
-    valid.DATABASE_URL.replace('/neondb', '/other'),
-    valid.DATABASE_URL.replace('fixture:fixture%40password@', ''),
+    valid.DATABASE_URL.replace('/neondb?', '/other?'),
+    valid.DATABASE_URL.replace('neondb_owner:fixture%40password@', ''),
     valid.DATABASE_URL.replace('fixture%40password', '%ZZ'),
-    valid.DATABASE_URL.replace('/neondb', ':5433/neondb'),
+    valid.DATABASE_URL.replace('/neondb?', ':5433/neondb?'),
     `${valid.DATABASE_URL}#fragment`,
   ])('rejects missing, malformed, or unapproved destination %#', DATABASE_URL => {
     expect(() => stagingPoolConfig(4, { ...valid, DATABASE_URL })).toThrow('Staging database configuration rejected')
@@ -67,7 +67,7 @@ describe('staging PostgreSQL configuration (no connections)', () => {
     expect(() => stagingPoolConfig(4, { ...valid, DATABASE_URL: `${valid.DATABASE_URL}&${option}` })).toThrow()
   })
   it('accepts explicit standard port without delegating to PGPORT', () => {
-    expect(stagingPoolConfig(4, { ...valid, DATABASE_URL: valid.DATABASE_URL.replace('/neondb', ':5432/neondb') }).port).toBe(5432)
+    expect(stagingPoolConfig(4, { ...valid, DATABASE_URL: valid.DATABASE_URL.replace('/neondb?', ':5432/neondb?') }).port).toBe(5432)
   })
   it('blocks ambient startup and TLS overrides', () => {
     for (const override of [{ NODE_TLS_REJECT_UNAUTHORIZED: '0' }, { PGSSLMODE: 'no-verify' }, { PGOPTIONS: '-c endpoint=production' }, { PGREPLICATION: 'database' }]) {
@@ -77,9 +77,9 @@ describe('staging PostgreSQL configuration (no connections)', () => {
   it('cannot fall back to PostgreSQL environment destinations or TLS settings', () => {
     for (const [key, value] of Object.entries({ PGHOST: 'production.invalid', PGHOSTADDR: '127.0.0.1', PGPORT: '5433', PGDATABASE: 'production', PGUSER: 'production', PGPASSWORD: 'ambient', PGSSLMODE: 'no-verify', PGSSLNEGOTIATION: 'direct', POSTGRES_URL: 'postgresql://production.invalid/production' })) vi.stubEnv(key, value)
     const client = driver()
-    expect(client.connectionParameters).toMatchObject({ host: pooled, port: 5432, database: 'neondb', user: 'fixture', password: 'fixture@password', ssl: { rejectUnauthorized: true, servername: pooled } })
+    expect(client.connectionParameters).toMatchObject({ host: pooled, port: 5432, database: 'neondb', user: 'neondb_owner', password: 'fixture@password', ssl: { rejectUnauthorized: true, servername: pooled } })
     expect(() => stagingPoolConfig(4, { ...valid, DATABASE_URL: undefined, PGHOST: pooled })).toThrow()
-    expect(client.getStartupConf()).toEqual({ user: 'fixture', database: 'neondb', application_name: 'rrd-staging' })
+    expect(client.getStartupConf()).toEqual({ user: 'neondb_owner', database: 'neondb', application_name: 'rrd-staging' })
   })
   it('preserves the exact Production pool options including existing fallback behavior', () => {
     for (const DATABASE_URL of [undefined, 'postgresql://existing:existing@production.invalid/production?sslmode=require']) {

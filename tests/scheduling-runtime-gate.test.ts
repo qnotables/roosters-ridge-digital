@@ -23,8 +23,8 @@ const valid = {
   NODE_ENV: 'production', VERCEL: '1', VERCEL_ENV: 'preview',
   VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC',
   VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
-  DATABASE_URL: 'postgresql://fixture:fixture-password@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
-  DATABASE_URL_UNPOOLED: 'postgresql://fixture:fixture-password@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=verify-full',
+  DATABASE_URL: 'postgresql://neondb_owner:fixture-password@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+  DATABASE_URL_UNPOOLED: 'postgresql://neondb_owner:fixture-password@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=verify-full',
   NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
   NEON_AUTH_COOKIE_SECRET: 'fixture-cookie-secret-at-least-32-characters',
   ADMIN_DASHBOARD_KEY: 'fixture-dashboard-key-at-least-32-characters',
@@ -46,8 +46,12 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs() })
 
 const badConfigurations: Record<string, string | undefined>[] = [
   { DATABASE_URL: undefined }, { DATABASE_URL_UNPOOLED: undefined },
+  ...(['DATABASE_URL', 'DATABASE_URL_UNPOOLED'] as const).flatMap(key =>
+    ['incorrect-role', '', 'NEONDB_OWNER', 'neondb_owner_extra', '%ZZ'].map(role => ({
+      [key]: valid[key].replace('neondb_owner:', `${role}:`),
+    }))),
   { DATABASE_URL: 'postgresql://fixture:private-password@production.invalid/neondb?sslmode=require' },
-  { DATABASE_URL: valid.DATABASE_URL.replace('/neondb', '/production') },
+  { DATABASE_URL: valid.DATABASE_URL.replace('/neondb?', '/production?') },
   { DATABASE_URL_UNPOOLED: valid.DATABASE_URL_UNPOOLED.replace('verify-full', 'disable') },
   { DATABASE_URL: `${valid.DATABASE_URL}&host=production.invalid` },
   { PGOPTIONS: '-c endpoint=production' }, { NODE_TLS_REJECT_UNAUTHORIZED: '0' }, { PGSSLMODE: 'no-verify' },
@@ -75,6 +79,26 @@ describe('protected staging configuration gate', () => {
     } })
     assertStagingRuntimeConfiguration(valid)
     expect(output).toHaveBeenCalledWith(pass)
+  })
+  it.each(['DATABASE_URL', 'DATABASE_URL_UNPOOLED'] as const)('decodes the exact approved role independently in %s', key => {
+    const env = { ...valid, [key]: valid[key].replace('neondb_owner:', '%6Eeondb%5Fowner:') }
+    expect(stagingRuntimeConfiguration(env).ready).toBe(true)
+    expect(stagingPoolConfig(1, env, key === 'DATABASE_URL' ? 'pooled' : 'direct').user).toBe('neondb_owner')
+    assertStagingRuntimeConfiguration(env)
+    for (const call of output.mock.calls) expect(call).toEqual([pass])
+  })
+  it.each(['DATABASE_URL', 'DATABASE_URL_UNPOOLED'] as const)('rejects an incorrect role in %s without logging credentials', key => {
+    const url = valid[key].replace('neondb_owner:', 'synthetic-rejected-role:')
+    const env = { ...valid, [key]: url }
+    let failure = ''
+    try { assertStagingRuntimeConfiguration(env) } catch (error) { failure = (error as Error).message }
+    const fixedReport = 'DATABASE_DESTINATION: BLOCKED\nAUTH_DESTINATION: PASS\nSECRET_FORMAT: PASS'
+    expect(failure).toBe(fixedReport)
+    for (const call of output.mock.calls) expect(call).toEqual([fixedReport])
+    expect(() => stagingPoolConfig(1, env, key === 'DATABASE_URL' ? 'pooled' : 'direct'))
+      .toThrow('Staging database configuration rejected: explicit approved URL and verified TLS required.')
+    const text = failure + JSON.stringify(output.mock.calls)
+    for (const value of [url, valid.DATABASE_URL, valid.DATABASE_URL_UNPOOLED, 'synthetic-rejected-role', 'neondb_owner', 'fixture-password', 'postgresql://']) expect(text).not.toContain(value)
   })
   it.each(badConfigurations)('blocks invalid configuration %# with fixed sanitized output', change => {
     const env = { ...valid, ...change }
@@ -151,7 +175,7 @@ describe('protected staging configuration gate', () => {
     for (const [key, value] of Object.entries({ PGHOST: 'production.invalid', PGDATABASE: 'production', PGUSER: 'production', PGPASSWORD: 'ambient', PGPORT: '5433', PGHOSTADDR: '127.0.0.1' })) vi.stubEnv(key, value)
     assertStagingRuntimeConfiguration()
     const client = new Client(stagingPoolConfig(3)) as Client & { connectionParameters: Record<string, unknown> }
-    expect(client.connectionParameters).toMatchObject({ host: new URL(valid.DATABASE_URL).hostname, database: 'neondb', user: 'fixture', password: 'fixture-password', port: 5432, ssl: { rejectUnauthorized: true } })
+    expect(client.connectionParameters).toMatchObject({ host: new URL(valid.DATABASE_URL).hostname, database: 'neondb', user: 'neondb_owner', password: 'fixture-password', port: 5432, ssl: { rejectUnauthorized: true } })
     vi.stubEnv('DATABASE_URL', undefined)
     expect(() => assertStagingRuntimeConfiguration()).toThrow('DATABASE_DESTINATION: BLOCKED')
   })
