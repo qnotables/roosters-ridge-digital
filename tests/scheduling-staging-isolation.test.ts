@@ -4,8 +4,8 @@ import { stagingIsolationStatus } from '@/lib/staging-isolation'
 const valid = {
   VERCEL_ENV: 'preview',
   NODE_ENV: 'production',
-  DATABASE_URL: 'postgresql://synthetic:synthetic@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
-  DATABASE_URL_UNPOOLED: 'postgresql://synthetic:synthetic@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+  DATABASE_URL: 'postgresql://neondb_owner:synthetic@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
+  DATABASE_URL_UNPOOLED: 'postgresql://neondb_owner:synthetic@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
   NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
   NEON_AUTH_COOKIE_SECRET: 'synthetic-only-cookie-secret-for-tests',
   ADMIN_DASHBOARD_KEY: 'synthetic-only-dashboard-key-for-tests',
@@ -19,7 +19,7 @@ describe('staging runtime isolation', () => {
     expect(stagingIsolationStatus({ ...valid, [key]: undefined }).ready).toBe(false)
   })
   it('rejects production hosts and routing overrides', () => {
-    for (const value of [valid.DATABASE_URL.replace('ep-delicate-heart-autbb00i', 'ep-divine-scene-au7rxgk5'), `${valid.DATABASE_URL}&options=endpoint%3Dproduction`, `${valid.DATABASE_URL}&host=production`, valid.DATABASE_URL.replace('/neondb', '/other'), valid.DATABASE_URL.replace('require', 'disable'), valid.DATABASE_URL.replace('.neon.tech', '.neon.tech.evil.invalid')]) {
+    for (const value of [valid.DATABASE_URL.replace('ep-delicate-heart-autbb00i', 'ep-divine-scene-au7rxgk5'), `${valid.DATABASE_URL}&options=endpoint%3Dproduction`, `${valid.DATABASE_URL}&host=production`, valid.DATABASE_URL.replace('/neondb?', '/other?'), valid.DATABASE_URL.replace('require', 'disable'), valid.DATABASE_URL.replace('.neon.tech', '.neon.tech.evil.invalid')]) {
       expect(stagingIsolationStatus({ ...valid, DATABASE_URL: value }).ready).toBe(false)
     }
   })

@@ -1,0 +1,133 @@
+{
+  "reportDate": "2026-10-18",
+  "baselineCommit": "2e026a5e0245934e9dfcc232dd2c69e0a5a40d68",
+  "gitBranch": "staging/rrd-scheduling",
+  "status": "DISPOSABLE_POSTGRESQL_VALIDATION_PASSED_NO_LIVE_AUTHORIZATION",
+  "readyForExecutionApproval": false,
+  "readyForCodeReview": true,
+  "artifactBundleSha256": "263484e71d75419cc9cda2045e05f9c49c922f53b10dd593a829debbaff88904",
+  "directory": "modules/scheduling/activation/membership-bootstrap",
+  "artifactPreservation": {
+    "reviewedFilesChanged": false,
+    "checksumManifestChanged": false,
+    "preTestBundleSha256": "263484e71d75419cc9cda2045e05f9c49c922f53b10dd593a829debbaff88904",
+    "postTestBundleSha256": "263484e71d75419cc9cda2045e05f9c49c922f53b10dd593a829debbaff88904",
+    "allPerFileChecksumsMatched": true,
+    "repositoryChangeScope": "Only VALIDATION.json updated. This report is outside the five-file reviewed bundle."
+  },
+  "schemaEvidence": {
+    "inspection": "OFFLINE_SAVED_EVIDENCE_ONLY_NOT_CURRENT_LIVE_SCHEMA",
+    "capturedColumns": "user_read_only_context/tool_content/inspecting-approved-staging-schema-neon-run-sql-7-ln-h.txt",
+    "capturedConstraintsAndTriggers": "user_read_only_context/tool_content/inspecting-membership-constraints-and-triggers-neon-run-sql-nlr-l.txt",
+    "repositoryMigrations": [
+      "modules/scheduling/migrations/001_scheduling.sql",
+      "modules/scheduling/migrations/007_multitenant.sql",
+      "modules/scheduling/migrations/009_platform_management.sql"
+    ],
+    "notes": "Fixture provenance retained from the baseline report; no live schema inspection in this task. The unchanged membership/audit fixture executed successfully on PostgreSQL 17.11. Auth and unrelated-state tables are reduced synthetic fixtures, not a full live schema clone or production privilege model."
+  },
+  "priorChecks": [
+    {
+      "name": "Offline authorization unit suite",
+      "status": "PREVIOUSLY_PASSED_UNCHANGED_NOT_RERUN_THIS_TASK",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "JavaScript syntax and application-isolation checks",
+      "status": "PREVIOUSLY_PASSED_UNCHANGED",
+      "notes": "The reviewed artifact remains byte-for-byte unchanged. This task executes its existing PostgreSQL suite, not new application code."
+    }
+  ],
+  "nativeLibraryResolution": {
+    "failedExecutable": "/tmp/rrd-membership-pg-tools/node_modules/@embedded-postgres/linux-x64/native/bin/postgres",
+    "failedPackage": "@embedded-postgres/linux-x64@18.4.0-beta.17",
+    "diagnosis": "readelf -d confirmed direct DT_NEEDED dependencies on libicui18n.so.60 and libicuuc.so.60; ldd reported them missing. The original executable was not modified or used for testing.",
+    "resolution": "Installed distribution-supported postgresql17-server using sudo -n dnf -y install postgresql17-server in the disposable sandbox. No database service was initialized or used by that command; the existing harness created its own temporary cluster.",
+    "runtimeExecutable": "/usr/bin/postgres",
+    "runtimeVersion": "17.11",
+    "runtimePackage": "postgresql17-server-17.11-1.amzn2023.0.1.x86_64",
+    "compatibleLibraryPackage": "libicu-67.1-7.amzn2023.0.4.x86_64",
+    "dependencyCheck": "ldd resolved all dependencies, including libicui18n.so.67, libicuuc.so.67 and libicudata.so.67. postgres --version and initdb --version succeeded.",
+    "fakeLibrarySymlinksCreated": false,
+    "nativeVersionChecksBypassed": false,
+    "repositoryDependenciesChanged": false,
+    "launcherCorrection": "Initial launch used nonexistent /usr/bin/node and exited 127 before cluster creation. Retried with the actual Node executable from command -v node; no artifact modification was needed."
+  },
+  "postgresqlValidation": {
+    "status": "PASS",
+    "runtime": "PostgreSQL 17.11 on Amazon Linux 2023 x86_64",
+    "command": "env -i PATH=/usr/bin:/bin HOME=/tmp LANG=C \"$(command -v node)\" /vercel/share/v0-project/modules/scheduling/activation/membership-bootstrap/bootstrap.pg.test.mjs /usr/bin",
+    "exitCode": 0,
+    "durationMilliseconds": 36853.607001,
+    "clusterInitialized": true,
+    "connectionScope": "Temporary /tmp/rrd-bootstrap-pg-* Unix socket only, TCP listen_addresses empty, auth-host=reject; no provider credentials inherited. Database neondb and principal synthetic_operator exist only in this disposable cluster.",
+    "testHarness": "bootstrap.pg.test.mjs",
+    "testCasesPassed": 20,
+    "parentTestsPassed": 1,
+    "reportedTestsPassed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "genuinePostgreSQLCompatibilityFailures": [],
+    "passedCases": [
+      "Exact membership and two attributable audits; every unrelated row unchanged",
+      "Exact duplicate rejected without changes",
+      "Conflicting suspended staff rejected without changes",
+      "Tenant audit insertion failure rolls back membership and both audits",
+      "Platform audit insertion failure rolls back membership and both audits",
+      "Consumed operation rejects replay",
+      "Missing identity rejected",
+      "Unverified identity rejected",
+      "Banned identity rejected",
+      "Tenant activation drift rejected",
+      "Tenant slug mismatch rejected",
+      "CHECK/FK constraints, timestamp update trigger and immutable audit trigger execute",
+      "Unexpected membership trigger aborts before writes",
+      "Member-table contention enforces 5-second lock timeout",
+      "Two concurrent grants have exactly one winner without overwrite",
+      "Transaction-local settings and actual 30-second PostgreSQL statement cancellation",
+      "Lost commit acknowledgment without server commit; no retry; read-only reconciliation",
+      "Lost commit acknowledgment after server commit; no retry; read-only reconciliation",
+      "Separately authorized synthetic rollback removes only unchanged grant and appends two audits",
+      "Rollback rejects intervening membership changes without revoking access"
+    ],
+    "coverageLimits": [
+      "Ambiguous-commit cases inject a client acknowledgment error around a real database COMMIT or before sending COMMIT; they are not an actual network-partition or server-crash test.",
+      "Idle-in-transaction timeout value is asserted as 30 seconds; elapsed idle-disconnect behavior is not separately exercised.",
+      "Unrelated-state preservation covers fixture tables and sentinels, not all tables or privileges in a live deployment. The fixture platform_administrators table remains empty; no platform administrator is created."
+    ],
+    "cleanup": {
+      "temporaryClusterRemoved": true,
+      "temporaryClusterDirectoriesRemaining": 0,
+      "postgresProcessesRemaining": 0,
+      "method": "Harness pg_ctl immediate stop and recursive removal of its own temporary cluster; post-test directory and process checks passed."
+    }
+  },
+  "remainingPrerequisitesBeforeOwnerApproval": [
+    "Independently review and approve the unchanged bundle digest and select the exact reviewed source revision; TARGET.reviewedCommit remains the earlier 06fb309b9fda2bde367aaa9661e69a6f5adbf8bd value and is not rewritten by this validation.",
+    "Under separate authorization, establish current staging schema, server-major-version, trigger, RLS and operator-privilege compatibility. Only the reduced fixture on PostgreSQL 17.11 was validated here.",
+    "Obtain trusted current control-plane evidence binding the exact Neon project, branch, direct endpoint, database and operator authority. SQL alone cannot establish a Neon branch.",
+    "Establish distinct real-world owner and independent-attestor public-key custody, external operator identity, approval reference, operation UUID and unexpired signed authorization for the exact artifact and target. TEST_ONLY signing evidence grants no real authority.",
+    "Accept table-wide locking and abort-on-contention behavior, maintain the required disabled tenant and verified unbanned existing identity preconditions, and arrange read-only reconciliation with no automatic retry after ambiguous commit.",
+    "Any eventual rollback needs separate approval, independently verified complete activity coverage and maintained quiescence; database evidence alone cannot prove absence of legitimate intervening activity.",
+    "Retain external immutable approval and execution evidence; database administrators can bypass database audit protections."
+  ],
+  "safety": {
+    "liveStagingConnected": false,
+    "productionAccess": false,
+    "liveMembershipGrantExecuted": false,
+    "syntheticMembershipOperationsOnly": true,
+    "platformAdministratorCreated": false,
+    "accountPasswordSessionOrAuthenticationRequests": false,
+    "deploymentsAliasesOrProjectEnvironmentChanges": false,
+    "neonOrVercelConfigurationChanges": false,
+    "liveTenantActivationAppointmentsAvailabilityNotificationsOrBillingChanged": false,
+    "realApprovalEvidenceCreated": false,
+    "actualStaffCredentialsOrCustomerDataUsed": false,
+    "testSigningEvidence": "TEST_ONLY locally generated keys and synthetic labels; not actual owner/operator authorization",
+    "repositoryManifestAndLockfileChanged": false
+  },
+  "nextGate": "The disposable PostgreSQL validation blocker is resolved and all existing integration cases pass. This is test evidence only, not owner approval or permission to connect to staging, execute a live membership grant, or make any deployment/configuration change."
+}

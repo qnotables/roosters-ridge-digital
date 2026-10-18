@@ -1,9 +1,11 @@
 import type { MetadataRoute } from 'next'
+import { connection } from 'next/server'
 import { getPublishedProjects } from '@/lib/portfolio'
 import { industrySlugs } from '@/data/industries'
 import { siteUrl } from '@/lib/site-config'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  await connection()
   const routes = ['', '/about', '/contact', '/services', '/work', '/promotions', '/free-checkup', '/promo/free-website-checkup', '/services/web-design', '/services/automation', '/services/digital-strategy', '/services/branding', '/services/website-troubleshooting', '/services/custom-solutions', '/quote', '/privacy', '/terms']
   const projects = await getPublishedProjects()
   const lastModified = new Date()

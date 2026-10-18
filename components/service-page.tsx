@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { connection } from 'next/server'
 import { ArrowRight, Check, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CtaBand } from '@/components/cta-band'
@@ -7,6 +8,7 @@ import { getPublishedProjects } from '@/lib/portfolio'
 import type { ServicePage } from '@/lib/service-pages'
 
 export async function ServicePageTemplate({ service }: { service: ServicePage }) {
+  await connection()
   const projects = (await getPublishedProjects('work')).filter((project) => {
     const categories = [project.primary_category, ...project.additional_categories].join(' ')
     if (service.slug === 'web-design') return /web|site|design|development/i.test(categories)

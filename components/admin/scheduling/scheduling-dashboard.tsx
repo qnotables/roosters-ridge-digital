@@ -206,7 +206,7 @@ export function SchedulingDashboard({
               <AlertDescription>
                 {data.message}
                 {data.state === "forbidden" && (
-                  <Link href="/admin/email" className="underline">
+                  <Link href="/admin/scheduling/staff-sign-in" className="underline">
                     Sign in to your staff account
                   </Link>
                 )}

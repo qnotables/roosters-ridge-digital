@@ -1,6 +1,8 @@
 import 'server-only'
 import { neon } from '@neondatabase/serverless'
-import { stagingIsolationStatus } from '@/lib/staging-isolation'
+import { assertStagingRuntimeConfiguration, stagingIsolationStatus } from '@/lib/staging-isolation'
+
+assertStagingRuntimeConfiguration()
 
 /**
  * Server-only Neon client. Returns null when the database is not configured

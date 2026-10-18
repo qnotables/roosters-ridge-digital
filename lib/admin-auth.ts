@@ -1,17 +1,24 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
+import { assertStagingRuntimeConfiguration } from '@/lib/staging-isolation'
+import { authenticationContext } from '@/lib/auth-context'
 
-const COOKIE_NAME = 'admin_dashboard_access'
-const COOKIE_PAYLOAD = 'roosters-ridge-dashboard-access'
+function cookiePayload() {
+  return Buffer.from(JSON.stringify({ version: 1, context: authenticationContext().id, purpose: 'dashboard-access' })).toString('base64url')
+}
 
 function getDashboardKey() {
+  assertStagingRuntimeConfiguration()
+  authenticationContext()
   const key = process.env.ADMIN_DASHBOARD_KEY?.trim()
   if (!key) throw new Error('ADMIN_DASHBOARD_KEY is not configured')
   return key
 }
 
 function expectedToken() {
-  return createHmac('sha256', getDashboardKey()).update(COOKIE_PAYLOAD).digest('hex')
+  const payload = cookiePayload()
+  const signature = createHmac('sha256', getDashboardKey()).update(payload).digest('hex')
+  return `${payload}.${signature}`
 }
 
 function safeEqual(left: string, right: string) {
@@ -29,9 +36,11 @@ export function isValidDashboardToken(value: unknown) {
 }
 
 export function dashboardCookieOptions() {
+  assertStagingRuntimeConfiguration()
+  authenticationContext()
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production' || Boolean(process.env.V0_RUNTIME_URL),
+    secure: true,
     sameSite: process.env.NODE_ENV === 'development' ? 'none' as const : 'lax' as const,
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
@@ -39,12 +48,21 @@ export function dashboardCookieOptions() {
 }
 
 export async function hasDashboardAccess() {
-  const token = (await cookies()).get(COOKIE_NAME)?.value
+  assertStagingRuntimeConfiguration()
+  const name = getDashboardCookieName()
+  const token = (await cookies()).get(name)?.value
   return Boolean(token && isValidDashboardToken(token))
 }
 
 export function getDashboardCookieName() {
-  return COOKIE_NAME
+  const { id } = authenticationContext()
+  return process.env.NODE_ENV === 'development'
+    ? `rrd-dev-${id}-dashboard-v1`
+    : `__Host-${id}-dashboard-v1`
+}
+
+export function dashboardCookieDeletionOptions() {
+  return { ...dashboardCookieOptions(), maxAge: 0 }
 }
 
 export function createDashboardToken() {
