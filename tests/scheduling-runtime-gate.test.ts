@@ -117,7 +117,12 @@ describe('protected staging configuration gate', () => {
       for (const [key, value] of Object.entries(valid)) vi.stubEnv(key, value)
       for (const key of ['PGOPTIONS', 'PGREPLICATION', 'PGSSLMODE', 'NODE_TLS_REJECT_UNAUTHORIZED']) vi.stubEnv(key, undefined)
       for (const [key, value] of Object.entries(change)) vi.stubEnv(key, value)
-      await expect(load()).rejects.toThrow(/BLOCKED/)
+      if (_name === 'Auth client') {
+        const client = await import('@/lib/auth')
+        await expect(client.getAuthSession()).rejects.toThrow(/BLOCKED/)
+      } else {
+        await expect(load()).rejects.toThrow(/BLOCKED/)
+      }
     }
     expect(mocks.pool).not.toHaveBeenCalled()
     expect(mocks.neon).not.toHaveBeenCalled()
@@ -182,7 +187,8 @@ describe('protected staging configuration gate', () => {
   it('preserves Production pool configuration and does not emit a staging report', async () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('DATABASE_URL', 'postgresql://existing:existing@production.invalid/production')
-    vi.stubEnv('NEON_AUTH_BASE_URL', 'https://production.invalid/auth')
+    vi.stubEnv('NEON_AUTH_BASE_URL', 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth')
+    vi.stubEnv('VERCEL_GIT_COMMIT_REF', 'main')
     await import('@/lib/platform-store')
     await import('@/lib/email-workspace-db')
     expect(mocks.pool.mock.calls.map(([config]) => config)).toEqual([

@@ -1,7 +1,8 @@
 import { auth, recoveryAuth } from '@/lib/auth'
 import { hasDashboardAccess } from '@/lib/admin-auth'
 import { schedulingRecoveryRequestAllowed, schedulingRecoveryShapeAllowed, schedulingRecoveryRedirectAllowed, schedulingResetCallback } from '@/modules/scheduling/password-recovery'
-import { assertStagingRuntimeConfiguration, stagingIsolationStatus } from '@/lib/staging-isolation'
+import { stagingIsolationStatus } from '@/lib/staging-isolation'
+import { assertAuthenticationConfiguration } from '@/lib/auth-context'
 
 const recoveryHeaders = { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' }
 
@@ -11,7 +12,7 @@ const recoveryHandlers = recoveryAuth.handler()
 function guarded(handler: typeof handlers.GET) {
   return async (...args: Parameters<typeof handlers.GET>) => {
     try {
-      assertStagingRuntimeConfiguration()
+      assertAuthenticationConfiguration()
     } catch {
       return Response.json({ error: 'Staging isolation configuration is not ready.' }, {
         status: 503,
@@ -31,7 +32,8 @@ function guarded(handler: typeof handlers.GET) {
       if (!schedulingRecoveryRequestAllowed(request)) {
         return Response.json({ error: 'Recovery is unavailable.' }, { status: 404, headers: recoveryHeaders })
       }
-      if (!schedulingRecoveryShapeAllowed(request, path)) {
+      if (!schedulingRecoveryShapeAllowed(request, path)
+        || path.some(segment => !/^[A-Za-z0-9._~-]+$/.test(segment) || segment === '.' || segment === '..')) {
         return Response.json({ error: 'Invalid recovery request.' }, { status: 400, headers: recoveryHeaders })
       }
       if (path[0] !== 'reset-password') {
@@ -45,10 +47,15 @@ function guarded(handler: typeof handlers.GET) {
           return Response.json({ error: 'Invalid recovery request.' }, { status: 400, headers: recoveryHeaders })
         }
       }
+      if (request.headers.has('authorization')) {
+        return Response.json({ error: 'Recovery is unavailable.' }, { status: 404, headers: recoveryHeaders })
+      }
       let response: Response
       try {
         const recoveryHandler = recoveryHandlers[request.method as keyof typeof recoveryHandlers]
-        response = await recoveryHandler(...args)
+        const url = new URL(request.url)
+        url.searchParams.set('disableCookieCache', 'true')
+        response = await recoveryHandler(new Request(url, request), context)
       } catch {
         return Response.json({ error: 'Recovery could not be completed.' }, { status: 502, headers: recoveryHeaders })
       }
@@ -61,7 +68,27 @@ function guarded(handler: typeof handlers.GET) {
       for (const [key, value] of Object.entries(recoveryHeaders)) headers.set(key, value)
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
     }
-    return handler(...args)
+    if (request.headers.has('authorization') || ['token', 'jwks', 'get-access-token', 'refresh-token'].includes(path[0])) {
+      return Response.json({ error: 'Bearer authentication is unavailable.' }, { status: 404, headers: recoveryHeaders })
+    }
+    const sessionAlias = path.some(segment => segment.replace(/[-_]/g, '').toLowerCase() === 'getsession' || segment === 'session')
+    const sessionRead = path.length === 1 && path[0] === 'get-session'
+    if (path.some(segment => !/^[a-z0-9-]+$/.test(segment)) || (sessionAlias && !sessionRead)) {
+      return Response.json({ error: 'Unsupported authentication path.' }, { status: 404, headers: recoveryHeaders })
+    }
+    if (sessionRead && request.method !== 'GET') {
+      return Response.json({ error: 'Unsupported session method.' }, { status: 405, headers: { ...recoveryHeaders, Allow: 'GET' } })
+    }
+    const url = new URL(request.url)
+    url.searchParams.set('disableCookieCache', 'true')
+    try {
+      const response = await handler(new Request(url, request), context)
+      const headers = new Headers(response.headers)
+      headers.set('Cache-Control', 'private, no-store')
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+    } catch {
+      return Response.json({ error: 'Authentication could not be completed.' }, { status: 502, headers: recoveryHeaders })
+    }
   }
 }
 

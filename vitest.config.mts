@@ -10,5 +10,5 @@ export default defineConfig({
       ),
     },
   },
-  test: { include: ["tests/email-*.test.ts", "tests/platform-*.test.ts", "tests/business-discovery.test.ts", "tests/prospect-finder.test.ts", "tests/scheduling*.test.ts"], environment: "node" },
+  test: { server: { deps: { inline: ['@neondatabase/auth'] } }, include: ["tests/email-*.test.ts", "tests/platform-*.test.ts", "tests/business-discovery.test.ts", "tests/prospect-finder.test.ts", "tests/scheduling*.test.ts"], environment: "node" },
 });

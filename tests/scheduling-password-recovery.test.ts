@@ -194,6 +194,8 @@ describe('guarded same-origin Auth proxy', () => {
   })
   it.each(['request-password-reset', 'forget-password', 'reset-password'])('rejects %s in Production before provider traffic', async path => {
     vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('VERCEL_GIT_COMMIT_REF', 'main')
+    vi.stubEnv('NEON_AUTH_BASE_URL', 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth')
     expect((await request(path, { redirectTo: schedulingResetCallback })).status).toBe(404)
     expect(mocks.handler).not.toHaveBeenCalled()
     expect(mocks.recoveryHandler).not.toHaveBeenCalled()
@@ -219,6 +221,8 @@ describe('guarded same-origin Auth proxy', () => {
   })
   it('preserves existing non-recovery Auth operations', async () => {
     vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('VERCEL_GIT_COMMIT_REF', 'main')
+    vi.stubEnv('NEON_AUTH_BASE_URL', 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth')
     expect((await GET(new Request('https://production.invalid/api/auth/get-session'), { params: Promise.resolve({ path: ['get-session'] }) })).status).toBe(200)
     expect(mocks.handler).toHaveBeenCalledOnce()
     expect(mocks.recoveryHandler).not.toHaveBeenCalled()
@@ -259,6 +263,16 @@ describe('recovery callback and redirect boundaries', () => {
     `callbackURL=${encodeURIComponent(schedulingResetCallback)}&returnTo=https://evil.invalid`,
   ])('rejects callback query before any provider call: %s', async query => {
     expect((await callback(query)).status).toBe(400)
+    expect(mocks.recoveryHandler).not.toHaveBeenCalled()
+  })
+  it('forwards only validated recovery requests with mandatory cache bypass', async () => {
+    expect((await callback()).status).toBe(200)
+    const [forwarded] = mocks.recoveryHandler.mock.calls[0] as [Request]
+    expect(new URL(forwarded.url).searchParams.getAll('disableCookieCache')).toEqual(['true'])
+    expect(new URL(forwarded.url).searchParams.get('callbackURL')).toBe(schedulingResetCallback)
+  })
+  it.each(['..', '.', '../get-session', '%2e%2e', 'opaque?disableCookieCache=false', 'opaque#fragment', 'opaque\\get-session'])('rejects recovery path normalization input %s', async token => {
+    expect((await callback(undefined, ['reset-password', token])).status).toBe(400)
     expect(mocks.recoveryHandler).not.toHaveBeenCalled()
   })
   it.each([
@@ -349,10 +363,12 @@ describe('allowlisted recovery SDK logging', () => {
     expect(debug).not.toHaveBeenCalled()
   })
   it('uses a separate recovery instance while retaining ordinary SDK logging and session configuration', async () => {
-    const createNeonAuth = vi.fn(() => ({}))
+    const createNeonAuth = vi.fn(() => ({ getSession: async () => ({ data: null, error: null }) }))
     vi.doMock('@neondatabase/auth/next/server', () => ({ createNeonAuth }))
     try {
-      await vi.importActual('@/lib/auth')
+      const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth')
+      expect(createNeonAuth).not.toHaveBeenCalled()
+      await actual.getAuthSession()
       expect(createNeonAuth).toHaveBeenCalledTimes(2)
       const [normal, recovery] = createNeonAuth.mock.calls.map(call => (call as unknown as [Record<string, unknown>])[0])
       expect(normal.baseUrl).toBe(env.NEON_AUTH_BASE_URL)
