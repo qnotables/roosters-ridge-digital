@@ -4,7 +4,6 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldGroup, FieldLabel, FieldSet, FieldLegend } from '@/components/ui/field'
-import { authClient } from '@/lib/auth-client'
 import type { StagingPasswordPreflight } from '@/lib/auth'
 
 type Counts = Omit<StagingPasswordPreflight, 'authenticated'> & {
@@ -44,6 +43,16 @@ export function StagingPasswordForm({ initial }: { initial: StagingPasswordPrefl
       && value.sourceCommit === initial.sourceCommit
       && Number.isFinite(Date.parse(value.checkedAt))
       && Math.abs(Date.now() - Date.parse(value.checkedAt)) < 30_000
+  }
+
+  async function mutate(operation: 'change-password' | 'sign-out', passwords?: { currentPassword: string; newPassword: string }) {
+    const response = await fetch('/api/admin/staging-password', {
+      method: 'POST', cache: 'no-store', credentials: 'same-origin', redirect: 'error',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operation, deploymentId: initial.deploymentId, sourceCommit: initial.sourceCommit, ...passwords }),
+    })
+    const result = await response.json()
+    if (!response.ok || result?.success !== true) throw new Error('Operation unconfirmed.')
   }
 
   async function freshIdentity() {
@@ -90,14 +99,7 @@ export function StagingPasswordForm({ initial }: { initial: StagingPasswordPrefl
       }
       // Once sent, even a transport error is ambiguous: never retry this mutation.
       passwordAttempted.current = true
-      const { data, error } = await authClient.changePassword({
-        currentPassword, newPassword, revokeOtherSessions: true,
-        fetchOptions: { retry: 0 },
-      })
-      if (error || !data) {
-        setMessage('Password change was not confirmed. Stop and do not retry; no automatic sign-out will occur.')
-        return
-      }
+      await mutate('change-password', { currentPassword, newPassword })
       confirmedChange = true
       setChanged(true)
       setMessage('Password change confirmed. Checking active session counts…')
@@ -140,8 +142,7 @@ export function StagingPasswordForm({ initial }: { initial: StagingPasswordPrefl
         return
       }
       signOutAttempted.current = true
-      const { data, error } = await authClient.signOut({ fetchOptions: { retry: 0 } })
-      if (error || !data?.success) throw new Error('Sign-out unconfirmed.')
+      await mutate('sign-out')
       const status = await readPreflight<{ authenticated: boolean }>('status')
       if (status.authenticated !== false) throw new Error('Signed-out state unconfirmed.')
       setFinished(true)

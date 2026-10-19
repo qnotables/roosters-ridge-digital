@@ -34,8 +34,14 @@ function configuredAuth(recovery = false) {
 }
 
 function lazyHandlers(recovery: boolean): AuthHandlers {
-  const handler: AuthHandlers['GET'] = (...args) => {
+  const handler: AuthHandlers['GET'] = async (...args) => {
     const method = args[0].method as keyof AuthHandlers
+    // Preview password changes must enter through the deployment-bound feature endpoint.
+    if (process.env.VERCEL_ENV === 'preview' && (await args[1].params).path[0] === 'change-password') {
+      return Response.json({ error: 'Use the protected staging password endpoint.' }, {
+        status: 404, headers: { 'Cache-Control': 'private, no-store' },
+      })
+    }
     return configuredAuth(recovery).handler()[method](...args)
   }
   return { GET: handler, POST: handler, PUT: handler, PATCH: handler, DELETE: handler }
@@ -143,6 +149,36 @@ export async function getStagingPasswordSessionCounts(applicationOrigin: string)
     other: active - current,
     verified: active === 1 && current === 1,
   }
+}
+
+export type StagingPasswordMutation = {
+  deploymentId: string
+  sourceCommit: string
+} & ({ operation: 'change-password'; currentPassword: string; newPassword: string }
+  | { operation: 'sign-out' })
+
+export async function performStagingPasswordMutation(request: Request, input: StagingPasswordMutation) {
+  const origin = new URL(request.url).origin
+  const { context, client, session } = await stagingPasswordSession(origin)
+  if (!session || input.deploymentId !== context.deploymentId || input.sourceCommit !== context.sourceCommit
+    || request.headers.get('origin') !== context.applicationOrigin
+    || request.headers.has('authorization')) throw new Error('Staging mutation not authorized.')
+  if (input.operation === 'sign-out' && !(await getStagingPasswordSessionCounts(origin)).verified) {
+    throw new Error('Current session must be the only active session.')
+  }
+  // Keep the pinned SDK's cookie rotation/deletion and Better Auth credential checks intact.
+  const upstreamRequest = new Request(`${origin}/api/auth/${input.operation}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: context.applicationOrigin,
+      Cookie: request.headers.get('cookie') ?? '',
+    },
+    body: JSON.stringify(input.operation === 'change-password'
+      ? { currentPassword: input.currentPassword, newPassword: input.newPassword, revokeOtherSessions: true }
+      : {}),
+  })
+  return client.handler().POST(upstreamRequest, { params: Promise.resolve({ path: [input.operation] }) })
 }
 
 export function isAdminEmail(email: string | undefined) {
