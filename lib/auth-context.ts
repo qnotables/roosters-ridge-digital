@@ -1,11 +1,10 @@
-import { assertStagingRuntimeConfiguration, stagingIsolationStatus } from '@/lib/staging-isolation'
+import { assertStagingRuntimeConfiguration, stagingDeploymentContext, stagingIsolationStatus } from '@/lib/staging-isolation'
 
 type Environment = Record<string, string | undefined>
 const projectId = 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC'
 const staging = Object.freeze({
   id: 'rrd-staging',
   baseUrl: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
-  applicationOrigin: 'https://roosters-ridge-digital-git-stagi-7ec470-mbthiel1-5217s-projects.vercel.app',
 })
 const production = Object.freeze({
   id: 'rrd-production',
@@ -16,12 +15,12 @@ const development = Object.freeze({ ...staging, id: 'rrd-development', applicati
 
 export function authenticationContext(env: Environment = process.env) {
   assertStagingRuntimeConfiguration(env)
+  const deployment = stagingDeploymentContext(env)
   const context = env.VERCEL_ENV === 'production'
     && env.VERCEL_PROJECT_ID === projectId && env.VERCEL_GIT_COMMIT_REF === 'main'
     ? production
-    : env.VERCEL_ENV === 'preview'
-      && env.VERCEL_PROJECT_ID === projectId && env.VERCEL_GIT_COMMIT_REF === 'staging/rrd-scheduling'
-      ? staging
+    : deployment
+      ? Object.freeze({ ...staging, applicationOrigin: deployment.applicationOrigin })
       : !env.VERCEL && (!env.VERCEL_ENV || env.VERCEL_ENV === 'development') && env.NODE_ENV === 'development'
         ? development : null
   if (!context || env.NEON_AUTH_BASE_URL !== context.baseUrl) {

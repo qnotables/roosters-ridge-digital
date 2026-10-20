@@ -85,13 +85,29 @@ export function stagingIsolationStatus(env: Environment = process.env) {
   return { enforced, ready: !enforced || Object.values(checks).every(Boolean), checks }
 }
 
-const stagingProjectId = 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC'
+const stagingProjectId = 'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG'
 const stagingBranch = 'staging/rrd-scheduling'
 
+export function stagingDeploymentContext(env: Environment = process.env) {
+  if (env.VERCEL !== '1' || env.NODE_ENV !== 'production' || env.VERCEL_ENV !== 'preview'
+    || env.VERCEL_PROJECT_ID !== stagingProjectId || env.VERCEL_GIT_COMMIT_REF !== stagingBranch
+    || !/^dpl_[a-zA-Z0-9]+$/.test(env.VERCEL_DEPLOYMENT_ID ?? '')
+    || !/^[a-f0-9]{40}$/.test(env.VERCEL_GIT_COMMIT_SHA ?? '')
+    || !/^rrd-scheduling-staging-[a-z0-9]{9}-mbthiel1-5217s-projects\.vercel\.app$/.test(env.VERCEL_URL ?? '')) return null
+  // Only the immutable hostname supplied by Vercel is trusted, never a request Host or forwarded header.
+  return Object.freeze({
+    projectId: stagingProjectId,
+    branch: stagingBranch,
+    applicationOrigin: `https://${env.VERCEL_URL}`,
+    deploymentId: env.VERCEL_DEPLOYMENT_ID!,
+    deploymentUrl: `https://${env.VERCEL_URL}`,
+    sourceCommit: env.VERCEL_GIT_COMMIT_SHA!,
+  })
+}
+
 export function stagingRuntimeConfiguration(env: Environment = process.env) {
-  const enforced = env.VERCEL_ENV === 'preview'
-  const contextMatches = env.VERCEL_PROJECT_ID === stagingProjectId
-    && env.VERCEL_GIT_COMMIT_REF === stagingBranch
+  const enforced = env.VERCEL_ENV === 'preview' || env.VERCEL_PROJECT_ID === stagingProjectId
+  const contextMatches = stagingDeploymentContext(env) !== null
   const { checks } = stagingIsolationStatus(env)
   const status = (valid: boolean) => valid ? 'PASS' as const : 'BLOCKED' as const
   const report = {

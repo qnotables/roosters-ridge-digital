@@ -21,7 +21,9 @@ vi.mock('@/lib/business-discovery', () => ({ searchBusinessProvider: vi.fn(), va
 
 const valid = {
   NODE_ENV: 'production', VERCEL: '1', VERCEL_ENV: 'preview',
-  VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC',
+  VERCEL_PROJECT_ID: 'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG',
+  VERCEL_DEPLOYMENT_ID: 'dpl_synthetic', VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40),
+  VERCEL_URL: 'rrd-scheduling-staging-a1b2c3d4e-mbthiel1-5217s-projects.vercel.app',
   VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
   DATABASE_URL: 'postgresql://neondb_owner:fixture-password@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
   DATABASE_URL_UNPOOLED: 'postgresql://neondb_owner:fixture-password@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=verify-full',
@@ -61,6 +63,15 @@ const badConfigurations: Record<string, string | undefined>[] = [
   { NEON_AUTH_COOKIE_SECRET: ' '.repeat(40) }, { NEON_AUTH_COOKIE_SECRET: `${valid.NEON_AUTH_COOKIE_SECRET}\n` },
   { ADMIN_DASHBOARD_KEY: undefined }, { ADMIN_DASHBOARD_KEY: ' '.repeat(40) },
   { VERCEL_PROJECT_ID: undefined }, { VERCEL_PROJECT_ID: 'another-project' },
+  { VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC' },
+  { VERCEL: undefined }, { NODE_ENV: 'development' }, { VERCEL_ENV: 'production' },
+  { VERCEL_DEPLOYMENT_ID: undefined }, { VERCEL_DEPLOYMENT_ID: 'dpl_invalid/extra' },
+  { VERCEL_GIT_COMMIT_SHA: undefined }, { VERCEL_GIT_COMMIT_SHA: 'not-a-commit' },
+  { VERCEL_URL: undefined }, { VERCEL_URL: 'roostersridgedigital.com' },
+  { VERCEL_URL: 'rrd-scheduling-staging.vercel.app' },
+  { VERCEL_URL: 'rrd-scheduling-staging-git-main-mbthiel1-5217s-projects.vercel.app' },
+  { VERCEL_URL: 'rrd-scheduling-staging-a1b2c3d4e-other-team.vercel.app' },
+  { VERCEL_URL: `${valid.VERCEL_URL}.evil.invalid` },
   { VERCEL_GIT_COMMIT_REF: undefined }, { VERCEL_GIT_COMMIT_REF: 'main' },
   { VERCEL_PROJECT_ID: undefined, VERCEL_GIT_COMMIT_REF: undefined },
   { VERCEL_PROJECT_ID: 'another-project', VERCEL_GIT_COMMIT_REF: 'another-branch' },
@@ -189,6 +200,7 @@ describe('protected staging configuration gate', () => {
     vi.stubEnv('DATABASE_URL', 'postgresql://existing:existing@production.invalid/production')
     vi.stubEnv('NEON_AUTH_BASE_URL', 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth')
     vi.stubEnv('VERCEL_GIT_COMMIT_REF', 'main')
+    vi.stubEnv('VERCEL_PROJECT_ID', 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC')
     await import('@/lib/platform-store')
     await import('@/lib/email-workspace-db')
     expect(mocks.pool.mock.calls.map(([config]) => config)).toEqual([
@@ -203,7 +215,7 @@ describe('protected staging configuration gate', () => {
   })
   it('preserves Production missing-URL pool options', () => {
     expect(stagingPoolConfig(3, { VERCEL_ENV: 'production', NODE_ENV: 'production' })).toEqual({ connectionString: undefined, max: 3 })
-    expect(() => assertStagingRuntimeConfiguration({ ...valid, VERCEL_ENV: 'production', DATABASE_URL: undefined })).not.toThrow()
+    expect(() => assertStagingRuntimeConfiguration({ ...valid, VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC', VERCEL_ENV: 'production', DATABASE_URL: undefined })).not.toThrow()
   })
   it('uses pinned pooled and direct inspector settings while retaining read-only transactions', async () => {
     const { expected, inspectConnection } = await import('@/modules/scheduling/activation/staging-preflight')
@@ -214,7 +226,8 @@ describe('protected staging configuration gate', () => {
       mocks.pool.mockImplementationOnce(function (config: unknown) {
         return { config, on: vi.fn(), connect: async () => ({ query, release }), end }
       })
-      await inspectConnection(kind === 'pooled' ? valid.DATABASE_URL : valid.DATABASE_URL_UNPOOLED, valid)
+      await inspectConnection(kind === 'pooled' ? valid.DATABASE_URL : valid.DATABASE_URL_UNPOOLED,
+        { ...valid, VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC' })
       const config = mocks.pool.mock.calls.at(-1)![0]
       expect(config).toMatchObject({ host: kind === 'pooled' ? new URL(valid.DATABASE_URL).hostname : new URL(valid.DATABASE_URL_UNPOOLED).hostname, ssl: { rejectUnauthorized: true }, max: 1 })
       expect(config).not.toHaveProperty('connectionString')

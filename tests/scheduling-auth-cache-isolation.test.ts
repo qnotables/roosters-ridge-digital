@@ -19,7 +19,9 @@ function syntheticCache() {
 function configure(environment: 'production' | 'staging') {
   for (const [name, value] of Object.entries({
     NODE_ENV: 'production', VERCEL: '1', VERCEL_ENV: environment === 'production' ? 'production' : 'preview',
-    VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC', VERCEL_GIT_COMMIT_REF: environment === 'production' ? 'main' : 'staging/rrd-scheduling',
+    VERCEL_PROJECT_ID: environment === 'production' ? 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC' : 'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG', VERCEL_GIT_COMMIT_REF: environment === 'production' ? 'main' : 'staging/rrd-scheduling',
+    VERCEL_DEPLOYMENT_ID: 'dpl_synthetic', VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40),
+    VERCEL_URL: 'rrd-scheduling-staging-a1b2c3d4e-mbthiel1-5217s-projects.vercel.app',
     NEON_AUTH_BASE_URL: environment === 'production' ? productionUrl : stagingUrl,
     NEON_AUTH_COOKIE_SECRET: secret, ADMIN_DASHBOARD_KEY: secret,
     DATABASE_URL: 'postgresql://neondb_owner:fixture@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',

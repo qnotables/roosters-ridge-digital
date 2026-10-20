@@ -31,7 +31,9 @@ const source = (file: string) => readFileSync(new URL(`../${file}`, import.meta.
 const env = {
   RRD_STAGING_PASSWORD_RECOVERY_ENABLED: 'true',
   NODE_ENV: 'production', VERCEL_ENV: 'preview',
-  VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC', VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
+  VERCEL: '1', VERCEL_PROJECT_ID: 'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG', VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
+  VERCEL_DEPLOYMENT_ID: 'dpl_synthetic', VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40),
+  VERCEL_URL: 'rrd-scheduling-staging-a1b2c3d4e-mbthiel1-5217s-projects.vercel.app',
   NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
   DATABASE_URL: 'postgresql://neondb_owner:fixture@ep-delicate-heart-autbb00i-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
   DATABASE_URL_UNPOOLED: 'postgresql://neondb_owner:fixture@ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require',
@@ -195,6 +197,7 @@ describe('guarded same-origin Auth proxy', () => {
   it.each(['request-password-reset', 'forget-password', 'reset-password'])('rejects %s in Production before provider traffic', async path => {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('VERCEL_GIT_COMMIT_REF', 'main')
+    vi.stubEnv('VERCEL_PROJECT_ID', 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC')
     vi.stubEnv('NEON_AUTH_BASE_URL', 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth')
     expect((await request(path, { redirectTo: schedulingResetCallback })).status).toBe(404)
     expect(mocks.handler).not.toHaveBeenCalled()
@@ -222,6 +225,7 @@ describe('guarded same-origin Auth proxy', () => {
   it('preserves existing non-recovery Auth operations', async () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('VERCEL_GIT_COMMIT_REF', 'main')
+    vi.stubEnv('VERCEL_PROJECT_ID', 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC')
     vi.stubEnv('NEON_AUTH_BASE_URL', 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth')
     expect((await GET(new Request('https://production.invalid/api/auth/get-session'), { params: Promise.resolve({ path: ['get-session'] }) })).status).toBe(200)
     expect(mocks.handler).toHaveBeenCalledOnce()

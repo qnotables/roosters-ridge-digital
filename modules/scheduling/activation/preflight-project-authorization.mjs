@@ -1,7 +1,10 @@
 export const originalStagingProjectId = 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC'
 
 // Populate only through a separately reviewed commit after independent project-ID verification.
-export const approvedVerificationProjectIds = Object.freeze(['prj_CXskPmbNMIl5Idh6e6c2UUv2eanm'])
+export const approvedVerificationProjectIds = Object.freeze([
+  'prj_CXskPmbNMIl5Idh6e6c2UUv2eanm',
+  'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG',
+])
 export const approvedProjectIds = Object.freeze([
   originalStagingProjectId,
   ...approvedVerificationProjectIds,

@@ -9,9 +9,16 @@ const scope = {
 }
 
 describe('source-controlled preflight project authorization', () => {
-  it('authorizes only the original and exact owner-approved verification project', () => {
-    expect(approvedVerificationProjectIds).toEqual(['prj_CXskPmbNMIl5Idh6e6c2UUv2eanm'])
-    expect(approvedProjectIds).toEqual([originalStagingProjectId, 'prj_CXskPmbNMIl5Idh6e6c2UUv2eanm'])
+  it('authorizes only the original and exact owner-approved verification projects', () => {
+    expect(approvedVerificationProjectIds).toEqual([
+      'prj_CXskPmbNMIl5Idh6e6c2UUv2eanm',
+      'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG',
+    ])
+    expect(approvedProjectIds).toEqual([
+      originalStagingProjectId,
+      'prj_CXskPmbNMIl5Idh6e6c2UUv2eanm',
+      'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG',
+    ])
     for (const projectId of approvedProjectIds) {
       expect(isAuthorizedPreflightDeployment({ ...scope, VERCEL_PROJECT_ID: projectId })).toBe(true)
       const execute = vi.fn(() => ({ status: 1, stdout: '' }))
@@ -30,6 +37,10 @@ describe('source-controlled preflight project authorization', () => {
     { VERCEL_ENV: undefined },
     { VERCEL_GIT_COMMIT_REF: undefined },
     { VERCEL: undefined },
+    { VERCEL: '0' },
+    { VERCEL_ENV: 'Preview' },
+    { VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling-extra' },
+    { VERCEL_GIT_COMMIT_REF: 'bootstrap/rrd-staging-init-20261019-a7c92e' },
     { VERCEL_ENV: 'production' },
     { VERCEL_ENV: 'development' },
     { VERCEL_GIT_COMMIT_REF: 'main' },

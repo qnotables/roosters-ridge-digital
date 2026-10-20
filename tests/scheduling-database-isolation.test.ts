@@ -16,7 +16,9 @@ const direct = 'ep-delicate-heart-autbb00i.c-10.us-east-1.aws.neon.tech'
 const valid = {
   VERCEL_ENV: 'preview',
   VERCEL_GIT_COMMIT_REF: 'staging/rrd-scheduling',
-  VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC',
+  VERCEL_PROJECT_ID: 'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG',
+  VERCEL: '1', VERCEL_DEPLOYMENT_ID: 'dpl_synthetic', VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40),
+  VERCEL_URL: 'rrd-scheduling-staging-a1b2c3d4e-mbthiel1-5217s-projects.vercel.app',
   NEON_AUTH_BASE_URL: 'https://ep-delicate-heart-autbb00i.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth',
   NEON_AUTH_COOKIE_SECRET: 'synthetic-cookie-secret-at-least-32-chars',
   ADMIN_DASHBOARD_KEY: 'synthetic-dashboard-key-at-least-32-chars',
@@ -124,6 +126,7 @@ describe('scheduling emailDb initialization', () => {
   it('retains Production emailDb options', async () => {
     setEnvironment()
     vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('VERCEL_PROJECT_ID', 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC')
     vi.stubEnv('DATABASE_URL', 'postgresql://existing.invalid/production')
     await import('@/lib/email-workspace-db')
     expect(poolConstructor).toHaveBeenCalledExactlyOnceWith({ connectionString: 'postgresql://existing.invalid/production', max: 4 })

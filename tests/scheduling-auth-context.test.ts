@@ -14,7 +14,9 @@ const productionUrl = 'https://ep-divine-scene-au7rxgk5.neonauth.c-10.us-east-1.
 function configure(environment: 'production' | 'staging') {
   const values = {
     NODE_ENV: 'production', VERCEL: '1', VERCEL_ENV: environment === 'production' ? 'production' : 'preview',
-    VERCEL_PROJECT_ID: 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC',
+    VERCEL_PROJECT_ID: environment === 'production' ? 'prj_iolwd1HBRl0M7NllmzyBCAFmaczC' : 'prj_J7M0DQdAtbChZ7tkJ6NsnuezUhGG',
+    VERCEL_DEPLOYMENT_ID: 'dpl_synthetic', VERCEL_GIT_COMMIT_SHA: 'a'.repeat(40),
+    VERCEL_URL: 'rrd-scheduling-staging-a1b2c3d4e-mbthiel1-5217s-projects.vercel.app',
     VERCEL_GIT_COMMIT_REF: environment === 'production' ? 'main' : 'staging/rrd-scheduling',
     NEON_AUTH_BASE_URL: environment === 'production' ? productionUrl : stagingUrl,
     NEON_AUTH_COOKIE_SECRET: key, ADMIN_DASHBOARD_KEY: key,
@@ -30,7 +32,7 @@ describe('fixed server-owned authentication context', () => {
   it.each(['production', 'staging'] as const)('pins %s independently of client and host selectors', environment => {
     configure(environment)
     vi.stubEnv('NEXT_PUBLIC_AUTH_ENV', environment === 'production' ? 'staging' : 'production')
-    vi.stubEnv('VERCEL_URL', 'untrusted.invalid')
+    if (environment === 'production') vi.stubEnv('VERCEL_URL', 'untrusted.invalid')
     expect(authenticationContext()).toMatchObject({ id: `rrd-${environment}`, baseUrl: environment === 'production' ? productionUrl : stagingUrl })
     expect(Object.isFrozen(authenticationContext())).toBe(true)
   })
@@ -99,6 +101,7 @@ describe('versioned dashboard-cookie isolation with deliberately identical keys'
     configure('staging')
     vi.stubEnv('VERCEL', undefined)
     vi.stubEnv('VERCEL_ENV', undefined)
+    vi.stubEnv('VERCEL_PROJECT_ID', undefined)
     vi.stubEnv('NODE_ENV', 'development')
     expect(authenticationContext().id).toBe('rrd-development')
     expect(getDashboardCookieName()).toBe('rrd-dev-rrd-development-dashboard-v1')
